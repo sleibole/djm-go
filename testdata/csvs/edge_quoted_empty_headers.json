@@ -1,0 +1,21 @@
+{
+  "status": "failed",
+  "source_encoding": "UTF-8",
+  "errors": [
+    {
+      "type": "empty_header",
+      "column": 1,
+      "detail": "Header cell 1 is empty"
+    },
+    {
+      "type": "empty_header",
+      "column": 4,
+      "detail": "Header cell 4 is empty"
+    },
+    {
+      "type": "duplicate_header",
+      "column": "",
+      "detail": "Duplicate header ''"
+    }
+  ]
+}

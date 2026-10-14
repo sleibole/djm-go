@@ -1,0 +1,2523 @@
+[
+  {
+    "q": "queen",
+    "limit": 50,
+    "offset": 0,
+    "sort": "best_match",
+    "total": 6,
+    "result_sort": "best_match",
+    "songs": [
+      {
+        "id": 5,
+        "title": "Bohemian Rhapsody",
+        "artist": "Queen",
+        "album": "A Night at the Opera",
+        "versions": [
+          "Original",
+          "Key +2",
+          "Key -3"
+        ],
+        "external_ids": [
+          "SC-1001",
+          "SC-1002",
+          "SC-1003"
+        ]
+      },
+      {
+        "id": 10,
+        "title": "Don't Stop Me Now",
+        "artist": "Queen",
+        "album": "Jazz",
+        "versions": [
+          "Original"
+        ],
+        "external_ids": [
+          "SC-1004"
+        ]
+      },
+      {
+        "id": 25,
+        "title": "Killer Queen",
+        "artist": "Queen",
+        "album": "Sheer Heart Attack",
+        "versions": [],
+        "external_ids": []
+      },
+      {
+        "id": 44,
+        "title": "Under Pressure",
+        "artist": "Queen & David Bowie",
+        "album": "Hot Space",
+        "versions": [
+          "Original"
+        ],
+        "external_ids": [
+          "SC-1005"
+        ]
+      },
+      {
+        "id": 7,
+        "title": "Dancing Queen",
+        "artist": "ABBA",
+        "album": "Arrival",
+        "versions": [
+          "Original",
+          "Acoustic"
+        ],
+        "external_ids": [
+          "AB-1",
+          "AB-2"
+        ]
+      },
+      {
+        "id": 33,
+        "title": "Queen of Hearts",
+        "artist": "Juice Newton",
+        "album": "Juice",
+        "versions": [
+          "Original"
+        ],
+        "external_ids": []
+      }
+    ]
+  },
+  {
+    "q": "Queen",
+    "limit": 50,
+    "offset": 0,
+    "sort": "title",
+    "total": 6,
+    "result_sort": "title",
+    "songs": [
+      {
+        "id": 5,
+        "title": "Bohemian Rhapsody",
+        "artist": "Queen",
+        "album": "A Night at the Opera",
+        "versions": [
+          "Original",
+          "Key +2",
+          "Key -3"
+        ],
+        "external_ids": [
+          "SC-1001",
+          "SC-1002",
+          "SC-1003"
+        ]
+      },
+      {
+        "id": 7,
+        "title": "Dancing Queen",
+        "artist": "ABBA",
+        "album": "Arrival",
+        "versions": [
+          "Original",
+          "Acoustic"
+        ],
+        "external_ids": [
+          "AB-1",
+          "AB-2"
+        ]
+      },
+      {
+        "id": 10,
+        "title": "Don't Stop Me Now",
+        "artist": "Queen",
+        "album": "Jazz",
+        "versions": [
+          "Original"
+        ],
+        "external_ids": [
+          "SC-1004"
+        ]
+      },
+      {
+        "id": 25,
+        "title": "Killer Queen",
+        "artist": "Queen",
+        "album": "Sheer Heart Attack",
+        "versions": [],
+        "external_ids": []
+      },
+      {
+        "id": 33,
+        "title": "Queen of Hearts",
+        "artist": "Juice Newton",
+        "album": "Juice",
+        "versions": [
+          "Original"
+        ],
+        "external_ids": []
+      },
+      {
+        "id": 44,
+        "title": "Under Pressure",
+        "artist": "Queen & David Bowie",
+        "album": "Hot Space",
+        "versions": [
+          "Original"
+        ],
+        "external_ids": [
+          "SC-1005"
+        ]
+      }
+    ]
+  },
+  {
+    "q": "queen",
+    "limit": 50,
+    "offset": 0,
+    "sort": "artist",
+    "total": 6,
+    "result_sort": "artist",
+    "songs": [
+      {
+        "id": 7,
+        "title": "Dancing Queen",
+        "artist": "ABBA",
+        "album": "Arrival",
+        "versions": [
+          "Original",
+          "Acoustic"
+        ],
+        "external_ids": [
+          "AB-1",
+          "AB-2"
+        ]
+      },
+      {
+        "id": 33,
+        "title": "Queen of Hearts",
+        "artist": "Juice Newton",
+        "album": "Juice",
+        "versions": [
+          "Original"
+        ],
+        "external_ids": []
+      },
+      {
+        "id": 5,
+        "title": "Bohemian Rhapsody",
+        "artist": "Queen",
+        "album": "A Night at the Opera",
+        "versions": [
+          "Original",
+          "Key +2",
+          "Key -3"
+        ],
+        "external_ids": [
+          "SC-1001",
+          "SC-1002",
+          "SC-1003"
+        ]
+      },
+      {
+        "id": 10,
+        "title": "Don't Stop Me Now",
+        "artist": "Queen",
+        "album": "Jazz",
+        "versions": [
+          "Original"
+        ],
+        "external_ids": [
+          "SC-1004"
+        ]
+      },
+      {
+        "id": 25,
+        "title": "Killer Queen",
+        "artist": "Queen",
+        "album": "Sheer Heart Attack",
+        "versions": [],
+        "external_ids": []
+      },
+      {
+        "id": 44,
+        "title": "Under Pressure",
+        "artist": "Queen & David Bowie",
+        "album": "Hot Space",
+        "versions": [
+          "Original"
+        ],
+        "external_ids": [
+          "SC-1005"
+        ]
+      }
+    ]
+  },
+  {
+    "q": "queen",
+    "limit": 50,
+    "offset": 0,
+    "sort": "nonsense",
+    "total": 6,
+    "result_sort": "best_match",
+    "songs": [
+      {
+        "id": 5,
+        "title": "Bohemian Rhapsody",
+        "artist": "Queen",
+        "album": "A Night at the Opera",
+        "versions": [
+          "Original",
+          "Key +2",
+          "Key -3"
+        ],
+        "external_ids": [
+          "SC-1001",
+          "SC-1002",
+          "SC-1003"
+        ]
+      },
+      {
+        "id": 10,
+        "title": "Don't Stop Me Now",
+        "artist": "Queen",
+        "album": "Jazz",
+        "versions": [
+          "Original"
+        ],
+        "external_ids": [
+          "SC-1004"
+        ]
+      },
+      {
+        "id": 25,
+        "title": "Killer Queen",
+        "artist": "Queen",
+        "album": "Sheer Heart Attack",
+        "versions": [],
+        "external_ids": []
+      },
+      {
+        "id": 44,
+        "title": "Under Pressure",
+        "artist": "Queen & David Bowie",
+        "album": "Hot Space",
+        "versions": [
+          "Original"
+        ],
+        "external_ids": [
+          "SC-1005"
+        ]
+      },
+      {
+        "id": 7,
+        "title": "Dancing Queen",
+        "artist": "ABBA",
+        "album": "Arrival",
+        "versions": [
+          "Original",
+          "Acoustic"
+        ],
+        "external_ids": [
+          "AB-1",
+          "AB-2"
+        ]
+      },
+      {
+        "id": 33,
+        "title": "Queen of Hearts",
+        "artist": "Juice Newton",
+        "album": "Juice",
+        "versions": [
+          "Original"
+        ],
+        "external_ids": []
+      }
+    ]
+  },
+  {
+    "q": "queen",
+    "limit": 50,
+    "offset": 0,
+    "sort": " TITLE ",
+    "total": 6,
+    "result_sort": "title",
+    "songs": [
+      {
+        "id": 5,
+        "title": "Bohemian Rhapsody",
+        "artist": "Queen",
+        "album": "A Night at the Opera",
+        "versions": [
+          "Original",
+          "Key +2",
+          "Key -3"
+        ],
+        "external_ids": [
+          "SC-1001",
+          "SC-1002",
+          "SC-1003"
+        ]
+      },
+      {
+        "id": 7,
+        "title": "Dancing Queen",
+        "artist": "ABBA",
+        "album": "Arrival",
+        "versions": [
+          "Original",
+          "Acoustic"
+        ],
+        "external_ids": [
+          "AB-1",
+          "AB-2"
+        ]
+      },
+      {
+        "id": 10,
+        "title": "Don't Stop Me Now",
+        "artist": "Queen",
+        "album": "Jazz",
+        "versions": [
+          "Original"
+        ],
+        "external_ids": [
+          "SC-1004"
+        ]
+      },
+      {
+        "id": 25,
+        "title": "Killer Queen",
+        "artist": "Queen",
+        "album": "Sheer Heart Attack",
+        "versions": [],
+        "external_ids": []
+      },
+      {
+        "id": 33,
+        "title": "Queen of Hearts",
+        "artist": "Juice Newton",
+        "album": "Juice",
+        "versions": [
+          "Original"
+        ],
+        "external_ids": []
+      },
+      {
+        "id": 44,
+        "title": "Under Pressure",
+        "artist": "Queen & David Bowie",
+        "album": "Hot Space",
+        "versions": [
+          "Original"
+        ],
+        "external_ids": [
+          "SC-1005"
+        ]
+      }
+    ]
+  },
+  {
+    "q": "queen",
+    "limit": 50,
+    "offset": 0,
+    "sort": null,
+    "total": 6,
+    "result_sort": "best_match",
+    "songs": [
+      {
+        "id": 5,
+        "title": "Bohemian Rhapsody",
+        "artist": "Queen",
+        "album": "A Night at the Opera",
+        "versions": [
+          "Original",
+          "Key +2",
+          "Key -3"
+        ],
+        "external_ids": [
+          "SC-1001",
+          "SC-1002",
+          "SC-1003"
+        ]
+      },
+      {
+        "id": 10,
+        "title": "Don't Stop Me Now",
+        "artist": "Queen",
+        "album": "Jazz",
+        "versions": [
+          "Original"
+        ],
+        "external_ids": [
+          "SC-1004"
+        ]
+      },
+      {
+        "id": 25,
+        "title": "Killer Queen",
+        "artist": "Queen",
+        "album": "Sheer Heart Attack",
+        "versions": [],
+        "external_ids": []
+      },
+      {
+        "id": 44,
+        "title": "Under Pressure",
+        "artist": "Queen & David Bowie",
+        "album": "Hot Space",
+        "versions": [
+          "Original"
+        ],
+        "external_ids": [
+          "SC-1005"
+        ]
+      },
+      {
+        "id": 7,
+        "title": "Dancing Queen",
+        "artist": "ABBA",
+        "album": "Arrival",
+        "versions": [
+          "Original",
+          "Acoustic"
+        ],
+        "external_ids": [
+          "AB-1",
+          "AB-2"
+        ]
+      },
+      {
+        "id": 33,
+        "title": "Queen of Hearts",
+        "artist": "Juice Newton",
+        "album": "Juice",
+        "versions": [
+          "Original"
+        ],
+        "external_ids": []
+      }
+    ]
+  },
+  {
+    "q": "  QUEEN  ",
+    "limit": 50,
+    "offset": 0,
+    "sort": "best_match",
+    "total": 6,
+    "result_sort": "best_match",
+    "songs": [
+      {
+        "id": 5,
+        "title": "Bohemian Rhapsody",
+        "artist": "Queen",
+        "album": "A Night at the Opera",
+        "versions": [
+          "Original",
+          "Key +2",
+          "Key -3"
+        ],
+        "external_ids": [
+          "SC-1001",
+          "SC-1002",
+          "SC-1003"
+        ]
+      },
+      {
+        "id": 10,
+        "title": "Don't Stop Me Now",
+        "artist": "Queen",
+        "album": "Jazz",
+        "versions": [
+          "Original"
+        ],
+        "external_ids": [
+          "SC-1004"
+        ]
+      },
+      {
+        "id": 25,
+        "title": "Killer Queen",
+        "artist": "Queen",
+        "album": "Sheer Heart Attack",
+        "versions": [],
+        "external_ids": []
+      },
+      {
+        "id": 44,
+        "title": "Under Pressure",
+        "artist": "Queen & David Bowie",
+        "album": "Hot Space",
+        "versions": [
+          "Original"
+        ],
+        "external_ids": [
+          "SC-1005"
+        ]
+      },
+      {
+        "id": 7,
+        "title": "Dancing Queen",
+        "artist": "ABBA",
+        "album": "Arrival",
+        "versions": [
+          "Original",
+          "Acoustic"
+        ],
+        "external_ids": [
+          "AB-1",
+          "AB-2"
+        ]
+      },
+      {
+        "id": 33,
+        "title": "Queen of Hearts",
+        "artist": "Juice Newton",
+        "album": "Juice",
+        "versions": [
+          "Original"
+        ],
+        "external_ids": []
+      }
+    ]
+  },
+  {
+    "q": "q",
+    "limit": 50,
+    "offset": 0,
+    "sort": "best_match",
+    "total": 6,
+    "result_sort": "best_match",
+    "songs": [
+      {
+        "id": 5,
+        "title": "Bohemian Rhapsody",
+        "artist": "Queen",
+        "album": "A Night at the Opera",
+        "versions": [
+          "Original",
+          "Key +2",
+          "Key -3"
+        ],
+        "external_ids": [
+          "SC-1001",
+          "SC-1002",
+          "SC-1003"
+        ]
+      },
+      {
+        "id": 10,
+        "title": "Don't Stop Me Now",
+        "artist": "Queen",
+        "album": "Jazz",
+        "versions": [
+          "Original"
+        ],
+        "external_ids": [
+          "SC-1004"
+        ]
+      },
+      {
+        "id": 25,
+        "title": "Killer Queen",
+        "artist": "Queen",
+        "album": "Sheer Heart Attack",
+        "versions": [],
+        "external_ids": []
+      },
+      {
+        "id": 44,
+        "title": "Under Pressure",
+        "artist": "Queen & David Bowie",
+        "album": "Hot Space",
+        "versions": [
+          "Original"
+        ],
+        "external_ids": [
+          "SC-1005"
+        ]
+      },
+      {
+        "id": 7,
+        "title": "Dancing Queen",
+        "artist": "ABBA",
+        "album": "Arrival",
+        "versions": [
+          "Original",
+          "Acoustic"
+        ],
+        "external_ids": [
+          "AB-1",
+          "AB-2"
+        ]
+      },
+      {
+        "id": 33,
+        "title": "Queen of Hearts",
+        "artist": "Juice Newton",
+        "album": "Juice",
+        "versions": [
+          "Original"
+        ],
+        "external_ids": []
+      }
+    ]
+  },
+  {
+    "q": "qu",
+    "limit": 50,
+    "offset": 0,
+    "sort": "best_match",
+    "total": 6,
+    "result_sort": "best_match",
+    "songs": [
+      {
+        "id": 5,
+        "title": "Bohemian Rhapsody",
+        "artist": "Queen",
+        "album": "A Night at the Opera",
+        "versions": [
+          "Original",
+          "Key +2",
+          "Key -3"
+        ],
+        "external_ids": [
+          "SC-1001",
+          "SC-1002",
+          "SC-1003"
+        ]
+      },
+      {
+        "id": 10,
+        "title": "Don't Stop Me Now",
+        "artist": "Queen",
+        "album": "Jazz",
+        "versions": [
+          "Original"
+        ],
+        "external_ids": [
+          "SC-1004"
+        ]
+      },
+      {
+        "id": 25,
+        "title": "Killer Queen",
+        "artist": "Queen",
+        "album": "Sheer Heart Attack",
+        "versions": [],
+        "external_ids": []
+      },
+      {
+        "id": 44,
+        "title": "Under Pressure",
+        "artist": "Queen & David Bowie",
+        "album": "Hot Space",
+        "versions": [
+          "Original"
+        ],
+        "external_ids": [
+          "SC-1005"
+        ]
+      },
+      {
+        "id": 7,
+        "title": "Dancing Queen",
+        "artist": "ABBA",
+        "album": "Arrival",
+        "versions": [
+          "Original",
+          "Acoustic"
+        ],
+        "external_ids": [
+          "AB-1",
+          "AB-2"
+        ]
+      },
+      {
+        "id": 33,
+        "title": "Queen of Hearts",
+        "artist": "Juice Newton",
+        "album": "Juice",
+        "versions": [
+          "Original"
+        ],
+        "external_ids": []
+      }
+    ]
+  },
+  {
+    "q": "boh",
+    "limit": 50,
+    "offset": 0,
+    "sort": "best_match",
+    "total": 1,
+    "result_sort": "best_match",
+    "songs": [
+      {
+        "id": 5,
+        "title": "Bohemian Rhapsody",
+        "artist": "Queen",
+        "album": "A Night at the Opera",
+        "versions": [
+          "Original",
+          "Key +2",
+          "Key -3"
+        ],
+        "external_ids": [
+          "SC-1001",
+          "SC-1002",
+          "SC-1003"
+        ]
+      }
+    ]
+  },
+  {
+    "q": "bohemian rhapsody",
+    "limit": 50,
+    "offset": 0,
+    "sort": "best_match",
+    "total": 1,
+    "result_sort": "best_match",
+    "songs": [
+      {
+        "id": 5,
+        "title": "Bohemian Rhapsody",
+        "artist": "Queen",
+        "album": "A Night at the Opera",
+        "versions": [
+          "Original",
+          "Key +2",
+          "Key -3"
+        ],
+        "external_ids": [
+          "SC-1001",
+          "SC-1002",
+          "SC-1003"
+        ]
+      }
+    ]
+  },
+  {
+    "q": "ac/dc",
+    "limit": 50,
+    "offset": 0,
+    "sort": "best_match",
+    "total": 3,
+    "result_sort": "best_match",
+    "songs": [
+      {
+        "id": 4,
+        "title": "Back in Black",
+        "artist": "AC/DC",
+        "album": "Back in Black",
+        "versions": [
+          "Original"
+        ],
+        "external_ids": []
+      },
+      {
+        "id": 21,
+        "title": "Highway to Hell",
+        "artist": "AC/DC",
+        "album": "Highway to Hell",
+        "versions": [
+          "Original"
+        ],
+        "external_ids": []
+      },
+      {
+        "id": 41,
+        "title": "Thunderstruck",
+        "artist": "AC/DC",
+        "album": null,
+        "versions": [
+          "Key +1"
+        ],
+        "external_ids": []
+      }
+    ]
+  },
+  {
+    "q": "AC DC",
+    "limit": 50,
+    "offset": 0,
+    "sort": "best_match",
+    "total": 3,
+    "result_sort": "best_match",
+    "songs": [
+      {
+        "id": 4,
+        "title": "Back in Black",
+        "artist": "AC/DC",
+        "album": "Back in Black",
+        "versions": [
+          "Original"
+        ],
+        "external_ids": []
+      },
+      {
+        "id": 21,
+        "title": "Highway to Hell",
+        "artist": "AC/DC",
+        "album": "Highway to Hell",
+        "versions": [
+          "Original"
+        ],
+        "external_ids": []
+      },
+      {
+        "id": 41,
+        "title": "Thunderstruck",
+        "artist": "AC/DC",
+        "album": null,
+        "versions": [
+          "Key +1"
+        ],
+        "external_ids": []
+      }
+    ]
+  },
+  {
+    "q": "beyonce",
+    "limit": 50,
+    "offset": 0,
+    "sort": "best_match",
+    "total": 3,
+    "result_sort": "best_match",
+    "songs": [
+      {
+        "id": 6,
+        "title": "Crazy in Love",
+        "artist": "Beyoncé",
+        "album": "Dangerously in Love",
+        "versions": [
+          "Original"
+        ],
+        "external_ids": []
+      },
+      {
+        "id": 16,
+        "title": "Halo",
+        "artist": "Beyoncé",
+        "album": "I Am... Sasha Fierce",
+        "versions": [
+          "Acoustic"
+        ],
+        "external_ids": []
+      },
+      {
+        "id": 36,
+        "title": "Single Ladies (Put a Ring on It)",
+        "artist": "Beyoncé",
+        "album": null,
+        "versions": [],
+        "external_ids": []
+      }
+    ]
+  },
+  {
+    "q": "beyoncé",
+    "limit": 50,
+    "offset": 0,
+    "sort": "best_match",
+    "total": 3,
+    "result_sort": "best_match",
+    "songs": [
+      {
+        "id": 6,
+        "title": "Crazy in Love",
+        "artist": "Beyoncé",
+        "album": "Dangerously in Love",
+        "versions": [
+          "Original"
+        ],
+        "external_ids": []
+      },
+      {
+        "id": 16,
+        "title": "Halo",
+        "artist": "Beyoncé",
+        "album": "I Am... Sasha Fierce",
+        "versions": [
+          "Acoustic"
+        ],
+        "external_ids": []
+      },
+      {
+        "id": 36,
+        "title": "Single Ladies (Put a Ring on It)",
+        "artist": "Beyoncé",
+        "album": null,
+        "versions": [],
+        "external_ids": []
+      }
+    ]
+  },
+  {
+    "q": "beyoncé",
+    "limit": 50,
+    "offset": 0,
+    "sort": "best_match",
+    "total": 3,
+    "result_sort": "best_match",
+    "songs": [
+      {
+        "id": 6,
+        "title": "Crazy in Love",
+        "artist": "Beyoncé",
+        "album": "Dangerously in Love",
+        "versions": [
+          "Original"
+        ],
+        "external_ids": []
+      },
+      {
+        "id": 16,
+        "title": "Halo",
+        "artist": "Beyoncé",
+        "album": "I Am... Sasha Fierce",
+        "versions": [
+          "Acoustic"
+        ],
+        "external_ids": []
+      },
+      {
+        "id": 36,
+        "title": "Single Ladies (Put a Ring on It)",
+        "artist": "Beyoncé",
+        "album": null,
+        "versions": [],
+        "external_ids": []
+      }
+    ]
+  },
+  {
+    "q": "sigur ros",
+    "limit": 50,
+    "offset": 0,
+    "sort": "best_match",
+    "total": 1,
+    "result_sort": "best_match",
+    "songs": [
+      {
+        "id": 22,
+        "title": "Hoppípolla",
+        "artist": "Sigur Rós",
+        "album": "Takk...",
+        "versions": [],
+        "external_ids": []
+      }
+    ]
+  },
+  {
+    "q": "senorita",
+    "limit": 50,
+    "offset": 0,
+    "sort": "best_match",
+    "total": 1,
+    "result_sort": "best_match",
+    "songs": [
+      {
+        "id": 35,
+        "title": "Señorita",
+        "artist": "Shawn Mendes & Camila Cabello",
+        "album": null,
+        "versions": [],
+        "external_ids": []
+      }
+    ]
+  },
+  {
+    "q": "夜に",
+    "limit": 50,
+    "offset": 0,
+    "sort": "best_match",
+    "total": 1,
+    "result_sort": "best_match",
+    "songs": [
+      {
+        "id": 52,
+        "title": "夜に駆ける",
+        "artist": "YOASOBI",
+        "album": null,
+        "versions": [],
+        "external_ids": []
+      }
+    ]
+  },
+  {
+    "q": "not afraid",
+    "limit": 50,
+    "offset": 0,
+    "sort": "best_match",
+    "total": 1,
+    "result_sort": "best_match",
+    "songs": [
+      {
+        "id": 30,
+        "title": "Not Afraid",
+        "artist": "Eminem",
+        "album": "Recovery",
+        "versions": [
+          "Explicit",
+          "Clean"
+        ],
+        "external_ids": []
+      }
+    ]
+  },
+  {
+    "q": "NOT",
+    "limit": 50,
+    "offset": 0,
+    "sort": "best_match",
+    "total": 0,
+    "result_sort": "best_match",
+    "songs": []
+  },
+  {
+    "q": "and i love her",
+    "limit": 50,
+    "offset": 0,
+    "sort": "best_match",
+    "total": 1,
+    "result_sort": "best_match",
+    "songs": [
+      {
+        "id": 3,
+        "title": "And I Love Her",
+        "artist": "The Beatles",
+        "album": null,
+        "versions": [],
+        "external_ids": []
+      }
+    ]
+  },
+  {
+    "q": "or nah",
+    "limit": 50,
+    "offset": 0,
+    "sort": "best_match",
+    "total": 1,
+    "result_sort": "best_match",
+    "songs": [
+      {
+        "id": 31,
+        "title": "Or Nah",
+        "artist": "Ty Dolla $ign",
+        "album": null,
+        "versions": [],
+        "external_ids": []
+      }
+    ]
+  },
+  {
+    "q": "near",
+    "limit": 50,
+    "offset": 0,
+    "sort": "best_match",
+    "total": 0,
+    "result_sort": "best_match",
+    "songs": []
+  },
+  {
+    "q": "the beatles",
+    "limit": 50,
+    "offset": 0,
+    "sort": "best_match",
+    "total": 5,
+    "result_sort": "best_match",
+    "songs": [
+      {
+        "id": 3,
+        "title": "And I Love Her",
+        "artist": "The Beatles",
+        "album": null,
+        "versions": [],
+        "external_ids": []
+      },
+      {
+        "id": 19,
+        "title": "Hello Goodbye",
+        "artist": "The Beatles",
+        "album": null,
+        "versions": [],
+        "external_ids": []
+      },
+      {
+        "id": 20,
+        "title": "Hey Jude",
+        "artist": "The Beatles",
+        "album": null,
+        "versions": [
+          "Original"
+        ],
+        "external_ids": []
+      },
+      {
+        "id": 26,
+        "title": "Let It Be",
+        "artist": "The Beatles",
+        "album": "Let It Be",
+        "versions": [
+          "Original"
+        ],
+        "external_ids": []
+      },
+      {
+        "id": 49,
+        "title": "Yesterday",
+        "artist": "The Beatles",
+        "album": "Help!",
+        "versions": [
+          "Acoustic"
+        ],
+        "external_ids": []
+      }
+    ]
+  },
+  {
+    "q": "beatles",
+    "limit": 50,
+    "offset": 0,
+    "sort": "best_match",
+    "total": 6,
+    "result_sort": "best_match",
+    "songs": [
+      {
+        "id": 48,
+        "title": "Yesterday",
+        "artist": "Beatles Tribute Band",
+        "album": null,
+        "versions": [],
+        "external_ids": []
+      },
+      {
+        "id": 3,
+        "title": "And I Love Her",
+        "artist": "The Beatles",
+        "album": null,
+        "versions": [],
+        "external_ids": []
+      },
+      {
+        "id": 19,
+        "title": "Hello Goodbye",
+        "artist": "The Beatles",
+        "album": null,
+        "versions": [],
+        "external_ids": []
+      },
+      {
+        "id": 20,
+        "title": "Hey Jude",
+        "artist": "The Beatles",
+        "album": null,
+        "versions": [
+          "Original"
+        ],
+        "external_ids": []
+      },
+      {
+        "id": 26,
+        "title": "Let It Be",
+        "artist": "The Beatles",
+        "album": "Let It Be",
+        "versions": [
+          "Original"
+        ],
+        "external_ids": []
+      },
+      {
+        "id": 49,
+        "title": "Yesterday",
+        "artist": "The Beatles",
+        "album": "Help!",
+        "versions": [
+          "Acoustic"
+        ],
+        "external_ids": []
+      }
+    ]
+  },
+  {
+    "q": "yesterday",
+    "limit": 50,
+    "offset": 0,
+    "sort": "best_match",
+    "total": 3,
+    "result_sort": "best_match",
+    "songs": [
+      {
+        "id": 48,
+        "title": "Yesterday",
+        "artist": "Beatles Tribute Band",
+        "album": null,
+        "versions": [],
+        "external_ids": []
+      },
+      {
+        "id": 49,
+        "title": "Yesterday",
+        "artist": "The Beatles",
+        "album": "Help!",
+        "versions": [
+          "Acoustic"
+        ],
+        "external_ids": []
+      },
+      {
+        "id": 50,
+        "title": "Yesterday Once More",
+        "artist": "Carpenters",
+        "album": null,
+        "versions": [],
+        "external_ids": []
+      }
+    ]
+  },
+  {
+    "q": "yesterday",
+    "limit": 50,
+    "offset": 0,
+    "sort": "artist",
+    "total": 3,
+    "result_sort": "artist",
+    "songs": [
+      {
+        "id": 48,
+        "title": "Yesterday",
+        "artist": "Beatles Tribute Band",
+        "album": null,
+        "versions": [],
+        "external_ids": []
+      },
+      {
+        "id": 50,
+        "title": "Yesterday Once More",
+        "artist": "Carpenters",
+        "album": null,
+        "versions": [],
+        "external_ids": []
+      },
+      {
+        "id": 49,
+        "title": "Yesterday",
+        "artist": "The Beatles",
+        "album": "Help!",
+        "versions": [
+          "Acoustic"
+        ],
+        "external_ids": []
+      }
+    ]
+  },
+  {
+    "q": "key",
+    "limit": 50,
+    "offset": 0,
+    "sort": "best_match",
+    "total": 5,
+    "result_sort": "best_match",
+    "songs": [
+      {
+        "id": 5,
+        "title": "Bohemian Rhapsody",
+        "artist": "Queen",
+        "album": "A Night at the Opera",
+        "versions": [
+          "Original",
+          "Key +2",
+          "Key -3"
+        ],
+        "external_ids": [
+          "SC-1001",
+          "SC-1002",
+          "SC-1003"
+        ]
+      },
+      {
+        "id": 9,
+        "title": "Don't Stop Believin'",
+        "artist": "Journey",
+        "album": "Escape",
+        "versions": [
+          "Original",
+          "Duet",
+          "Key -2"
+        ],
+        "external_ids": []
+      },
+      {
+        "id": 34,
+        "title": "Rocket Man",
+        "artist": "Elton John",
+        "album": null,
+        "versions": [
+          "Key +2"
+        ],
+        "external_ids": []
+      },
+      {
+        "id": 41,
+        "title": "Thunderstruck",
+        "artist": "AC/DC",
+        "album": null,
+        "versions": [
+          "Key +1"
+        ],
+        "external_ids": []
+      },
+      {
+        "id": 43,
+        "title": "Total Eclipse of the Heart",
+        "artist": "Bonnie Tyler",
+        "album": null,
+        "versions": [
+          "Original",
+          "Acoustic",
+          "Key +3"
+        ],
+        "external_ids": []
+      }
+    ]
+  },
+  {
+    "q": "acoustic",
+    "limit": 50,
+    "offset": 0,
+    "sort": "best_match",
+    "total": 4,
+    "result_sort": "best_match",
+    "songs": [
+      {
+        "id": 7,
+        "title": "Dancing Queen",
+        "artist": "ABBA",
+        "album": "Arrival",
+        "versions": [
+          "Original",
+          "Acoustic"
+        ],
+        "external_ids": [
+          "AB-1",
+          "AB-2"
+        ]
+      },
+      {
+        "id": 16,
+        "title": "Halo",
+        "artist": "Beyoncé",
+        "album": "I Am... Sasha Fierce",
+        "versions": [
+          "Acoustic"
+        ],
+        "external_ids": []
+      },
+      {
+        "id": 43,
+        "title": "Total Eclipse of the Heart",
+        "artist": "Bonnie Tyler",
+        "album": null,
+        "versions": [
+          "Original",
+          "Acoustic",
+          "Key +3"
+        ],
+        "external_ids": []
+      },
+      {
+        "id": 49,
+        "title": "Yesterday",
+        "artist": "The Beatles",
+        "album": "Help!",
+        "versions": [
+          "Acoustic"
+        ],
+        "external_ids": []
+      }
+    ]
+  },
+  {
+    "q": "duet journey",
+    "limit": 50,
+    "offset": 0,
+    "sort": "best_match",
+    "total": 1,
+    "result_sort": "best_match",
+    "songs": [
+      {
+        "id": 9,
+        "title": "Don't Stop Believin'",
+        "artist": "Journey",
+        "album": "Escape",
+        "versions": [
+          "Original",
+          "Duet",
+          "Key -2"
+        ],
+        "external_ids": []
+      }
+    ]
+  },
+  {
+    "q": "don't stop",
+    "limit": 50,
+    "offset": 0,
+    "sort": "best_match",
+    "total": 2,
+    "result_sort": "best_match",
+    "songs": [
+      {
+        "id": 9,
+        "title": "Don't Stop Believin'",
+        "artist": "Journey",
+        "album": "Escape",
+        "versions": [
+          "Original",
+          "Duet",
+          "Key -2"
+        ],
+        "external_ids": []
+      },
+      {
+        "id": 10,
+        "title": "Don't Stop Me Now",
+        "artist": "Queen",
+        "album": "Jazz",
+        "versions": [
+          "Original"
+        ],
+        "external_ids": [
+          "SC-1004"
+        ]
+      }
+    ]
+  },
+  {
+    "q": "dont stop",
+    "limit": 50,
+    "offset": 0,
+    "sort": "best_match",
+    "total": 1,
+    "result_sort": "best_match",
+    "songs": [
+      {
+        "id": 11,
+        "title": "Dont Stop",
+        "artist": "Fleetwood Mac",
+        "album": "Rumours",
+        "versions": [],
+        "external_ids": []
+      }
+    ]
+  },
+  {
+    "q": "elton john",
+    "limit": 50,
+    "offset": 0,
+    "sort": "best_match",
+    "total": 5,
+    "result_sort": "best_match",
+    "songs": [
+      {
+        "id": 15,
+        "title": "Goodbye Yellow Brick Road",
+        "artist": "Elton John",
+        "album": null,
+        "versions": [],
+        "external_ids": []
+      },
+      {
+        "id": 24,
+        "title": "I'm Still Standing",
+        "artist": "Elton John",
+        "album": null,
+        "versions": [],
+        "external_ids": []
+      },
+      {
+        "id": 34,
+        "title": "Rocket Man",
+        "artist": "Elton John",
+        "album": null,
+        "versions": [
+          "Key +2"
+        ],
+        "external_ids": []
+      },
+      {
+        "id": 42,
+        "title": "Tiny Dancer",
+        "artist": "Elton John",
+        "album": null,
+        "versions": [],
+        "external_ids": []
+      },
+      {
+        "id": 51,
+        "title": "Your Song",
+        "artist": "Elton John",
+        "album": null,
+        "versions": [],
+        "external_ids": []
+      }
+    ]
+  },
+  {
+    "q": "elton",
+    "limit": 50,
+    "offset": 0,
+    "sort": "best_match",
+    "total": 5,
+    "result_sort": "best_match",
+    "songs": [
+      {
+        "id": 15,
+        "title": "Goodbye Yellow Brick Road",
+        "artist": "Elton John",
+        "album": null,
+        "versions": [],
+        "external_ids": []
+      },
+      {
+        "id": 24,
+        "title": "I'm Still Standing",
+        "artist": "Elton John",
+        "album": null,
+        "versions": [],
+        "external_ids": []
+      },
+      {
+        "id": 34,
+        "title": "Rocket Man",
+        "artist": "Elton John",
+        "album": null,
+        "versions": [
+          "Key +2"
+        ],
+        "external_ids": []
+      },
+      {
+        "id": 42,
+        "title": "Tiny Dancer",
+        "artist": "Elton John",
+        "album": null,
+        "versions": [],
+        "external_ids": []
+      },
+      {
+        "id": 51,
+        "title": "Your Song",
+        "artist": "Elton John",
+        "album": null,
+        "versions": [],
+        "external_ids": []
+      }
+    ]
+  },
+  {
+    "q": "john",
+    "limit": 50,
+    "offset": 0,
+    "sort": "best_match",
+    "total": 5,
+    "result_sort": "best_match",
+    "songs": [
+      {
+        "id": 15,
+        "title": "Goodbye Yellow Brick Road",
+        "artist": "Elton John",
+        "album": null,
+        "versions": [],
+        "external_ids": []
+      },
+      {
+        "id": 24,
+        "title": "I'm Still Standing",
+        "artist": "Elton John",
+        "album": null,
+        "versions": [],
+        "external_ids": []
+      },
+      {
+        "id": 34,
+        "title": "Rocket Man",
+        "artist": "Elton John",
+        "album": null,
+        "versions": [
+          "Key +2"
+        ],
+        "external_ids": []
+      },
+      {
+        "id": 42,
+        "title": "Tiny Dancer",
+        "artist": "Elton John",
+        "album": null,
+        "versions": [],
+        "external_ids": []
+      },
+      {
+        "id": 51,
+        "title": "Your Song",
+        "artist": "Elton John",
+        "album": null,
+        "versions": [],
+        "external_ids": []
+      }
+    ]
+  },
+  {
+    "q": "hello",
+    "limit": 50,
+    "offset": 0,
+    "sort": "best_match",
+    "total": 3,
+    "result_sort": "best_match",
+    "songs": [
+      {
+        "id": 17,
+        "title": "Hello",
+        "artist": "Adele",
+        "album": "25",
+        "versions": [
+          "Original"
+        ],
+        "external_ids": []
+      },
+      {
+        "id": 18,
+        "title": "Hello",
+        "artist": "Lionel Richie",
+        "album": "Can't Slow Down",
+        "versions": [],
+        "external_ids": []
+      },
+      {
+        "id": 19,
+        "title": "Hello Goodbye",
+        "artist": "The Beatles",
+        "album": null,
+        "versions": [],
+        "external_ids": []
+      }
+    ]
+  },
+  {
+    "q": "lionel   richie",
+    "limit": 50,
+    "offset": 0,
+    "sort": "best_match",
+    "total": 1,
+    "result_sort": "best_match",
+    "songs": [
+      {
+        "id": 18,
+        "title": "Hello",
+        "artist": "Lionel Richie",
+        "album": "Can't Slow Down",
+        "versions": [],
+        "external_ids": []
+      }
+    ]
+  },
+  {
+    "q": "ty dolla $ign",
+    "limit": 50,
+    "offset": 0,
+    "sort": "best_match",
+    "total": 1,
+    "result_sort": "best_match",
+    "songs": [
+      {
+        "id": 31,
+        "title": "Or Nah",
+        "artist": "Ty Dolla $ign",
+        "album": null,
+        "versions": [],
+        "external_ids": []
+      }
+    ]
+  },
+  {
+    "q": "r.e.m.",
+    "limit": 50,
+    "offset": 0,
+    "sort": "best_match",
+    "total": 2,
+    "result_sort": "best_match",
+    "songs": [
+      {
+        "id": 29,
+        "title": "Near Wild Heaven",
+        "artist": "R.E.M.",
+        "album": null,
+        "versions": [],
+        "external_ids": []
+      },
+      {
+        "id": 34,
+        "title": "Rocket Man",
+        "artist": "Elton John",
+        "album": null,
+        "versions": [
+          "Key +2"
+        ],
+        "external_ids": []
+      }
+    ]
+  },
+  {
+    "q": "a-ha",
+    "limit": 50,
+    "offset": 0,
+    "sort": "best_match",
+    "total": 2,
+    "result_sort": "best_match",
+    "songs": [
+      {
+        "id": 40,
+        "title": "Take On Me",
+        "artist": "a-ha",
+        "album": null,
+        "versions": [],
+        "external_ids": []
+      },
+      {
+        "id": 16,
+        "title": "Halo",
+        "artist": "Beyoncé",
+        "album": "I Am... Sasha Fierce",
+        "versions": [
+          "Acoustic"
+        ],
+        "external_ids": []
+      }
+    ]
+  },
+  {
+    "q": "99",
+    "limit": 50,
+    "offset": 0,
+    "sort": "best_match",
+    "total": 1,
+    "result_sort": "best_match",
+    "songs": [
+      {
+        "id": 1,
+        "title": "99 Luftballons",
+        "artist": "Nena",
+        "album": null,
+        "versions": [],
+        "external_ids": []
+      }
+    ]
+  },
+  {
+    "q": "free",
+    "limit": 50,
+    "offset": 0,
+    "sort": "title",
+    "total": 2,
+    "result_sort": "title",
+    "songs": [
+      {
+        "id": 12,
+        "title": "Free Bird",
+        "artist": "Lynyrd Skynyrd",
+        "album": null,
+        "versions": [],
+        "external_ids": []
+      },
+      {
+        "id": 13,
+        "title": "Free Fallin'",
+        "artist": "Tom Petty",
+        "album": null,
+        "versions": [],
+        "external_ids": []
+      }
+    ]
+  },
+  {
+    "q": "!!!",
+    "limit": 50,
+    "offset": 0,
+    "sort": "best_match",
+    "total": 0,
+    "result_sort": "best_match",
+    "songs": []
+  },
+  {
+    "q": "\"queen",
+    "limit": 50,
+    "offset": 0,
+    "sort": "best_match",
+    "total": 6,
+    "result_sort": "best_match",
+    "songs": [
+      {
+        "id": 5,
+        "title": "Bohemian Rhapsody",
+        "artist": "Queen",
+        "album": "A Night at the Opera",
+        "versions": [
+          "Original",
+          "Key +2",
+          "Key -3"
+        ],
+        "external_ids": [
+          "SC-1001",
+          "SC-1002",
+          "SC-1003"
+        ]
+      },
+      {
+        "id": 7,
+        "title": "Dancing Queen",
+        "artist": "ABBA",
+        "album": "Arrival",
+        "versions": [
+          "Original",
+          "Acoustic"
+        ],
+        "external_ids": [
+          "AB-1",
+          "AB-2"
+        ]
+      },
+      {
+        "id": 10,
+        "title": "Don't Stop Me Now",
+        "artist": "Queen",
+        "album": "Jazz",
+        "versions": [
+          "Original"
+        ],
+        "external_ids": [
+          "SC-1004"
+        ]
+      },
+      {
+        "id": 25,
+        "title": "Killer Queen",
+        "artist": "Queen",
+        "album": "Sheer Heart Attack",
+        "versions": [],
+        "external_ids": []
+      },
+      {
+        "id": 33,
+        "title": "Queen of Hearts",
+        "artist": "Juice Newton",
+        "album": "Juice",
+        "versions": [
+          "Original"
+        ],
+        "external_ids": []
+      },
+      {
+        "id": 44,
+        "title": "Under Pressure",
+        "artist": "Queen & David Bowie",
+        "album": "Hot Space",
+        "versions": [
+          "Original"
+        ],
+        "external_ids": [
+          "SC-1005"
+        ]
+      }
+    ]
+  },
+  {
+    "q": "queen*",
+    "limit": 50,
+    "offset": 0,
+    "sort": "best_match",
+    "total": 6,
+    "result_sort": "best_match",
+    "songs": [
+      {
+        "id": 5,
+        "title": "Bohemian Rhapsody",
+        "artist": "Queen",
+        "album": "A Night at the Opera",
+        "versions": [
+          "Original",
+          "Key +2",
+          "Key -3"
+        ],
+        "external_ids": [
+          "SC-1001",
+          "SC-1002",
+          "SC-1003"
+        ]
+      },
+      {
+        "id": 7,
+        "title": "Dancing Queen",
+        "artist": "ABBA",
+        "album": "Arrival",
+        "versions": [
+          "Original",
+          "Acoustic"
+        ],
+        "external_ids": [
+          "AB-1",
+          "AB-2"
+        ]
+      },
+      {
+        "id": 10,
+        "title": "Don't Stop Me Now",
+        "artist": "Queen",
+        "album": "Jazz",
+        "versions": [
+          "Original"
+        ],
+        "external_ids": [
+          "SC-1004"
+        ]
+      },
+      {
+        "id": 25,
+        "title": "Killer Queen",
+        "artist": "Queen",
+        "album": "Sheer Heart Attack",
+        "versions": [],
+        "external_ids": []
+      },
+      {
+        "id": 33,
+        "title": "Queen of Hearts",
+        "artist": "Juice Newton",
+        "album": "Juice",
+        "versions": [
+          "Original"
+        ],
+        "external_ids": []
+      },
+      {
+        "id": 44,
+        "title": "Under Pressure",
+        "artist": "Queen & David Bowie",
+        "album": "Hot Space",
+        "versions": [
+          "Original"
+        ],
+        "external_ids": [
+          "SC-1005"
+        ]
+      }
+    ]
+  },
+  {
+    "q": "title:hello",
+    "limit": 50,
+    "offset": 0,
+    "sort": "best_match",
+    "total": 0,
+    "result_sort": "best_match",
+    "songs": []
+  },
+  {
+    "q": "nothing matches this",
+    "limit": 50,
+    "offset": 0,
+    "sort": "best_match",
+    "total": 0,
+    "result_sort": "best_match",
+    "songs": []
+  },
+  {
+    "q": "e",
+    "limit": 50,
+    "offset": 0,
+    "sort": "best_match",
+    "total": 8,
+    "result_sort": "best_match",
+    "songs": [
+      {
+        "id": 15,
+        "title": "Goodbye Yellow Brick Road",
+        "artist": "Elton John",
+        "album": null,
+        "versions": [],
+        "external_ids": []
+      },
+      {
+        "id": 24,
+        "title": "I'm Still Standing",
+        "artist": "Elton John",
+        "album": null,
+        "versions": [],
+        "external_ids": []
+      },
+      {
+        "id": 30,
+        "title": "Not Afraid",
+        "artist": "Eminem",
+        "album": "Recovery",
+        "versions": [
+          "Explicit",
+          "Clean"
+        ],
+        "external_ids": []
+      },
+      {
+        "id": 34,
+        "title": "Rocket Man",
+        "artist": "Elton John",
+        "album": null,
+        "versions": [
+          "Key +2"
+        ],
+        "external_ids": []
+      },
+      {
+        "id": 42,
+        "title": "Tiny Dancer",
+        "artist": "Elton John",
+        "album": null,
+        "versions": [],
+        "external_ids": []
+      },
+      {
+        "id": 51,
+        "title": "Your Song",
+        "artist": "Elton John",
+        "album": null,
+        "versions": [],
+        "external_ids": []
+      },
+      {
+        "id": 29,
+        "title": "Near Wild Heaven",
+        "artist": "R.E.M.",
+        "album": null,
+        "versions": [],
+        "external_ids": []
+      },
+      {
+        "id": 43,
+        "title": "Total Eclipse of the Heart",
+        "artist": "Bonnie Tyler",
+        "album": null,
+        "versions": [
+          "Original",
+          "Acoustic",
+          "Key +3"
+        ],
+        "external_ids": []
+      }
+    ]
+  },
+  {
+    "q": "e",
+    "limit": 5,
+    "offset": 0,
+    "sort": "best_match",
+    "total": 8,
+    "result_sort": "best_match",
+    "songs": [
+      {
+        "id": 15,
+        "title": "Goodbye Yellow Brick Road",
+        "artist": "Elton John",
+        "album": null,
+        "versions": [],
+        "external_ids": []
+      },
+      {
+        "id": 24,
+        "title": "I'm Still Standing",
+        "artist": "Elton John",
+        "album": null,
+        "versions": [],
+        "external_ids": []
+      },
+      {
+        "id": 30,
+        "title": "Not Afraid",
+        "artist": "Eminem",
+        "album": "Recovery",
+        "versions": [
+          "Explicit",
+          "Clean"
+        ],
+        "external_ids": []
+      },
+      {
+        "id": 34,
+        "title": "Rocket Man",
+        "artist": "Elton John",
+        "album": null,
+        "versions": [
+          "Key +2"
+        ],
+        "external_ids": []
+      },
+      {
+        "id": 42,
+        "title": "Tiny Dancer",
+        "artist": "Elton John",
+        "album": null,
+        "versions": [],
+        "external_ids": []
+      }
+    ]
+  },
+  {
+    "q": "e",
+    "limit": 5,
+    "offset": 5,
+    "sort": "best_match",
+    "total": 8,
+    "result_sort": "best_match",
+    "songs": [
+      {
+        "id": 51,
+        "title": "Your Song",
+        "artist": "Elton John",
+        "album": null,
+        "versions": [],
+        "external_ids": []
+      },
+      {
+        "id": 29,
+        "title": "Near Wild Heaven",
+        "artist": "R.E.M.",
+        "album": null,
+        "versions": [],
+        "external_ids": []
+      },
+      {
+        "id": 43,
+        "title": "Total Eclipse of the Heart",
+        "artist": "Bonnie Tyler",
+        "album": null,
+        "versions": [
+          "Original",
+          "Acoustic",
+          "Key +3"
+        ],
+        "external_ids": []
+      }
+    ]
+  },
+  {
+    "q": "e",
+    "limit": 1000,
+    "offset": 0,
+    "sort": "title",
+    "total": 8,
+    "result_sort": "title",
+    "songs": [
+      {
+        "id": 15,
+        "title": "Goodbye Yellow Brick Road",
+        "artist": "Elton John",
+        "album": null,
+        "versions": [],
+        "external_ids": []
+      },
+      {
+        "id": 24,
+        "title": "I'm Still Standing",
+        "artist": "Elton John",
+        "album": null,
+        "versions": [],
+        "external_ids": []
+      },
+      {
+        "id": 29,
+        "title": "Near Wild Heaven",
+        "artist": "R.E.M.",
+        "album": null,
+        "versions": [],
+        "external_ids": []
+      },
+      {
+        "id": 30,
+        "title": "Not Afraid",
+        "artist": "Eminem",
+        "album": "Recovery",
+        "versions": [
+          "Explicit",
+          "Clean"
+        ],
+        "external_ids": []
+      },
+      {
+        "id": 34,
+        "title": "Rocket Man",
+        "artist": "Elton John",
+        "album": null,
+        "versions": [
+          "Key +2"
+        ],
+        "external_ids": []
+      },
+      {
+        "id": 42,
+        "title": "Tiny Dancer",
+        "artist": "Elton John",
+        "album": null,
+        "versions": [],
+        "external_ids": []
+      },
+      {
+        "id": 43,
+        "title": "Total Eclipse of the Heart",
+        "artist": "Bonnie Tyler",
+        "album": null,
+        "versions": [
+          "Original",
+          "Acoustic",
+          "Key +3"
+        ],
+        "external_ids": []
+      },
+      {
+        "id": 51,
+        "title": "Your Song",
+        "artist": "Elton John",
+        "album": null,
+        "versions": [],
+        "external_ids": []
+      }
+    ]
+  },
+  {
+    "q": "e",
+    "limit": 0,
+    "offset": 0,
+    "sort": "title",
+    "total": 8,
+    "result_sort": "title",
+    "songs": [
+      {
+        "id": 15,
+        "title": "Goodbye Yellow Brick Road",
+        "artist": "Elton John",
+        "album": null,
+        "versions": [],
+        "external_ids": []
+      }
+    ]
+  },
+  {
+    "q": "e",
+    "limit": -3,
+    "offset": -10,
+    "sort": "title",
+    "total": 8,
+    "result_sort": "title",
+    "songs": [
+      {
+        "id": 15,
+        "title": "Goodbye Yellow Brick Road",
+        "artist": "Elton John",
+        "album": null,
+        "versions": [],
+        "external_ids": []
+      }
+    ]
+  },
+  {
+    "q": "e",
+    "limit": 10,
+    "offset": 1000,
+    "sort": "title",
+    "total": 8,
+    "result_sort": "title",
+    "songs": []
+  },
+  {
+    "q": "a b c d e f g h i j k l m n o p q r s t u v w x y z",
+    "limit": 50,
+    "offset": 0,
+    "sort": "best_match",
+    "total": 0,
+    "result_sort": "best_match",
+    "songs": []
+  },
+  {
+    "q": "t",
+    "limit": 100,
+    "offset": 0,
+    "sort": "artist",
+    "total": 19,
+    "result_sort": "artist",
+    "songs": [
+      {
+        "id": 40,
+        "title": "Take On Me",
+        "artist": "a-ha",
+        "album": null,
+        "versions": [],
+        "external_ids": []
+      },
+      {
+        "id": 21,
+        "title": "Highway to Hell",
+        "artist": "AC/DC",
+        "album": "Highway to Hell",
+        "versions": [
+          "Original"
+        ],
+        "external_ids": []
+      },
+      {
+        "id": 41,
+        "title": "Thunderstruck",
+        "artist": "AC/DC",
+        "album": null,
+        "versions": [
+          "Key +1"
+        ],
+        "external_ids": []
+      },
+      {
+        "id": 48,
+        "title": "Yesterday",
+        "artist": "Beatles Tribute Band",
+        "album": null,
+        "versions": [],
+        "external_ids": []
+      },
+      {
+        "id": 47,
+        "title": "We Didn't Start the Fire",
+        "artist": "Billy Joel",
+        "album": null,
+        "versions": [],
+        "external_ids": []
+      },
+      {
+        "id": 43,
+        "title": "Total Eclipse of the Heart",
+        "artist": "Bonnie Tyler",
+        "album": null,
+        "versions": [
+          "Original",
+          "Acoustic",
+          "Key +3"
+        ],
+        "external_ids": []
+      },
+      {
+        "id": 42,
+        "title": "Tiny Dancer",
+        "artist": "Elton John",
+        "album": null,
+        "versions": [],
+        "external_ids": []
+      },
+      {
+        "id": 9,
+        "title": "Don't Stop Believin'",
+        "artist": "Journey",
+        "album": "Escape",
+        "versions": [
+          "Original",
+          "Duet",
+          "Key -2"
+        ],
+        "external_ids": []
+      },
+      {
+        "id": 10,
+        "title": "Don't Stop Me Now",
+        "artist": "Queen",
+        "album": "Jazz",
+        "versions": [
+          "Original"
+        ],
+        "external_ids": [
+          "SC-1004"
+        ]
+      },
+      {
+        "id": 3,
+        "title": "And I Love Her",
+        "artist": "The Beatles",
+        "album": null,
+        "versions": [],
+        "external_ids": []
+      },
+      {
+        "id": 19,
+        "title": "Hello Goodbye",
+        "artist": "The Beatles",
+        "album": null,
+        "versions": [],
+        "external_ids": []
+      },
+      {
+        "id": 20,
+        "title": "Hey Jude",
+        "artist": "The Beatles",
+        "album": null,
+        "versions": [
+          "Original"
+        ],
+        "external_ids": []
+      },
+      {
+        "id": 26,
+        "title": "Let It Be",
+        "artist": "The Beatles",
+        "album": "Let It Be",
+        "versions": [
+          "Original"
+        ],
+        "external_ids": []
+      },
+      {
+        "id": 49,
+        "title": "Yesterday",
+        "artist": "The Beatles",
+        "album": "Help!",
+        "versions": [
+          "Acoustic"
+        ],
+        "external_ids": []
+      },
+      {
+        "id": 28,
+        "title": "Mr. Brightside",
+        "artist": "The Killers",
+        "album": null,
+        "versions": [],
+        "external_ids": []
+      },
+      {
+        "id": 37,
+        "title": "Somebody Told Me",
+        "artist": "The Killers",
+        "album": null,
+        "versions": [],
+        "external_ids": []
+      },
+      {
+        "id": 13,
+        "title": "Free Fallin'",
+        "artist": "Tom Petty",
+        "album": null,
+        "versions": [],
+        "external_ids": []
+      },
+      {
+        "id": 2,
+        "title": "Africa",
+        "artist": "Toto",
+        "album": null,
+        "versions": [],
+        "external_ids": []
+      },
+      {
+        "id": 31,
+        "title": "Or Nah",
+        "artist": "Ty Dolla $ign",
+        "album": null,
+        "versions": [],
+        "external_ids": []
+      }
+    ]
+  }
+]

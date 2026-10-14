@@ -1,0 +1,207 @@
+{
+  "status": "ready",
+  "source_encoding": "UTF-8",
+  "song_count": 15,
+  "replacement_stats": {
+    "has_replacement_characters": false,
+    "replacement_character_count": 0,
+    "replacement_row_count": 0
+  },
+  "songs": [
+    {
+      "id": 1,
+      "title": "Baby Got Back",
+      "artist": "Sir Mix-a-Lot",
+      "album": "Mack Daddy",
+      "versions": [
+        "Original"
+      ],
+      "external_ids": [
+        "1015"
+      ],
+      "versions_text": "Original"
+    },
+    {
+      "id": 2,
+      "title": "Before He Cheats",
+      "artist": "Carrie Underwood",
+      "album": "Some Hearts",
+      "versions": [
+        "Original"
+      ],
+      "external_ids": [
+        "1010"
+      ],
+      "versions_text": "Original"
+    },
+    {
+      "id": 3,
+      "title": "Bohemian Rhapsody",
+      "artist": "Queen",
+      "album": "A Night at the Opera",
+      "versions": [
+        "Original"
+      ],
+      "external_ids": [
+        "1001"
+      ],
+      "versions_text": "Original"
+    },
+    {
+      "id": 4,
+      "title": "Don't Stop Believin'",
+      "artist": "Journey",
+      "album": "Escape",
+      "versions": [
+        "Original"
+      ],
+      "external_ids": [
+        "1003"
+      ],
+      "versions_text": "Original"
+    },
+    {
+      "id": 5,
+      "title": "Friends in Low Places",
+      "artist": "Garth Brooks",
+      "album": "No Fences",
+      "versions": [
+        "Original"
+      ],
+      "external_ids": [
+        "1009"
+      ],
+      "versions_text": "Original"
+    },
+    {
+      "id": 6,
+      "title": "Hey Jude",
+      "artist": "The Beatles",
+      "album": "Non-album single",
+      "versions": [
+        "Original"
+      ],
+      "external_ids": [
+        "1013"
+      ],
+      "versions_text": "Original"
+    },
+    {
+      "id": 7,
+      "title": "I Will Survive",
+      "artist": "Gloria Gaynor",
+      "album": "Love Tracks",
+      "versions": [
+        "Original"
+      ],
+      "external_ids": [
+        "1007"
+      ],
+      "versions_text": "Original"
+    },
+    {
+      "id": 8,
+      "title": "Livin' on a Prayer",
+      "artist": "Bon Jovi",
+      "album": "Slippery When Wet",
+      "versions": [
+        "Original"
+      ],
+      "external_ids": [
+        "1005"
+      ],
+      "versions_text": "Original"
+    },
+    {
+      "id": 9,
+      "title": "Love Shack",
+      "artist": "The B-52's",
+      "album": "Cosmic Thing",
+      "versions": [
+        "Original"
+      ],
+      "external_ids": [
+        "1014"
+      ],
+      "versions_text": "Original"
+    },
+    {
+      "id": 10,
+      "title": "Mr. Brightside",
+      "artist": "The Killers",
+      "album": "Hot Fuss",
+      "versions": [
+        "Original"
+      ],
+      "external_ids": [
+        "1011"
+      ],
+      "versions_text": "Original"
+    },
+    {
+      "id": 11,
+      "title": "Piano Man",
+      "artist": "Billy Joel",
+      "album": "Piano Man",
+      "versions": [
+        "Original"
+      ],
+      "external_ids": [
+        "1004"
+      ],
+      "versions_text": "Original"
+    },
+    {
+      "id": 12,
+      "title": "Summer Nights",
+      "artist": "John Travolta & Olivia Newton-John",
+      "album": "Grease Soundtrack",
+      "versions": [
+        "Original"
+      ],
+      "external_ids": [
+        "1008"
+      ],
+      "versions_text": "Original"
+    },
+    {
+      "id": 13,
+      "title": "Sweet Caroline",
+      "artist": "Neil Diamond",
+      "album": "Brother Love's Travelling Salvation Show",
+      "versions": [
+        "Original"
+      ],
+      "external_ids": [
+        "1002"
+      ],
+      "versions_text": "Original"
+    },
+    {
+      "id": 14,
+      "title": "Total Eclipse of the Heart",
+      "artist": "Bonnie Tyler",
+      "album": "Faster Than the Speed of Night",
+      "versions": [
+        "Original"
+      ],
+      "external_ids": [
+        "1006"
+      ],
+      "versions_text": "Original"
+    },
+    {
+      "id": 15,
+      "title": "Wonderwall",
+      "artist": "Oasis",
+      "album": "What's the Story Morning Glory",
+      "versions": [
+        "Original"
+      ],
+      "external_ids": [
+        "1012"
+      ],
+      "versions_text": "Original"
+    }
+  ]
+}

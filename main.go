@@ -4,11 +4,13 @@ import (
 	"context"
 	"embed"
 	"errors"
+	"fmt"
 	"log/slog"
 	"mime"
 	"net/http"
 	"os"
 	"os/signal"
+	"sync"
 	"syscall"
 	"time"
 
@@ -35,7 +37,12 @@ type app struct {
 	loginLimiter     *rateLimiter
 	linkIPLimiter    *rateLimiter
 	linkEmailLimiter *rateLimiter
+	uploadLimiter    *rateLimiter
 	turnstile        *turnstileVerifier
+
+	blobs     blobStore
+	cache     *catalogCache
+	buildWake chan struct{}
 }
 
 func main() {
@@ -65,12 +72,19 @@ func newApp(cfg config, db *gorm.DB, logger *slog.Logger, m mailer) (*app, error
 	a := &app{
 		cfg: cfg, db: db, views: v, static: static, logger: logger, mailer: m, now: time.Now,
 		turnstile: newTurnstileVerifier(cfg.TurnstileSecretKey),
+		blobs:     dirBlobStore{dir: cfg.BlobDir},
+		buildWake: make(chan struct{}, 1),
 	}
 	clock := func() time.Time { return a.now() }
 	// The email limits are the Rails ones: 5 per address and 10 per IP each hour.
 	a.loginLimiter = newRateLimiter(10, time.Minute, clock)
 	a.linkIPLimiter = newRateLimiter(10, time.Hour, clock)
 	a.linkEmailLimiter = newRateLimiter(5, time.Hour, clock)
+	a.uploadLimiter = newRateLimiter(5, time.Hour, clock)
+	a.cache, err = newCatalogCache(cfg.CatalogCacheDir, cfg.CatalogCacheMax, a.blobs, logger, clock)
+	if err != nil {
+		return nil, fmt.Errorf("catalog cache: %w", err)
+	}
 	return a, nil
 }
 
@@ -107,14 +121,12 @@ func run(cfg config, logger *slog.Logger) error {
 	}
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-	stopped := make(chan struct{})
-	go func() {
-		defer close(stopped)
-		a.cleanup(ctx)
-	}()
+	var workers sync.WaitGroup
+	workers.Go(func() { a.cleanup(ctx) })
+	workers.Go(func() { a.runBuilder(ctx) })
 	defer func() {
 		stop()
-		<-stopped
+		workers.Wait()
 	}()
 
 	errCh := make(chan error, 1)
@@ -169,6 +181,18 @@ func (a *app) routes() http.Handler {
 	mux.HandleFunc("POST /account/defaults", a.requireUser(a.handleAccountDefaults))
 	mux.HandleFunc("POST /account/host", a.requireUser(a.handleAccountHost))
 	mux.HandleFunc("POST /account/delete", a.requireUser(a.handleAccountDelete))
+
+	mux.HandleFunc("GET /catalogs", a.requireHost(a.handleCatalogs))
+	mux.HandleFunc("GET /catalogs/new", a.requireHost(a.handleNewCatalog))
+	mux.HandleFunc("POST /catalogs", a.requireHost(a.handleCreateCatalog))
+	mux.HandleFunc("GET /catalogs/{id}", a.requireHost(a.handleCatalog))
+	mux.HandleFunc("POST /catalogs/{id}", a.requireHost(a.handleCatalogSettings))
+	mux.HandleFunc("POST /catalogs/{id}/upload", a.requireHost(a.handleCatalogUpload))
+	mux.HandleFunc("GET /catalogs/{id}/status", a.requireHost(a.handleCatalogStatus))
+	mux.HandleFunc("GET /catalogs/{id}/search", a.requireHost(a.handleCatalogSearch))
+	mux.HandleFunc("POST /catalogs/{id}/delete", a.requireHost(a.handleCatalogDelete))
+
+	mux.HandleFunc("GET /docs/csv-format", a.handleCSVFormatDoc)
 
 	mux.HandleFunc("/", a.notFound)
 

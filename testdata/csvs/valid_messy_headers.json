@@ -1,0 +1,45 @@
+{
+  "status": "ready",
+  "source_encoding": "UTF-8",
+  "song_count": 3,
+  "replacement_stats": {
+    "has_replacement_characters": false,
+    "replacement_character_count": 0,
+    "replacement_row_count": 0
+  },
+  "songs": [
+    {
+      "id": 1,
+      "title": "Bohemian Rhapsody",
+      "artist": "Queen",
+      "album": "A Night at the Opera",
+      "versions": [
+        "Original"
+      ],
+      "external_ids": null,
+      "versions_text": "Original"
+    },
+    {
+      "id": 2,
+      "title": "Don't Stop Believin'",
+      "artist": "Journey",
+      "album": "Escape",
+      "versions": [
+        "Acoustic"
+      ],
+      "external_ids": null,
+      "versions_text": "Acoustic"
+    },
+    {
+      "id": 3,
+      "title": "Sweet Caroline",
+      "artist": "Neil Diamond",
+      "album": "Brother Love's Travelling Salvation Show",
+      "versions": [
+        "Original"
+      ],
+      "external_ids": null,
+      "versions_text": "Original"
+    }
+  ]
+}

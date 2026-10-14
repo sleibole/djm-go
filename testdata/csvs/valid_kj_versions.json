@@ -1,0 +1,76 @@
+{
+  "status": "ready",
+  "source_encoding": "UTF-8",
+  "song_count": 5,
+  "replacement_stats": {
+    "has_replacement_characters": false,
+    "replacement_character_count": 0,
+    "replacement_row_count": 0
+  },
+  "songs": [
+    {
+      "id": 1,
+      "title": "Bohemian Rhapsody",
+      "artist": "Queen",
+      "album": null,
+      "versions": [
+        "Original",
+        "Key +2",
+        "Key -3"
+      ],
+      "external_ids": null,
+      "versions_text": "Original Key +2 Key -3"
+    },
+    {
+      "id": 2,
+      "title": "Don't Stop Believin'",
+      "artist": "Journey",
+      "album": null,
+      "versions": [
+        "Original",
+        "Acoustic",
+        "Duet"
+      ],
+      "external_ids": null,
+      "versions_text": "Original Acoustic Duet"
+    },
+    {
+      "id": 3,
+      "title": "Piano Man",
+      "artist": "Billy Joel",
+      "album": null,
+      "versions": [
+        "Original",
+        "Acoustic"
+      ],
+      "external_ids": null,
+      "versions_text": "Original Acoustic"
+    },
+    {
+      "id": 4,
+      "title": "Summer Nights",
+      "artist": "John Travolta & Olivia Newton-John",
+      "album": null,
+      "versions": [
+        "Duet",
+        "Duet Key +1"
+      ],
+      "external_ids": null,
+      "versions_text": "Duet Duet Key +1"
+    },
+    {
+      "id": 5,
+      "title": "Total Eclipse of the Heart",
+      "artist": "Bonnie Tyler",
+      "album": null,
+      "versions": [
+        "Original",
+        "Key +1",
+        "Key -2",
+        "Live"
+      ],
+      "external_ids": null,
+      "versions_text": "Original Key +1 Key -2 Live"
+    }
+  ]
+}

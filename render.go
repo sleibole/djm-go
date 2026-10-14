@@ -25,8 +25,9 @@ func loadViews(fsys fs.FS, static assets) (*views, error) {
 		return nil, err
 	}
 	funcs := template.FuncMap{
-		"icon":  icon,
-		"asset": static.url,
+		"icon":   icon,
+		"asset":  static.url,
+		"commas": commas,
 	}
 
 	v := &views{pages: map[string]*template.Template{}}

@@ -74,6 +74,22 @@ document.querySelectorAll(".auth-password-toggle").forEach((toggle) => {
   sync();
 });
 
+// A plain form post of a large file gives no feedback until it finishes.
+document.addEventListener("submit", (e) => {
+  const label = e.target.dataset?.busy;
+  const button = e.target.querySelector?.("[type=submit]");
+  if (!label || !button) return;
+  button.setAttribute("aria-busy", "true");
+  button.textContent = label;
+});
+
+document.addEventListener("click", (e) => {
+  const opener = e.target.closest("[data-open-dialog]");
+  if (opener) document.getElementById(opener.dataset.openDialog)?.showModal();
+  const closer = e.target.closest("[data-close-dialog]");
+  if (closer) closer.closest("dialog")?.close();
+});
+
 // Turnstile tokens are single-use. A failed submit that stays on the form, including
 // an HTMX swap of the same form, needs a new widget before the next attempt.
 // The API script is deferred, so it calls onTurnstileLoad instead of turnstile.ready.

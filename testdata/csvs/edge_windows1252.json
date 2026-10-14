@@ -1,0 +1,30 @@
+{
+  "status": "ready",
+  "source_encoding": "Windows-1252",
+  "song_count": 2,
+  "replacement_stats": {
+    "has_replacement_characters": false,
+    "replacement_character_count": 0,
+    "replacement_row_count": 0
+  },
+  "songs": [
+    {
+      "id": 1,
+      "title": "Café del Mar",
+      "artist": "Energy 52",
+      "album": "–",
+      "versions": null,
+      "external_ids": null,
+      "versions_text": null
+    },
+    {
+      "id": 2,
+      "title": "“Heroes”",
+      "artist": "David Bowie",
+      "album": "€uro Hits",
+      "versions": null,
+      "external_ids": null,
+      "versions_text": null
+    }
+  ]
+}

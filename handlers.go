@@ -27,6 +27,10 @@ func (a *app) handleHome(w http.ResponseWriter, r *http.Request) {
 	a.render(w, r, http.StatusOK, "home.html", nil)
 }
 
+func (a *app) handleCSVFormatDoc(w http.ResponseWriter, r *http.Request) {
+	a.render(w, r, http.StatusOK, "docs_csv_format.html", nil)
+}
+
 func (a *app) handleFavicon(w http.ResponseWriter, r *http.Request) {
 	http.ServeFileFS(w, r, embedded, "static/favicon.ico")
 }

@@ -1,0 +1,11 @@
+{
+  "status": "failed",
+  "source_encoding": "UTF-8",
+  "errors": [
+    {
+      "type": "empty_header",
+      "column": 2,
+      "detail": "Header cell 2 is empty"
+    }
+  ]
+}

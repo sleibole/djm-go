@@ -1,6 +1,9 @@
 package main
 
-import "time"
+import (
+	"encoding/json"
+	"time"
+)
 
 // The schema lives in migrations/*.sql. These structs map rows for GORM.
 // A `default` tag tells GORM to leave a zero value out of INSERT so the
@@ -69,4 +72,75 @@ type MagicToken struct {
 	ExpiresAt  time.Time
 	ConsumedAt *time.Time
 	CreatedAt  time.Time
+}
+
+const (
+	catalogEmpty      = "empty"
+	catalogPending    = "pending"
+	catalogProcessing = "processing"
+	catalogReady      = "ready"
+	catalogFailed     = "failed"
+)
+
+var variantDisplayChoices = []choice{
+	{"none", "None"},
+	{"version", "Version (Original, Acoustic, Key +2…)"},
+	{"id", "ID (disc/track number)"},
+}
+
+type Catalog struct {
+	ID                 uint
+	UserID             uint
+	Name               string
+	VariantDisplay     string `gorm:"default:none"`
+	Status             string `gorm:"default:empty"`
+	ActiveVersion      *int
+	BuildingVersion    *int
+	SongCount          int
+	RowCount           int
+	ErrorsJSON         string `gorm:"column:errors_json"`
+	ImportMetadataJSON string `gorm:"column:import_metadata_json"`
+	LastCSVSHA256      string `gorm:"column:last_csv_sha256"`
+	CreatedAt          time.Time
+	UpdatedAt          time.Time
+}
+
+func (c Catalog) Building() bool { return c.Status == catalogPending || c.Status == catalogProcessing }
+
+// Errors is why the latest upload failed.
+func (c Catalog) Errors() []csvError {
+	var errs []csvError
+	if c.ErrorsJSON != "" {
+		json.Unmarshal([]byte(c.ErrorsJSON), &errs)
+	}
+	return errs
+}
+
+// importMetadata is stored for the active version. The JSON keys are the Rails ones.
+type importMetadata struct {
+	replacementStats
+	SourceEncoding     string `json:"source_encoding"`
+	NormalizedEncoding string `json:"normalized_encoding"`
+}
+
+func (c Catalog) ImportMetadata() importMetadata {
+	var m importMetadata
+	if c.ImportMetadataJSON != "" {
+		json.Unmarshal([]byte(c.ImportMetadataJSON), &m)
+	}
+	return m
+}
+
+type CatalogVersion struct {
+	ID             uint
+	CatalogID      uint
+	Version        int
+	Status         string `gorm:"default:pending"`
+	CSVSHA256      string `gorm:"column:csv_sha256"`
+	CSVBytes       int64  `gorm:"column:csv_bytes"`
+	SourceEncoding string
+	RowCount       int
+	SongCount      int
+	DBBytes        int64 `gorm:"column:db_bytes"`
+	CreatedAt      time.Time
 }

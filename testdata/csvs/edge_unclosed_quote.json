@@ -1,0 +1,5 @@
+{
+  "status": "failed",
+  "exception": "CSV::MalformedCSVError",
+  "message": "Unclosed quoted field in line 2."
+}

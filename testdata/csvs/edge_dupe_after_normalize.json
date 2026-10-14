@@ -1,0 +1,11 @@
+{
+  "status": "failed",
+  "source_encoding": "UTF-8",
+  "errors": [
+    {
+      "type": "duplicate_header",
+      "column": "title",
+      "detail": "Duplicate header 'title'"
+    }
+  ]
+}

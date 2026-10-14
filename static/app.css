@@ -268,3 +268,31 @@ main:has(.auth-card) {
   --pico-border-color: var(--pico-secondary-background);
   --pico-color: var(--pico-secondary-inverse);
 }
+
+/* Catalogs */
+
+.section-panel {
+  border-bottom: var(--pico-border-width) solid var(--pico-muted-border-color);
+  padding-bottom: var(--pico-spacing);
+}
+
+.warning {
+  border-left: 4px solid #f2a20d;
+  padding-left: 1rem;
+  margin-bottom: var(--pico-spacing);
+}
+
+.error p,
+.error li {
+  color: inherit;
+}
+
+.error ul {
+  margin-bottom: var(--pico-spacing);
+}
+
+td select {
+  margin: 0;
+  padding-top: 0.25rem;
+  padding-bottom: 0.25rem;
+}

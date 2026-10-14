@@ -106,9 +106,9 @@ These are changes beyond a straight port. Each one is a suggestion to accept or 
 | Data access | GORM for the app database; raw SQL through GORM (`db.Raw`, `db.Exec`) where GORM gets in the way | Raw SQL for: partial unique indexes, queue renumbering, and everything in catalog databases (FTS5, bm25, aggregation) |
 | Schema | Numbered SQL files in `migrations/` (`001_accounts.sql`, ...), embedded, run on startup by a small runner in `migrate.go`. SQLite's `PRAGMA user_version` records the last one applied | Hand-rolled instead of Goose or `AutoMigrate` (see Decisions). GORM only maps rows; it never changes the schema |
 | Catalog databases | Opened with plain `database/sql` and the same driver, not GORM | They are built once and read-only after that; FTS5 queries are raw SQL anyway |
-| CSV parsing | `encoding/csv` with `LazyQuotes` and `FieldsPerRecord = -1` | Matches Ruby's `liberal_parsing: true` and ragged rows |
+| CSV parsing | Our own reader (`csv_read.go`), a port of Ruby CSV's `liberal_parsing` | `encoding/csv` differs from Ruby on blank lines, stray quotes, and quoted vs unquoted empty fields, all of which change results. A test compares the reader with Ruby on 3,713 generated inputs (apart from mixed line endings, which we accept) |
 | Legacy encodings | `golang.org/x/text/encoding/charmap` (Windows-1252, ISO-8859-1) | |
-| Object storage | Tigris via an S3 client (`aws-sdk-go-v2/service/s3` or `minio-go`) behind a small `blobStore` interface | Local-directory implementation for dev and tests |
+| Object storage | Tigris via an S3 client (`aws-sdk-go-v2/service/s3` or `minio-go`) behind a small `blobStore` interface | Local-directory implementation (`dirBlobStore`) for dev and tests, done in phase 2. The Tigris implementation comes with deployment in phase 6 |
 | Backups | Litestream, replicating the app DB to Tigris | Catalog DBs are not backed up; they are already in Tigris |
 | Email | `net/smtp` to Amazon SES SMTP | Console logger in dev; MailHog optional |
 | Bot protection | Cloudflare Turnstile | Same as both existing apps |
@@ -138,16 +138,16 @@ djm/
 ├── ratelimit.go
 ├── middleware.go        # logging, recovery, security headers, CSRF (http.CrossOriginProtection)
 ├── render.go
-├── blobstore.go         # interface + Tigris and local-dir implementations
-├── csv_encoding.go      # BOM, UTF-8 check, Windows-1252 / ISO-8859-1 fallback
-├── csv_validate.go      # header and row rules, error list, U+FFFD stats, row limit
-├── catalog_build.go     # build SQLite+FTS5, group rows into songs, upload, swap pointer
-├── catalog_cache.go     # local file cache: fetch on miss, LRU eviction, open handle pool
-├── search.go            # token sanitizing, sort modes, artist buckets, paging
+├── blobstore.go         # interface + local-dir implementation (Tigris in phase 6)
+├── csv_read.go          # CSV reader matching Ruby's liberal_parsing
+├── csv_import.go        # encoding, header and row rules, U+FFFD stats, row limit, build SQLite+FTS5
+├── catalog_build.go     # builder goroutine: fetch CSV, import, publish, swap active version
+├── catalog_cache.go     # local file cache: fetch on miss, LRU eviction, one read-only handle per file
+├── catalog_search.go    # token sanitizing, sort modes, artist buckets, paging
+├── catalogs.go          # catalog pages: list, create, upload, status, search, settings, delete
 ├── fingerprint.go       # saved-song fingerprint
 ├── queue.go             # request lifecycle, rotation insert functions, positions
 ├── account.go           # Account page: password, profile, defaults, start hosting, delete
-├── handlers_catalogs.go
 ├── handlers_shows.go    # host show page and queue actions
 ├── handlers_audience.go # /dj/{handle}, show page, request, queue, display
 ├── handlers_memory.go   # my performances, saved songs, sing again
@@ -167,7 +167,11 @@ djm/
 │   └── images/
 │       ├── brand/       # dark_64.png, dark_192.png, open_graph_1200_630.png (copied)
 │       └── landing/     # queue/{singer_view,kj_display}.png (copied)
-├── testdata/csvs/       # copied from djm-mono/fixtures/csvs
+├── testdata/
+│   ├── golden.rb        # runs the Rails services over the fixtures; writes the expected results
+│   ├── csvs/            # Rails fixtures + edge cases, each with the .json Rails produced
+│   ├── search/          # search catalog, queries, and Rails' results
+│   └── csvparse.json    # generated inputs and what Ruby's CSV parser made of them
 ├── Dockerfile
 ├── entrypoint.sh        # litestream restore, then litestream replicate -exec /djm
 ├── litestream.yml
@@ -182,8 +186,8 @@ Ported from `core/db/schema.rb`, simplified. Timestamps are UTC.
 - **users** — `email` (unique, lowercased), `role` (`audience`/`dj`/`admin`), `slug` (unique, nullable until hosting), `display_name`, `password_hash`, `email_confirmed_at`, `failed_login_attempts`, `locked_at`, `default_show_type`, `default_rotation_style`, `default_max_songs_per_singer`. Deleting an account removes it right away, so there is no `deletion_requested_at`.
 - **sessions** — id is sha256 of the cookie token, `user_id`, `expires_at`.
 - **magic_tokens** — `user_id`, `token_hash` (unique), `expires_at`, `consumed_at`.
-- **catalogs** — `user_id`, `name` (unique per user), `variant_display`, `status`, `active_version`, `building_version`, `song_count`, `errors_json`, `import_metadata_json` (source encoding, U+FFFD counts), `last_csv_sha256`, `delete_requested_at`.
-- **catalog_versions** — `catalog_id`, `version`, `csv_key`, `db_key`, `db_bytes`, `row_count`, `song_count`, `status`, `created_at`. Lets cleanup find old Tigris objects, and gives admin a history.
+- **catalogs** — `user_id`, `name` (unique per user), `variant_display`, `status` (`empty` until the first upload, then `pending`, `processing`, `ready`, `failed`), `active_version`, `building_version`, `song_count`, `row_count`, `errors_json`, `import_metadata_json` (source encoding, U+FFFD counts), `last_csv_sha256`. Deleting a catalog removes the row and its files right away.
+- **catalog_versions** — `catalog_id`, `version`, `status`, `csv_sha256`, `csv_bytes`, `source_encoding`, `row_count`, `song_count`, `db_bytes`, `created_at`. One row per upload; blob keys are derived from catalog and version. Lets cleanup find old files, and gives admin a history.
 - **shows** — `user_id`, `catalog_id` (nullable), `name`, `slug` (unique per user), `show_type`, `status`, `scheduled_at`, `started_at`, `ended_at`, `rotation_style`, `approval_required`, `manual_entry_enabled`, `max_songs_per_singer`. Partial unique index: one `active` show per user.
 - **audience_profiles** — `guest_token_hash` (unique, nullable), `user_id` (unique, nullable), `last_seen_at`.
 - **show_participants** — `show_id`, `audience_profile_id` (unique together), `display_name`.
@@ -207,34 +211,45 @@ These rules took real work to settle and are ported as they behave in the Rails 
 1. If the file starts with the UTF-8 BOM (`EF BB BF`), skip those 3 bytes. The BOM must never end up in the first header name.
 2. Scan the rest of the file in 64 KB chunks to check that it is valid UTF-8, carrying a partial multibyte sequence across chunk boundaries. Overlong forms, surrogate halves, and code points above U+10FFFF are invalid (Go's `utf8.Valid` rules match). Memory stays constant.
 3. Valid: read as UTF-8. The source encoding is recorded as `UTF-8` or `UTF-8-BOM`.
-4. Not valid: treat it as a Windows "ANSI" export and decode every byte as Windows-1252, which gets curly quotes, dashes, and the euro sign right. Ruby checked only the first 64 KB and fell back to ISO-8859-1 when that sample could not be decoded as Windows-1252; that only happens when the sample contains one of the five bytes Windows-1252 leaves undefined (`0x81`, `0x8D`, `0x8F`, `0x90`, `0x9D`). Port it the same way: if any of those bytes is in the first 64 KB, decode as ISO-8859-1 instead.
-5. If decoding still fails, the build fails with type `encoding_error`: "We couldn't read this CSV file. Please upload a UTF-8 CSV, or try exporting the song list again from the original source."
+4. Not valid: treat it as a Windows "ANSI" export and decode every byte as Windows-1252, which gets curly quotes, dashes, and the euro sign right. If the file contains any of the five bytes Windows-1252 leaves undefined (`0x81`, `0x8D`, `0x8F`, `0x90`, `0x9D`), decode as ISO-8859-1 instead. The same scan finds them. **Changed from Rails:** Ruby looked for them only in the first 64 KB, so a file with one further in crashed the build; Go checks the whole file. Also, Rails kept a BOM in the first header when the rest of the file was not UTF-8; Go always skips it.
+5. ISO-8859-1 decodes every byte, so step 4 never fails. Rails' `encoding_error` ("We couldn't read this CSV file…") could not actually happen and is not ported.
 6. The decoded stream is UTF-8 from here on. The source encoding is stored in `import_metadata_json`.
 
 **Parsing**
 
-- Lenient parsing, as Ruby's `liberal_parsing: true`: stray quotes inside unquoted fields are accepted (`LazyQuotes`), and rows may have more or fewer fields than the header (`FieldsPerRecord = -1`). A field missing from a short row reads as blank.
+Ruby's CSV with `liberal_parsing: true`, ported exactly in `csv_read.go`:
+
+- Rows may have more or fewer fields than the header. A field missing from a short row reads as blank.
+- Stray quotes inside an unquoted field are kept as text. Text right after a closing quote is kept too, with the quotes: `"Hey" Jude` reads as `"Hey" Jude`.
+- An unquoted empty field is nil and a quoted one (`""`) is an empty string. That only matters for header cells (see Headers).
+- CRLF, LF, and CR all end a row, in any mix. **Changed from Rails:** Ruby took the first line ending in the file and failed the upload on any other ("Unquoted fields do not allow new line…"). Every file Rails accepted reads the same. Newlines inside quoted fields are kept as they are.
+- **A blank line is a row with no fields**, so a blank line between songs (or several at the end) fails with blank title and artist errors on that row, as in Rails (kept on purpose). A single newline at the end of the file is fine.
 - Row numbers in messages count CSV records, not physical lines: the header is row 1 and the first data row is row 2. A quoted field with a newline in it does not shift later row numbers.
-- A file that cannot be parsed fails with type `parse_error`: "Invalid CSV: {detail}". In Rails a parse error partway through the file surfaced as a generic job error; in Go it becomes a `parse_error` that includes the row number.
+- A file that cannot be parsed fails with type `parse_error`: "Invalid CSV: {Ruby's message}", e.g. "Invalid CSV: Unclosed quoted field in line 4.". Rails let these escape as a generic job error, so the DJ never saw why; Go shows Ruby's message.
 
 **Headers**
 
-- The first record is the header. If there is no header, or no data row after it, or every header cell is empty, the file fails with one error, type `no_headers`: "CSV has no header row". (A header-only file gets this message in Rails too. Keep it, or change it to something like "CSV has no songs"; see open questions.)
-- Each header cell is trimmed and lowercased. Column order does not matter.
+- The first record is the header. If the file is empty or every header cell is empty, it fails with one error, type `no_headers`: "CSV has no header row".
+- A header with no data rows after it fails with type `no_rows`: "CSV has no songs". **Changed from Rails**, which said "CSV has no header row" here too.
+- Each header cell is trimmed (ASCII whitespace and NUL, as Ruby's `strip`; not non-breaking spaces) and lowercased (Unicode, as Ruby's `downcase`). Column order does not matter.
 - Recognized columns: `title`, `artist`, `version`, `album`, `id`. Any other column is ignored.
 - Header errors, all collected in one pass:
   - `empty_header`, one per empty cell, with the 1-based column number: "Header cell {n} is empty". An empty cell anywhere is an error, including trailing empty cells from a spreadsheet export.
-  - `duplicate_header`, one per duplicated normalized name: "Duplicate header '{name}'". `Title` and ` title ` are duplicates.
+  - `duplicate_header`, one per duplicated normalized name: "Duplicate header '{name}'". `Title` and ` title ` are duplicates. Two cells that are quoted-empty or only spaces also give "Duplicate header ''"; unquoted empty cells do not.
   - `missing_header`, for `title` and for `artist`: "Required header '{name}' is missing".
 - If any header error exists, stop. Rows are not checked.
 
 **Rows**
 
 - `title` and `artist` are trimmed and must not be empty. Each blank one is an error, type `blank_field`, with `row` and `column`: "Title is blank on row {n}" or "Artist is blank on row {n}". A row with both blank produces two errors.
-- `version`, `album`, and `id` are trimmed. Blank becomes NULL. They are always optional.
+- `version`, `album`, and `id` are trimmed. Blank (any Unicode whitespace) becomes NULL. They are always optional.
 - Stop collecting row errors after 20 (a row with two blanks can bring the total to 21, as in Rails).
 - Any row error fails the whole file. A catalog never goes live with some rows silently dropped.
-- Row limit: more than 1,000,000 data rows fails the file (type `too_many_rows`). Account limits are checked before the build starts: 100 catalogs per account (checked when creating a catalog), and 10,000,000 rows per account (the other catalogs' active row counts plus this file). Rails documented these limits but did not enforce them.
+- Limits, new in Go (Rails documented them but did not enforce them), both type `too_many_rows`:
+  - More than 1,000,000 data rows: "This file has more than 1,000,000 rows, the most one catalog can hold."
+  - 10,000,000 rows per account, counting the other catalogs' active versions plus this file: "This file would put your account over 10,000,000 rows. Your other catalogs have {n}." Whichever limit is lower applies.
+  - 100 catalogs per account is checked when creating a catalog.
+- If the build fails for a reason that isn't the file's fault (disk, storage), type `build_error`: "Something went wrong while processing this file. Please try uploading it again." The details go to the log.
 
 **Corrupted characters (U+FFFD)**
 
@@ -272,7 +287,7 @@ CREATE VIRTUAL TABLE songs_fts USING fts5(
 );
 ```
 
-1. Stream every row into a scratch table `raw_songs(title, artist, album, version, external_id, lower_title, lower_artist)` inside one transaction with a prepared insert. `lower_*` are lowercased in Go (`strings.ToLower`, matching Ruby's Unicode `downcase`).
+1. Validation and building are one streaming pass: each valid row is inserted into a scratch table `raw_songs(title, artist, album, version, external_id, lower_title, lower_artist)` inside one transaction with a prepared insert. At the first row error inserting stops and only errors are collected; the temp file is thrown away. `lower_*` are lowercased in Go to match Ruby's Unicode `downcase` (`strings.ToLower`, except `İ`, which Ruby lowercases to `i̇`).
 2. Index `raw_songs(lower_title, lower_artist)`.
 3. Group into `songs` with one `INSERT … SELECT`, the same SQL as Rails:
    - Group key: `lower_title`, `lower_artist`.
@@ -281,25 +296,27 @@ CREATE VIRTUAL TABLE songs_fts USING fts5(
    - `external_ids_json`: `json_group_array` over distinct non-NULL IDs.
 4. Drop `raw_songs`, then fill the FTS index with `INSERT INTO songs_fts(songs_fts) VALUES('rebuild')`.
 5. `song_count` is the number of grouped songs. `row_count` (data rows in the CSV) is stored separately and is what the row limits count.
-6. Build into `{path}.tmp` and rename when finished; delete the temp file on any failure.
+6. Run `PRAGMA quick_check`. Build into `{path}.tmp` and rename when finished; delete the temp file on any failure.
+
+The build uses `journal_mode=OFF` and `synchronous=OFF`, since a failed build is thrown away anyway.
 
 **Search**
 
-- Input: `q`, `limit` (default 25, clamped to 1–100), `offset` (default 0, at least 0), `sort` (`best_match` default, `title`, `artist`; anything else means `best_match`).
+- Input: `q`, `limit` (clamped to 1–100; the DJ page asks for 50), `offset` (default 0, at least 0), `sort` (`best_match` default, `title`, `artist`, trimmed and lowercased; anything else means `best_match`). Rails turned a missing `limit` into 1 result; every Rails page sent one, so this never showed.
 - Turning `q` into an FTS5 query:
-  - Unicode NFC normalize (`golang.org/x/text/unicode/norm`), then split on whitespace.
+  - Unicode NFC normalize (`golang.org/x/text/unicode/norm`), then split on ASCII whitespace.
   - Split each piece into runs of characters that are legal in FTS5 barewords: ASCII letters, digits, `_`, and any code point above U+007F. Every other character ends a run, so `Mr.` gives `Mr` and `AC/DC` gives `AC` and `DC`.
   - Drop `AND`, `OR`, `NOT`, `NEAR` (any case). Keep at most 20 tokens.
   - Each token becomes a prefix term (`token*`), joined with spaces. Single characters too, so `Mr. B` finds "Mr. Brightside".
   - No tokens left: no results, and no query is run.
   - The MATCH string is always a bound parameter.
 - `total` is `SELECT COUNT(*) FROM songs_fts WHERE songs_fts MATCH ?`.
-- `bm25(songs_fts, 10.0, 5.0, 1.0)` (title, artist, versions) is computed as `rank`. Lower is better.
 - Ordering:
-  - `best_match`: an artist-match bucket first, using the raw query lowercased and trimmed with whitespace collapsed: exact artist match 0, artist starts with the query 1, artist contains the query 2, anything else 3. Then title (case-insensitive), artist (case-insensitive), `rank`, `id`. bm25 only breaks ties; the Rails docs describe ranking by bm25, the code does not. The bucket uses SQLite `LOWER()`, which only folds ASCII; ported as is.
-  - `title`: title, artist (both case-insensitive), `rank`, `id`.
-  - `artist`: artist, title (both case-insensitive), `rank`, `id`.
+  - `best_match`: an artist-match bucket first, using the raw query lowercased and trimmed with whitespace collapsed: exact artist match 0, artist starts with the query 1, artist contains the query 2, anything else 3. Then title (case-insensitive), artist (case-insensitive). The bucket uses SQLite `LOWER()`, which only folds ASCII; ported as is.
+  - `title`: title, artist (both case-insensitive).
+  - `artist`: artist, title (both case-insensitive).
   - `ORDER BY` clauses are fixed strings chosen by the sort mode, never built from input.
+  - **Dropped from Rails: bm25 and `id` as the last tie-breakers.** They never decide anything. Two songs can only tie if their titles and artists are equal ignoring ASCII case, and then they are also equal after full lowercasing, so the build already merged them into one song. Results are identical (the golden search tests pass), and not computing bm25 makes searches on large catalogs about 4× faster. The Rails docs describe ranking by bm25; the code never really did.
 - Each result: `id`, `title`, `artist`, `album`, `versions` (array), `external_ids` (array). No highlighting; the Rails docs mention `*_highlighted` fields the code never returned.
 - Searches slower than 500 ms are logged with sort mode, limit, offset, and result count, but not the query.
 
@@ -329,23 +346,23 @@ catalogs/{catalog_id}/v{version}.db    # built artifact
 
 **Build (one goroutine)**
 
-1. Upload handler streams the multipart file straight to Tigris as `v{n}.csv` (with a size limit, 100 MB), computing sha256 as it goes. If the hash matches `last_csv_sha256`, discard and keep the current version.
-2. Insert `catalog_versions` row, set catalog `building_version = n`, `status = pending`, send the catalog id on the build channel.
-3. The builder sets `status = processing`, downloads the CSV to a temp file, detects the encoding, validates it in one streaming pass, and builds `v{n}.db` in a temp path in a second pass (all per "Catalog CSV rules" below). It then checks the file (`PRAGMA integrity_check`, schema present, at least one song), uploads it to Tigris, and moves it into the cache directory.
-4. In one transaction: `active_version = n`, `status = ready`, `song_count`, `import_metadata_json`, `errors_json` cleared. Searches switch on the next request. The old version stays until cleanup.
+1. The upload handler streams the multipart file to a temp file (size limit 100 MB, enforced while reading), computing sha256 as it goes. If the hash matches `last_csv_sha256` and the catalog is ready, it is discarded: "That file is the same as the one already live, so nothing changed."
+2. In a transaction, allocate version `n` and insert its `catalog_versions` row. Store the CSV as `v{n}.csv`, then set catalog `building_version = n`, `status = pending`, and wake the builder.
+3. The work queue is the catalogs table: the builder takes the oldest `pending` catalog and sets it `processing`. It downloads the CSV to a temp file and builds `v{n}.db` directly in the cache directory (per "Catalog CSV rules" above), then stores the DB as `v{n}.db`.
+4. In one transaction, only if `building_version` is still `n`: `active_version = n`, `status = ready`, `song_count`, `row_count`, `import_metadata_json`, `errors_json` cleared. Searches switch on the next request. The old version stays until cleanup. If a newer upload or a delete happened during the build, this build's result is dropped.
 5. On failure: `status = failed`, `errors_json` set, `active_version` unchanged, so search keeps serving the previous version.
-6. On startup, any catalog left `pending` or `processing` is sent to the channel again.
+6. On startup, any catalog left `processing` goes back to `pending`.
 
 **Cache**
 
 - Directory `CATALOG_CACHE_DIR` (default `data/catalogs/`), files named `{catalog_id}_v{version}.db`.
-- On search: if the file is missing, download from Tigris (one download per file at a time, guarded by a per-key mutex), then open it read-only (`mode=ro`, `immutable=1`).
-- Keep a small pool of open read-only handles, closed when evicted.
-- Track last use in memory (and touch the file mtime so it survives restarts).
-- When total bytes exceed `CATALOG_CACHE_MAX_BYTES`, delete least-recently-used files. Never evict the active version of a catalog that an active show uses.
+- On search: if the file is missing, download from Tigris (one download per file at a time; other searches for it wait), then open it read-only (`mode=ro`, `immutable=1`).
+- One open read-only handle per cached file, closed when evicted.
+- Track last use in memory, and touch the file mtime (at most once a minute) so it survives restarts. On startup the directory is scanned and leftover `.tmp` files are deleted.
+- When total bytes exceed `CATALOG_CACHE_MAX_BYTES` (default 10 GB), delete least-recently-used files. Never evict the active version of a catalog that an active show uses (phase 3).
 - Admin page shows: cached files and bytes, budget, hits/misses since boot, catalogs whose active version is missing from Tigris.
 
-**Remote cleanup.** The cleanup goroutine deletes Tigris objects for versions older than the previous one and older than 48 hours, and everything for deleted catalogs.
+**Remote cleanup.** The hourly cleanup deletes the files and row of any version that is neither active nor building and is older than 48 hours. Deleting a catalog (or the account) deletes all its files right away.
 
 ### Queue
 
@@ -379,12 +396,14 @@ POST /account/password, /account/password/delete, /account/profile,
      /account/defaults, /account/host, /account/delete
 
 GET  /catalogs                      list with status
-POST /catalogs                      create
-GET  /catalogs/{id}                 status, errors, song count, DJ search
+GET  /catalogs/new, POST /catalogs  create
+GET  /catalogs/{id}                 status, errors, song count, DJ search (?q= works without JS)
+POST /catalogs/{id}                 variant display
 POST /catalogs/{id}/upload          multipart CSV
-POST /catalogs/{id}                 rename, variant display
+GET  /catalogs/{id}/status          polled while building; HX-Redirect when done
+GET  /catalogs/{id}/search          DJ search fragment
 POST /catalogs/{id}/delete
-GET  /catalogs/{id}/v{v}/search     search fragment (used by DJ and audience pages)
+GET  /docs/csv-format               public CSV guide
 
 GET  /shows, POST /shows
 GET  /shows/{id}                    host view: pending, now playing, queue, completed
@@ -397,6 +416,7 @@ GET  /shows/{id}/qr.png
 
 GET  /dj/{handle}                         DJ profile, upcoming and live shows
 GET  /dj/{handle}/shows/{slug}            audience show page with search
+GET  /dj/{handle}/shows/{slug}/search     search fragment; includes the catalog version so it can be cached
 POST /dj/{handle}/shows/{slug}/requests   request a song
 GET  /dj/{handle}/shows/{slug}/queue      queue and "where am I"
 GET  /dj/{handle}/shows/{slug}/display    TV display
@@ -489,9 +509,9 @@ Same rules as track-anything: hashed session and magic tokens, `HttpOnly; Secure
 | `BASE_URL` | Public origin for emailed links and QR codes |
 | `DB_PATH` | App SQLite file |
 | `CATALOG_CACHE_DIR`, `CATALOG_CACHE_MAX_BYTES` | Local catalog cache |
-| `BLOB_BACKEND` | `local` (dev/tests) or `s3` |
-| `BLOB_DIR` | Directory for the local backend |
-| `S3_ENDPOINT`, `S3_BUCKET`, `S3_REGION`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` | Tigris |
+| `BLOB_DIR` | Directory for the local blob store (default `data/blobs`) |
+| `BLOB_BACKEND` | `local` (dev/tests) or `s3` (phase 6) |
+| `S3_ENDPOINT`, `S3_BUCKET`, `S3_REGION`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` | Tigris (phase 6) |
 | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM` | Email (SES SMTP credentials in production) |
 | `TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET_KEY` | Bot protection |
 | `TRUSTED_IP_HEADER` | `Fly-Client-IP` in production; empty in dev. `CF-Connecting-IP` and `X-Forwarded-For` accepted for later setups |
@@ -558,6 +578,7 @@ Same image. One machine, one volume for `djm.db` and the catalog cache, Litestre
 
 Standard library `testing` and `httptest`, as in track-anything. Each test gets a temp app DB and a local-directory blob store.
 
+- **Golden files from the real Rails code.** `ruby testdata/golden.rb ../djm-mono` runs the Rails services over every CSV in `testdata/csvs/`, the search queries in `testdata/search/`, and 3,713 generated parser inputs, and writes what Rails produced as JSON. The Go tests compare against those files. Rerun it only when adding a case. It needs Ruby with the `activesupport`, `csv`, and `sqlite3` gems, not a Rails install.
 - **CSV rules:** every fixture in `testdata/csvs/` gives the same pass/fail and the same error list as Rails. Plus: UTF-8 with and without BOM (no BOM in the first header); Windows-1252 curly quotes and euro sign; a file with an undefined Windows-1252 byte decodes as ISO-8859-1; a multibyte character split across a 64 KB chunk boundary is still valid UTF-8; trailing empty header cells; `Title` vs ` title ` duplicates; a header-only file; ragged rows; stray quotes; a quoted newline does not shift row numbers; the 20-row-error cap; the 1M row limit; U+FFFD row and character counts and the 10,000 cap.
 - **Build:** rows that differ only in title or artist case become one song; `MIN()` picks the spelling and album; versions and IDs are distinct and complete; `versions_text` is searchable; `song_count` vs `row_count`; a failed build leaves no temp file.
 - **Search:** token sanitizing (`Mr.`, `Mr. B`, `AC/DC`, reserved words, non-ASCII, empty input, 20-token cap); diacritics (`Beyonce` finds `Beyoncé`); each sort mode's order including the artist buckets; `limit` and `offset` clamping; an unknown sort falls back to `best_match`.
@@ -603,6 +624,20 @@ How it works (`auth.go`, `account.go`, `cleanup.go`; mail, Turnstile, and rate l
 
 - Blob store (local and Tigris), upload, encoding detection, validation, build goroutine, versions, status page with errors and the U+FFFD warning, limits, cache with eviction, search with sort modes and variant pickers, delete, CSV format doc page (ported from the Rails docs page).
 - **Done when:** every Rails fixture gives the same result, a 1M-row CSV builds without memory growth, search answers in well under 100 ms on a warm cache, and deleting the local cache directory only costs one download on the next search.
+
+**Status:** done, apart from the Tigris backend (phase 6).
+
+How it works (`csv_read.go`, `csv_import.go`, `catalog_build.go`, `catalog_cache.go`, `catalog_search.go`, `catalogs.go`, `blobstore.go`):
+
+- **Hosts only.** Catalog pages require the host role ("Start hosting from your account page…" otherwise). Another DJ's catalog is a 404.
+- **Catalog page:** song count, status, search, and collapsible Upload, Settings, and Delete sections. While a build runs, the status polls every 2 seconds and the page reloads with "Catalog is ready!" (or the U+FFFD warning, or the error list) when it finishes. A failed upload keeps the previous version searchable.
+- **Fidelity:** parsing, encoding, validation, grouping, and search ordering match the golden files from the Rails code. The places Go deliberately differs are marked "Changed from Rails" or "new in Go" in "Catalog CSV rules".
+- **Measured** on a synthetic 1M-row CSV (`DJM_BIG=1 go test -run TestBigCatalog`; it repeats a small set of artist and title words, so queries match far more rows than a real catalog would): the build takes 36 s with about 7 MB peak heap, producing a 204 MB DB. Warm searches: "queen" 55 ms sorted by title and 120 ms best match; "l" 117–237 ms; "artist 42" 159–255 ms. A query matching every row ("key") is the worst case, about 1.4–1.7 s before bm25 was dropped (not re-measured since). Typical catalogs (tens of thousands of songs) should be far faster, but that hasn't been measured on real data yet. Search time grows with how many songs match, because sorting by title needs all of them.
+- **Not yet:**
+  - The Tigris blob store (phase 6); dev and tests use `BLOB_DIR`.
+  - Keeping an active show's catalog in the cache, and refusing to delete a catalog an active show uses (phase 3).
+  - Audience search URLs that include the version so they can be cached (phase 4).
+  - Admin cache status page (phase 5). `catalogCache.stats()` already reports files, bytes, hits, and misses.
 
 ### Phase 3 — Shows and the host queue
 
@@ -655,7 +690,7 @@ Everything under "Deployment" above.
 | Hosting | Homelab Dokku behind Fly.io ingress over WireGuard, as track-anything. `TRUSTED_IP_HEADER=Fly-Client-IP`. |
 | Email | Amazon SES over SMTP. |
 | Limits | 100 MB per upload, 1M rows per catalog, 100 catalogs per account, 10M rows per account, 5 uploads per user per hour. Enforced. |
-| CSV and search rules | Ported from the Rails code as described in "Catalog CSV rules". |
+| CSV and search rules | Ported from the Rails code as described in "Catalog CSV rules". Deliberate changes: mixed line endings are accepted, a header-only file says "CSV has no songs", parse errors show Ruby's message, and the row limits are enforced. Blank lines still fail the upload, as in Rails. |
 | Backups | Litestream to Tigris, not LiteFS. |
 | Domain | The Go app deploys to a subdomain (e.g. `next.djmagic.io`) while the Rails apps keep `djmagic.io`. Cut over at the end of phase 6. |
 | Migrations | Hand-rolled numbered SQL files, not `AutoMigrate` and not Goose. The schema is written down and reviewed; renames, backfills, and SQLite table rebuilds are explicit. One process and one database means the runner only needs `user_version` and a transaction per file. No down migrations: recover with a Litestream restore. Rules: never edit a shipped file; a table rebuild runs with foreign keys off and `PRAGMA foreign_key_check` before commit (the runner does both); `TestMigrationsMatchModels` fails if a GORM struct and its table disagree. |
@@ -663,4 +698,4 @@ Everything under "Deployment" above.
 
 ## Open questions
 
-1. **Header-only CSV message:** keep Rails' "CSV has no header row" for a file with a header and no songs, or say "CSV has no songs"?
+None right now.

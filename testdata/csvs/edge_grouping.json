@@ -1,0 +1,49 @@
+{
+  "status": "ready",
+  "source_encoding": "UTF-8",
+  "song_count": 3,
+  "replacement_stats": {
+    "has_replacement_characters": false,
+    "replacement_character_count": 0,
+    "replacement_row_count": 0
+  },
+  "songs": [
+    {
+      "id": 1,
+      "title": "Bohemian Rhapsody",
+      "artist": "QUEEN",
+      "album": "A Night at the Opera",
+      "versions": [
+        "Original",
+        "Key +2"
+      ],
+      "external_ids": [
+        "SC-1",
+        "SC-2"
+      ],
+      "versions_text": "Original Key +2"
+    },
+    {
+      "id": 2,
+      "title": "Hello",
+      "artist": "Adele",
+      "album": "21",
+      "versions": [
+        "Original"
+      ],
+      "external_ids": [
+        "AD-9"
+      ],
+      "versions_text": "Original"
+    },
+    {
+      "id": 3,
+      "title": "Hello",
+      "artist": "Lionel Richie",
+      "album": null,
+      "versions": null,
+      "external_ids": null,
+      "versions_text": null
+    }
+  ]
+}

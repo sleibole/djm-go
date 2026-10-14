@@ -246,11 +246,22 @@ func (a *app) handleAccountDelete(w http.ResponseWriter, r *http.Request) {
 	a.message(w, r, http.StatusOK, "Account deleted", "Your account and everything in it have been deleted.")
 }
 
-// deleteUser removes the user. Rows that belong to them go with it (ON DELETE CASCADE).
+// deleteUser removes the user. Rows that belong to them go with it (ON DELETE
+// CASCADE); their catalog files are removed after.
 func (a *app) deleteUser(id uint) error {
+	var catalogs []uint
+	if err := a.db.Model(&Catalog{}).Where("user_id = ?", id).Pluck("id", &catalogs).Error; err != nil {
+		return err
+	}
 	res := a.db.Delete(&User{}, id)
 	if res.Error == nil && res.RowsAffected == 0 {
 		return errors.New("user not found")
 	}
-	return res.Error
+	if res.Error != nil {
+		return res.Error
+	}
+	for _, c := range catalogs {
+		a.removeCatalogData(context.Background(), c)
+	}
+	return nil
 }

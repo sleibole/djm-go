@@ -1,0 +1,132 @@
+{
+  "status": "failed",
+  "source_encoding": "UTF-8",
+  "errors": [
+    {
+      "type": "blank_field",
+      "row": 2,
+      "column": "title",
+      "detail": "Title is blank on row 2"
+    },
+    {
+      "type": "blank_field",
+      "row": 3,
+      "column": "title",
+      "detail": "Title is blank on row 3"
+    },
+    {
+      "type": "blank_field",
+      "row": 4,
+      "column": "title",
+      "detail": "Title is blank on row 4"
+    },
+    {
+      "type": "blank_field",
+      "row": 5,
+      "column": "title",
+      "detail": "Title is blank on row 5"
+    },
+    {
+      "type": "blank_field",
+      "row": 6,
+      "column": "title",
+      "detail": "Title is blank on row 6"
+    },
+    {
+      "type": "blank_field",
+      "row": 7,
+      "column": "title",
+      "detail": "Title is blank on row 7"
+    },
+    {
+      "type": "blank_field",
+      "row": 8,
+      "column": "title",
+      "detail": "Title is blank on row 8"
+    },
+    {
+      "type": "blank_field",
+      "row": 9,
+      "column": "title",
+      "detail": "Title is blank on row 9"
+    },
+    {
+      "type": "blank_field",
+      "row": 10,
+      "column": "title",
+      "detail": "Title is blank on row 10"
+    },
+    {
+      "type": "blank_field",
+      "row": 11,
+      "column": "title",
+      "detail": "Title is blank on row 11"
+    },
+    {
+      "type": "blank_field",
+      "row": 12,
+      "column": "title",
+      "detail": "Title is blank on row 12"
+    },
+    {
+      "type": "blank_field",
+      "row": 13,
+      "column": "title",
+      "detail": "Title is blank on row 13"
+    },
+    {
+      "type": "blank_field",
+      "row": 14,
+      "column": "title",
+      "detail": "Title is blank on row 14"
+    },
+    {
+      "type": "blank_field",
+      "row": 15,
+      "column": "title",
+      "detail": "Title is blank on row 15"
+    },
+    {
+      "type": "blank_field",
+      "row": 16,
+      "column": "title",
+      "detail": "Title is blank on row 16"
+    },
+    {
+      "type": "blank_field",
+      "row": 17,
+      "column": "title",
+      "detail": "Title is blank on row 17"
+    },
+    {
+      "type": "blank_field",
+      "row": 18,
+      "column": "title",
+      "detail": "Title is blank on row 18"
+    },
+    {
+      "type": "blank_field",
+      "row": 19,
+      "column": "title",
+      "detail": "Title is blank on row 19"
+    },
+    {
+      "type": "blank_field",
+      "row": 20,
+      "column": "title",
+      "detail": "Title is blank on row 20"
+    },
+    {
+      "type": "blank_field",
+      "row": 21,
+      "column": "title",
+      "detail": "Title is blank on row 21"
+    },
+    {
+      "type": "blank_field",
+      "row": 21,
+      "column": "artist",
+      "detail": "Artist is blank on row 21"
+    }
+  ]
+}

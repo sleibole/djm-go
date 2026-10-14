@@ -5,8 +5,11 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"strconv"
 	"strings"
 )
+
+const defaultCatalogCacheMax = 10 << 30
 
 type config struct {
 	Addr               string
@@ -21,7 +24,11 @@ type config struct {
 	TrustedIPHeader    string // empty uses RemoteAddr; otherwise only this header, set by the trusted proxy
 	TurnstileSiteKey   string // public widget key; production requires TURNSTILE_SITE_KEY
 	TurnstileSecretKey string // Siteverify secret; never log this
+	CatalogCacheDir    string // built catalog databases; safe to delete, refilled from the blob store
+	CatalogCacheMax    int64  // bytes; least recently used catalogs are removed past this
+	BlobDir            string // local blob store: uploaded CSVs and built catalogs
 	baseURLSet         bool   // true when BASE_URL was set in the environment
+	cacheMaxErr        error
 }
 
 func loadConfig() config {
@@ -44,6 +51,16 @@ func loadConfig() config {
 		TrustedIPHeader:    strings.TrimSpace(os.Getenv("TRUSTED_IP_HEADER")),
 		TurnstileSiteKey:   strings.TrimSpace(os.Getenv("TURNSTILE_SITE_KEY")),
 		TurnstileSecretKey: strings.TrimSpace(os.Getenv("TURNSTILE_SECRET_KEY")),
+		CatalogCacheDir:    getenv("CATALOG_CACHE_DIR", "data/catalogs"),
+		CatalogCacheMax:    defaultCatalogCacheMax,
+		BlobDir:            getenv("BLOB_DIR", "data/blobs"),
+	}
+	if v := os.Getenv("CATALOG_CACHE_MAX_BYTES"); v != "" {
+		n, err := strconv.ParseInt(v, 10, 64)
+		if err != nil || n <= 0 {
+			cfg.cacheMaxErr = fmt.Errorf("CATALOG_CACHE_MAX_BYTES must be a positive number of bytes, got %q", v)
+		}
+		cfg.CatalogCacheMax = n
 	}
 	if port := os.Getenv("PORT"); port != "" && os.Getenv("ADDR") == "" {
 		cfg.Addr = ":" + port
@@ -74,6 +91,9 @@ func (c config) validate() error {
 	case "", "CF-Connecting-IP", "Fly-Client-IP", "X-Forwarded-For":
 	default:
 		return fmt.Errorf("TRUSTED_IP_HEADER must be empty, CF-Connecting-IP, Fly-Client-IP, or X-Forwarded-For, got %q", c.TrustedIPHeader)
+	}
+	if c.cacheMaxErr != nil {
+		return c.cacheMaxErr
 	}
 	if (c.TurnstileSiteKey == "") != (c.TurnstileSecretKey == "") {
 		return errors.New("TURNSTILE_SITE_KEY and TURNSTILE_SECRET_KEY must both be set or both be empty")

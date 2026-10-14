@@ -1,0 +1,12 @@
+{
+  "status": "failed",
+  "source_encoding": "UTF-8",
+  "errors": [
+    {
+      "type": "blank_field",
+      "row": 2,
+      "column": "artist",
+      "detail": "Artist is blank on row 2"
+    }
+  ]
+}

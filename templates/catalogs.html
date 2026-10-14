@@ -1,0 +1,40 @@
+{{define "title"}}My Catalogs · DJMagic.io{{end}}
+{{define "content"}}
+{{with .Data}}
+<h1>My Catalogs</h1>
+{{if eq .Saved "deleted"}}<p role="status" class="saved">Catalog deleted.</p>{{end}}
+
+{{if .AtLimit}}
+<p>You have 100 catalogs, the most one account can have. Delete one to make room for another.</p>
+{{else}}
+<p><a href="/catalogs/new" role="button">{{icon "folder-open"}} New Catalog</a></p>
+{{end}}
+
+{{if .Catalogs}}
+<div class="overflow-auto">
+  <table class="striped">
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Songs</th>
+        <th>Created</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {{range .Catalogs}}
+      <tr>
+        <td><a href="/catalogs/{{.ID}}">{{.Name}}</a></td>
+        <td>{{if .Building}}Processing…{{else if .ActiveVersion}}{{commas .SongCount}}{{else if eq .Status "failed"}}Upload failed{{else}}—{{end}}</td>
+        <td>{{.CreatedAt.Format "Jan 2, 2006"}}</td>
+        <td><a href="/catalogs/{{.ID}}">Manage</a></td>
+      </tr>
+      {{end}}
+    </tbody>
+  </table>
+</div>
+{{else}}
+<p>No catalogs yet. Create one to get started.</p>
+{{end}}
+{{end}}
+{{end}}

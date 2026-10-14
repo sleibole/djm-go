@@ -1,0 +1,48 @@
+{
+  "status": "ready",
+  "source_encoding": "UTF-8",
+  "song_count": 4,
+  "replacement_stats": {
+    "has_replacement_characters": false,
+    "replacement_character_count": 0,
+    "replacement_row_count": 0
+  },
+  "songs": [
+    {
+      "id": 1,
+      "title": "Has \"escaped\" quotes",
+      "artist": "Artist D",
+      "album": null,
+      "versions": null,
+      "external_ids": null,
+      "versions_text": null
+    },
+    {
+      "id": 2,
+      "title": "Quoted, Comma",
+      "artist": "Artist C",
+      "album": null,
+      "versions": null,
+      "external_ids": null,
+      "versions_text": null
+    },
+    {
+      "id": 3,
+      "title": "Say \"Hi\"",
+      "artist": "Artist A",
+      "album": null,
+      "versions": null,
+      "external_ids": null,
+      "versions_text": null
+    },
+    {
+      "id": 4,
+      "title": "Song B",
+      "artist": "The \"Band\"",
+      "album": null,
+      "versions": null,
+      "external_ids": null,
+      "versions_text": null
+    }
+  ]
+}

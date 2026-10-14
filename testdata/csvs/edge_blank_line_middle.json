@@ -1,0 +1,18 @@
+{
+  "status": "failed",
+  "source_encoding": "UTF-8",
+  "errors": [
+    {
+      "type": "blank_field",
+      "row": 3,
+      "column": "title",
+      "detail": "Title is blank on row 3"
+    },
+    {
+      "type": "blank_field",
+      "row": 3,
+      "column": "artist",
+      "detail": "Artist is blank on row 3"
+    }
+  ]
+}

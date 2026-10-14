@@ -1,0 +1,10 @@
+{
+  "status": "failed",
+  "source_encoding": "UTF-8",
+  "errors": [
+    {
+      "type": "missing_header",
+      "detail": "Required header 'artist' is missing"
+    }
+  ]
+}

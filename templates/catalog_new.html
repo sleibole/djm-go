@@ -1,0 +1,17 @@
+{{define "title"}}New Catalog · DJMagic.io{{end}}
+{{define "content"}}
+{{with .Data}}
+<div class="narrow">
+  <h1>New Catalog</h1>
+  <form method="post" action="/catalogs">
+    {{if .Error}}<p role="alert" class="error">{{.Error}}</p>{{end}}
+    <label>
+      {{icon "folder-open"}} Name
+      <input type="text" name="name" value="{{.Name}}" placeholder="e.g. Karaoke Night, Wedding Set" required autofocus maxlength="100">
+    </label>
+    <button type="submit">Create Catalog</button>
+  </form>
+  <p><a href="/catalogs">Back to catalogs</a></p>
+</div>
+{{end}}
+{{end}}

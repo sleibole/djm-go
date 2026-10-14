@@ -48,7 +48,12 @@ func newTestApp(t *testing.T) *app {
 			sqlDB.Close()
 		}
 	})
-	a, err := newApp(config{Env: "dev", BaseURL: "http://example.test"}, db, slog.New(slog.NewTextHandler(io.Discard, nil)), &testMailer{})
+	dir := t.TempDir()
+	cfg := config{
+		Env: "dev", BaseURL: "http://example.test",
+		CatalogCacheDir: filepath.Join(dir, "catalogs"), CatalogCacheMax: defaultCatalogCacheMax, BlobDir: filepath.Join(dir, "blobs"),
+	}
+	a, err := newApp(cfg, db, slog.New(slog.NewTextHandler(io.Discard, nil)), &testMailer{})
 	if err != nil {
 		t.Fatal(err)
 	}

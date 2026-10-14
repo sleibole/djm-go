@@ -1,0 +1,132 @@
+{{define "title"}}{{.Data.Catalog.Name}} · DJMagic.io{{end}}
+{{define "content"}}
+{{with .Data}}{{$c := .Catalog}}
+<hgroup>
+  <h1>{{$c.Name}}</h1>
+  <p>{{if $c.ActiveVersion}}{{commas $c.SongCount}} songs{{else}}No songs yet{{end}}</p>
+</hgroup>
+{{if eq .Saved "created"}}<p role="status" class="saved">Catalog created.</p>{{end}}
+{{if eq .Saved "settings"}}<p role="status" class="saved">Settings saved.</p>{{end}}
+{{if eq .Saved "unchanged"}}<p role="status" class="saved">That file is the same as the one already live, so nothing changed.</p>{{end}}
+{{template "catalog_status" .}}
+
+{{if $c.ActiveVersion}}
+<section>
+  <h2>Search Songs</h2>
+  <form role="search" method="get" action="/catalogs/{{$c.ID}}">
+    <input type="search" name="q" value="{{.Search.Query}}" placeholder="Search by title, artist, or version…"
+           autocomplete="off" autofocus aria-label="Search songs"
+           hx-get="/catalogs/{{$c.ID}}/search" hx-trigger="input changed delay:300ms, search"
+           hx-target="#search-results" hx-swap="innerHTML" hx-sync="this:replace">
+  </form>
+  <div id="search-results" aria-live="polite">{{template "search_results" $}}</div>
+</section>
+{{end}}
+
+<details class="section-panel"{{if or (not $c.ActiveVersion) (eq $c.Status "failed") .UploadError}} open{{end}}>
+  <summary>{{icon "file-upload"}} Upload CSV</summary>
+  <p>Upload a CSV file to replace this catalog's songs. The file must include <code>title</code> and <code>artist</code> columns. See the <a href="/docs/csv-format">CSV format guide</a> for details.</p>
+  <form method="post" action="/catalogs/{{$c.ID}}/upload" enctype="multipart/form-data" data-busy="Uploading…">
+    <label>
+      CSV File
+      <input type="file" name="file" accept=".csv" required>
+    </label>
+    <button type="submit">Upload</button>
+  </form>
+</details>
+
+<details class="section-panel"{{if not $c.ActiveVersion}} open{{end}}>
+  <summary>{{icon "settings"}} Settings</summary>
+  <form method="post" action="/catalogs/{{$c.ID}}">
+    <label>
+      Show selector for song variants
+      <select name="variant_display" aria-describedby="variant-display-help">
+        {{range .VariantChoices}}<option value="{{.Value}}"{{if eq .Value $c.VariantDisplay}} selected{{end}}>{{.Label}}</option>{{end}}
+      </select>
+      <small id="variant-display-help">Controls whether singers see a dropdown to pick a specific version or disc/track ID.</small>
+    </label>
+    <button type="submit" class="secondary">Save</button>
+  </form>
+</details>
+
+<details class="section-panel">
+  <summary>{{icon "trash"}} Delete Catalog</summary>
+  <p>Permanently delete <strong>{{$c.Name}}</strong> and all its shows, queue history, and uploaded songs. This cannot be undone.</p>
+  <button type="button" class="outline contrast" data-open-dialog="delete-catalog-dialog">Delete this catalog</button>
+  <dialog id="delete-catalog-dialog">
+    <article>
+      <header>
+        <button type="button" aria-label="Close" rel="prev" data-close-dialog></button>
+        <h3>Delete "{{$c.Name}}"?</h3>
+      </header>
+      <p>This will permanently delete the catalog and <strong>all associated shows and request history</strong>. This action cannot be undone.</p>
+      <form method="post" action="/catalogs/{{$c.ID}}/delete">
+        <button type="submit" class="contrast">Delete catalog</button>
+      </form>
+    </article>
+  </dialog>
+</details>
+
+<p><a href="/catalogs">Back to catalogs</a></p>
+{{end}}
+{{end}}
+
+{{define "catalog_status"}}{{$c := .Catalog}}
+{{if .UploadError}}<p role="alert" class="error">{{.UploadError}}</p>{{end}}
+{{if $c.Building}}
+<p role="status" aria-busy="true" hx-get="/catalogs/{{$c.ID}}/status" hx-trigger="every 2s" hx-swap="none">Processing…</p>
+{{else if eq $c.Status "failed"}}
+<div role="alert" class="error">
+  <p>{{if $c.ActiveVersion}}Latest upload failed.{{else}}Processing failed.{{end}}</p>
+  <ul>{{range $c.Errors}}<li>{{.Detail}}</li>{{end}}</ul>
+</div>
+{{else if and .Built (eq $c.Status "ready")}}
+{{if .Metadata.HasReplacementCharacters}}
+<div role="status" class="warning">
+  <p><strong>Some song titles have funny or incorrect characters ({{commas .Metadata.ReplacementRowCount}} songs affected).</strong><br>
+  Everything will still work — this just affects how some titles appear.<br>
+  To fix it, try uploading a fresh copy of your original song list.</p>
+</div>
+{{else}}
+<p role="status" class="saved">Catalog is ready!</p>
+{{end}}
+{{end}}
+{{end}}
+
+{{define "search_results"}}{{with .Data.Search}}{{$s := .}}
+{{if .Error}}
+<p role="alert" class="error">{{.Error}}</p>
+{{else if .Query}}
+{{if not .Result.Songs}}
+<p>No songs found.</p>
+{{else}}
+<p><small>{{commas .Result.Total}} result{{if ne .Result.Total 1}}s{{end}}</small></p>
+<div class="overflow-auto">
+  <table class="striped">
+    <thead>
+      <tr>
+        <th>Title</th>
+        <th>Artist</th>
+        {{if .ShowVersion}}<th>Version</th>{{end}}
+        {{if .ShowID}}<th>ID</th>{{end}}
+        {{if .ShowAlbum}}<th>Album</th>{{end}}
+      </tr>
+    </thead>
+    <tbody>
+      {{range .Result.Songs}}
+      <tr>
+        <td>{{.Title}}</td>
+        <td>{{.Artist}}</td>
+        {{if $s.ShowVersion}}<td>{{template "variant_cell" .Versions}}</td>{{end}}
+        {{if $s.ShowID}}<td>{{template "variant_cell" .ExternalIDs}}</td>{{end}}
+        {{if $s.ShowAlbum}}<td>{{with .Album}}{{.}}{{end}}</td>{{end}}
+      </tr>
+      {{end}}
+    </tbody>
+  </table>
+</div>
+{{end}}
+{{end}}
+{{end}}{{end}}
+
+{{define "variant_cell"}}{{if eq (len .) 1}}{{index . 0}}{{else if .}}<select aria-label="Variant">{{range .}}<option>{{.}}</option>{{end}}</select>{{end}}{{end}}

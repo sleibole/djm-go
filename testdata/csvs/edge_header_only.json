@@ -1,0 +1,10 @@
+{
+  "status": "failed",
+  "source_encoding": "UTF-8",
+  "errors": [
+    {
+      "type": "no_headers",
+      "detail": "CSV has no header row"
+    }
+  ]
+}

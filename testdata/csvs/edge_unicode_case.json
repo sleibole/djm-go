@@ -1,0 +1,61 @@
+{
+  "status": "ready",
+  "source_encoding": "UTF-8",
+  "song_count": 5,
+  "replacement_stats": {
+    "has_replacement_characters": false,
+    "replacement_character_count": 0,
+    "replacement_row_count": 0
+  },
+  "songs": [
+    {
+      "id": 1,
+      "title": "i̇stanbul",
+      "artist": "Ǆ Band",
+      "album": "Al",
+      "versions": null,
+      "external_ids": null,
+      "versions_text": null
+    },
+    {
+      "id": 2,
+      "title": "STRASSE",
+      "artist": "könig",
+      "album": null,
+      "versions": null,
+      "external_ids": null,
+      "versions_text": null
+    },
+    {
+      "id": 3,
+      "title": "Straße",
+      "artist": "KÖNIG",
+      "album": null,
+      "versions": null,
+      "external_ids": null,
+      "versions_text": null
+    },
+    {
+      "id": 4,
+      "title": "ÉCOLE",
+      "artist": "Σίσυφος",
+      "album": null,
+      "versions": null,
+      "external_ids": [
+        " x "
+      ],
+      "versions_text": null
+    },
+    {
+      "id": 5,
+      "title": "école",
+      "artist": "ΣΊΣΥΦΟΣ",
+      "album": null,
+      "versions": [
+        "v"
+      ],
+      "external_ids": null,
+      "versions_text": "v"
+    }
+  ]
+}
