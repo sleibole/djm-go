@@ -1,0 +1,19 @@
+# Local autoreload only. Production builds do not use this file.
+# Edit, save, Air rebuilds and restarts the server; refresh the browser yourself.
+
+root = "."
+tmp_dir = "tmp"
+
+[build]
+cmd = "CGO_ENABLED=0 go build -o ./tmp/main ."
+entrypoint = ["./tmp/main"]
+include_ext = ["go", "html", "css", "js", "svg", "webmanifest"]
+exclude_dir = ["tmp", "bin", "data", "vendor", "testdata", ".git"]
+exclude_regex = ["_test\\.go"]
+# Let the server handle SIGINT and release the port before the next start.
+send_interrupt = true
+# Values below 1ms are read as milliseconds.
+kill_delay = 1000
+
+[proxy]
+enabled = false

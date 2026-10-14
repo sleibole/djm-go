@@ -34,13 +34,15 @@ This is the feature inventory from `djm-mono/core` and `djm-mono/songs`, with wh
 | Accounts | One email form for sign up and log in. Magic link (single use, hashed, short-lived). Optional password set from Account. Password login locks after 10 failures; a magic link unlocks. Rate limits per email and per IP. Turnstile on email and password forms. |
 | Accounts | Roles: `dj`, `audience`, `admin`. Public handle (slug) and display name. Account deletion request. |
 | DJ defaults | Default show type (`karaoke` / `dj`), default rotation style, default max songs per singer. |
-| Catalogs | Named catalogs per DJ. Upload a CSV to replace a catalog. Background build into an FTS5 SQLite database. Versioned builds with an atomic swap, so search keeps working during a rebuild. Status (`pending`, `processing`, `ready`, `failed`) with structured errors (all header errors, up to 20 row errors). Delete a catalog, blocked while an active show uses it. `variant_display` (`none` / `version` / `id`). |
-| CSV format | Required `title`, `artist`. Optional `version`, `album`, `id`. Case-insensitive, trimmed headers, any order, extra columns ignored. Reject duplicate or empty headers. Streaming parse. Fixtures in `djm-mono/fixtures/csvs/` come over as test data. |
-| Search | FTS5 with `unicode61 remove_diacritics 2`, `prefix='2 3'`, bm25 weights title 10 / artist 5 / version 1. Bareword-safe token extraction (the `Mr.` bug fix), reserved words dropped, max 20 tokens, every token a prefix. Highlighted results. |
+| Catalogs | Named catalogs per DJ. Upload a CSV to replace a catalog. Background build into an FTS5 SQLite database. Versioned builds with an atomic swap. Status (`pending`, `processing`, `ready`, `failed`) with structured errors. Delete a catalog, blocked while an active show uses it. `variant_display` (`none` / `version` / `id`). |
+| CSV rules | Ported exactly: encoding detection, header rules, row rules, error types and limits, grouping rows into songs, the catalog database schema. See "Catalog CSV rules" below. Fixtures in `djm-mono/fixtures/csvs/` come over as test data. |
+| Search | Ported exactly: token sanitizing, prefix matching, the three sort modes, artist-match buckets, paging. See "Search" under "Catalog CSV rules". |
 | Shows | Name, slug, type, status (`scheduled`, `active`, `ended`), optional catalog, `approval_required`, `manual_entry_enabled`, `max_songs_per_singer`, `rotation_style`. Schedule ahead, start, end. |
 | Queue | Song requests with statuses `pending`, `queued`, `now_playing`, `completed`, `skipped`, `rejected`, `canceled`. One `now_playing` per show (partial unique index). Host can add from search or manually, approve, reject with reason, start, mark done, skip, move, remove. Participant autocomplete from the DJ's past shows. |
 | Audience | `/dj/{handle}` profile, show page with search and request, queue page ("You are #N"), TV display page, QR code for the show. Guest identity from a cookie, upgraded when they sign in. |
 | Song memory | My Performances (completed requests across shows), Sing Again, Saved Songs with request-from-saved. Saved songs keyed by a normalized fingerprint, not a catalog row id. |
+| Marketing | Home landing page with the singer-view and KJ-display screenshots. Open Graph and Twitter card tags with the 1200×630 image. |
+| Look | Pico, light/dark/system theme switch, the TV display page always dark, the brand mark in the nav. See "Look and feel". |
 | Other | Feedback form with an admin list. Admin user list and "log in as". Docs pages (CSV format help). Health check. |
 
 ### Change
@@ -53,6 +55,8 @@ This is the feature inventory from `djm-mono/core` and `djm-mono/songs`, with wh
 | LiteFS + Consul for app DB replication | Litestream continuous backup to Tigris (see "Backups" below) | We run one instance. We need backup and restore, not replication. |
 | Local catalog DBs downloaded on boot (warm all) | Downloaded on first use, evicted by LRU under a size budget | Disk use is bounded no matter how many catalogs exist. |
 | Turbo + Stimulus | HTMX + a little vanilla JS | Same approach as track-anything. Forms work without JS. |
+| Font Awesome kit from a CDN (one icon, `fa-sparkles`, is from the Pro set) | Tabler SVGs, vendored and inlined, as in track-anything | No third-party script on every page, icons follow `currentColor` in dark mode, no kit account to keep. |
+| About 41 KB of custom CSS on top of Pico | Small `app.css`, Pico elements first | track-anything's rule. Port only the styles a screen still needs. |
 | Polling via Turbo refresh | HTMX polling first; Server-Sent Events later | SSE is easy in a single process (in-memory fan-out per show). |
 
 ### Drop (or defer)
@@ -72,13 +76,15 @@ These are changes beyond a straight port. Each one is a suggestion to accept or 
 1. **Litestream instead of LiteFS for backups.** LiteFS replicates SQLite between nodes and needs a lease (Consul on Fly). It does not back up to S3 by itself; that was LiteFS Cloud, which Fly shut down in 2024. Litestream does exactly "continuously stream SQLite to S3-compatible storage and restore it on boot", and Tigris is S3-compatible. If we ever need LiteFS replication on Fly, it can be added then.
 2. **Bounded local catalog cache.** `CATALOG_CACHE_MAX_BYTES` caps local disk. Least-recently-searched catalog files are deleted when over budget. The active version of any catalog used by an active show is never evicted. This is what lets us move to Fly without the volume limit being a problem.
 3. **Rotation style is one function.** The queue is always an ordered list of requests. A rotation style only decides where a new or re-entering request is inserted (`insertPosition(show, participant)`). Standard rotation and traditional queue become two small functions instead of two code paths, and singer groups later become "insert next to my group".
-4. **Skip identical uploads.** Store a sha256 of each uploaded CSV. Re-uploading the same file returns the current version instead of rebuilding.
-5. **Cache-friendly search.** Search URLs include the catalog version (`/c/{id}/v{n}/search?q=`). Responses can be cached by Cloudflare safely because a rebuild changes the URL. This was an open TODO in Rails and is free here.
-6. **Wait estimate from real data.** Estimated wait = position × median of `completed_at - started_at` for this show, falling back to 4 minutes until there are a few completed songs.
-7. **"You're up next!" copy.** Position 1 says "You're up next!", now playing says "You're up!", others say "You are #N of M". This was an open TODO.
-8. **One active show per DJ.** Enforce with a partial unique index (`user_id` where `status = 'active'`). Also an open TODO.
-9. **Audience vs DJ accounts.** Everyone starts as `audience`. "Start hosting" upgrades to `dj` and asks for a handle. Audience pages pre-select the audience path. Keeps one login flow while giving audience members the lighter experience the TODO asked for.
-10. **Stale guest cleanup.** The in-process cleanup goroutine (same one that deletes expired sessions and tokens) deletes guest profiles with no account and no activity in 14 days, and their saved songs. Completed requests keep their display name for the DJ's history.
+4. **Search keeps working during a rebuild.** In Rails, search refused any catalog whose status was not `ready`, so a rebuild (or a failed one) made the old version unsearchable even though it was still on disk. Here search uses `active_version` whenever one exists, regardless of build status.
+5. **Enforce the limits.** The 1M rows per catalog, 100 catalogs per account, 10M rows per account, and 5 uploads per hour were documented in Rails but not enforced. Enforce them here (details under "Catalog CSV rules").
+6. **Skip identical uploads.** Store a sha256 of each uploaded CSV. Re-uploading the same file returns the current version instead of rebuilding.
+7. **Cache-friendly search.** Search URLs include the catalog version (`/catalogs/{id}/v{n}/search?q=`). Responses can carry long cache headers because a rebuild changes the URL. Useful if a CDN goes in front later; harmless until then.
+8. **Wait estimate from real data.** Estimated wait = position × median of `completed_at - started_at` for this show, falling back to 4 minutes until there are a few completed songs.
+9. **"You're up next!" copy.** Position 1 says "You're up next!", now playing says "You're up!", others say "You are #N of M". This was an open TODO.
+10. **One active show per DJ.** Enforce with a partial unique index (`user_id` where `status = 'active'`). Also an open TODO.
+11. **Audience vs DJ accounts.** Everyone starts as `audience`. "Start hosting" upgrades to `dj` and asks for a handle. Audience pages pre-select the audience path. Keeps one login flow while giving audience members the lighter experience the TODO asked for.
+12. **Stale guest cleanup.** The in-process cleanup goroutine (same one that deletes expired sessions and tokens) deletes guest profiles with no account and no activity in 14 days, and their saved songs. Completed requests keep their display name for the DJ's history.
 
 ---
 
@@ -92,21 +98,24 @@ These are changes beyond a straight port. Each one is a suggestion to accept or 
 | HTTP | `net/http` `ServeMux` with method and wildcard patterns | No router library |
 | Templates | `html/template`, layout + per-page `content` block | Same `render.go` approach as track-anything |
 | Assets | `embed` | Single binary |
-| Frontend | HTMX (vendored), Pico.css (vendored), small vanilla JS | No build step |
+| Frontend | HTMX (vendored), small vanilla JS | No build step |
+| CSS | Pico 2.1.1, full build (`pico.min.css`), vendored | 2.1.1 is the latest release, and what both djm-mono and track-anything use. The Rails README says "classless", but both apps load the full build; keep the full build so `role="group"`, `.container`, `.outline`, `.secondary` work |
+| Icons | Tabler, individual SVGs vendored in `icons/` and inlined by an `icon` template func | Same as track-anything |
 | App database | SQLite, WAL, one file | `DB_PATH`, default `data/djm.db` |
-| SQLite driver | `modernc.org/sqlite` (pure Go, includes FTS5) | No CGO. Same engine track-anything uses through `glebarez/sqlite` |
-| Data access | `database/sql` with hand-written SQL | See "ORM or not" below |
-| Migrations | Numbered `.sql` files embedded in the binary, applied in order on startup, recorded in a `schema_migrations` table | No migration tool |
+| SQLite driver | `github.com/glebarez/sqlite` (pure Go, built on `modernc.org/sqlite`, includes FTS5) | No CGO. Same as track-anything |
+| Data access | GORM for the app database; raw SQL through GORM (`db.Raw`, `db.Exec`) where GORM gets in the way | Raw SQL for: partial unique indexes, queue renumbering, and everything in catalog databases (FTS5, bm25, aggregation) |
+| Schema | `AutoMigrate` on startup, followed by a short list of raw `CREATE INDEX IF NOT EXISTS` statements for partial unique indexes | As in track-anything. No migration tool |
+| Catalog databases | Opened with plain `database/sql` and the same driver, not GORM | They are built once and read-only after that; FTS5 queries are raw SQL anyway |
+| CSV parsing | `encoding/csv` with `LazyQuotes` and `FieldsPerRecord = -1` | Matches Ruby's `liberal_parsing: true` and ragged rows |
+| Legacy encodings | `golang.org/x/text/encoding/charmap` (Windows-1252, ISO-8859-1) | |
 | Object storage | Tigris via an S3 client (`aws-sdk-go-v2/service/s3` or `minio-go`) behind a small `blobStore` interface | Local-directory implementation for dev and tests |
 | Backups | Litestream, replicating the app DB to Tigris | Catalog DBs are not backed up; they are already in Tigris |
-| Email | `net/smtp` to a relay (SES SMTP, as today) | Console logger in dev; MailHog optional |
+| Email | `net/smtp` to Amazon SES SMTP | Console logger in dev; MailHog optional |
 | Bot protection | Cloudflare Turnstile | Same as both existing apps |
 | Passwords | `golang.org/x/crypto/bcrypt` | |
 | QR codes | `rsc.io/qr` (tiny) or vendored JS generator | Rendered as PNG or SVG on the show page and display page |
 | Logging | `log/slog` | |
 | Dev reload | Air, run by version | As in track-anything |
-
-**ORM or not.** track-anything uses GORM. This app needs raw SQL anyway for FTS5, bm25, partial indexes, and the per-catalog databases, so plain `database/sql` keeps one way of talking to SQLite instead of two. If we would rather match track-anything exactly, GORM for the app database is a reasonable choice too. Decide before phase 0 ends.
 
 ### Project layout
 
@@ -119,9 +128,8 @@ djm/
 ├── main.go              # config, open DB, migrate, build mux, start server, start goroutines
 ├── config.go            # env parsing and validation (prod requires BASE_URL, Turnstile keys, Tigris creds)
 ├── env.go               # load optional .env
-├── db.go                # open app DB, pragmas, run migrations
-├── migrations/          # 0001_init.sql, 0002_..., embedded
-├── models.go            # plain structs
+├── db.go                # open app DB (GORM), pragmas, AutoMigrate, raw partial indexes
+├── models.go            # GORM structs
 ├── auth.go              # email form, magic links, password, lockout, sessions
 ├── turnstile.go
 ├── mail.go
@@ -129,9 +137,12 @@ djm/
 ├── middleware.go        # logging, recovery, security headers, CSRF (http.CrossOriginProtection)
 ├── render.go
 ├── blobstore.go         # interface + Tigris and local-dir implementations
-├── catalog_build.go     # CSV validate → build SQLite+FTS5 → upload → swap pointer
+├── csv_encoding.go      # BOM, UTF-8 check, Windows-1252 / ISO-8859-1 fallback
+├── csv_validate.go      # header and row rules, error list, U+FFFD stats, row limit
+├── catalog_build.go     # build SQLite+FTS5, group rows into songs, upload, swap pointer
 ├── catalog_cache.go     # local file cache: fetch on miss, LRU eviction, open handle pool
-├── search.go            # query sanitizing, FTS5 query, highlights
+├── search.go            # token sanitizing, sort modes, artist buckets, paging
+├── fingerprint.go       # saved-song fingerprint
 ├── queue.go             # request lifecycle, rotation insert functions, positions
 ├── handlers_account.go
 ├── handlers_catalogs.go
@@ -140,10 +151,23 @@ djm/
 ├── handlers_memory.go   # my performances, saved songs, sing again
 ├── handlers_admin.go    # users, log in as, feedback, cache status
 ├── cleanup.go           # expired sessions/tokens, stale guests, old local versions
+├── static.go            # content hashes for /static URLs, cache headers
+├── icons.go             # embedded Tabler SVGs + `icon` template func
 ├── templates/
+├── icons/               # Tabler SVGs we use (MIT, LICENSE included)
 ├── static/
+│   ├── pico.min.css     # Pico 2.1.1 (copied in)
+│   ├── app.css
+│   ├── htmx.min.js
+│   ├── app.js           # theme switch, search-as-you-type, copy link
+│   ├── manifest.webmanifest
+│   ├── favicon.ico, icon.png, apple-touch-icon.png   # copied from djm-mono
+│   └── images/
+│       ├── brand/       # dark_64.png, dark_192.png, open_graph_1200_630.png (copied)
+│       └── landing/     # queue/{singer_view,kj_display}.png (copied)
 ├── testdata/csvs/       # copied from djm-mono/fixtures/csvs
 ├── Dockerfile
+├── entrypoint.sh        # litestream restore, then litestream replicate -exec /djm
 ├── litestream.yml
 ├── app.json             # Dokku health check
 └── Makefile
@@ -156,8 +180,8 @@ Ported from `core/db/schema.rb`, simplified. Timestamps are UTC.
 - **users** — `email` (unique, lowercased), `role` (`audience`/`dj`/`admin`), `slug` (unique, nullable until hosting), `display_name`, `password_hash`, `email_confirmed_at`, `failed_login_attempts`, `locked_at`, `default_show_type`, `default_rotation_style`, `default_max_songs_per_singer`, `deletion_requested_at`.
 - **sessions** — id is sha256 of the cookie token, `user_id`, `expires_at`.
 - **magic_tokens** — `user_id`, `token_hash` (unique), `expires_at`, `consumed_at`.
-- **catalogs** — `user_id`, `name` (unique per user), `variant_display`, `status`, `active_version`, `building_version`, `song_count`, `errors_json`, `last_csv_sha256`, `delete_requested_at`.
-- **catalog_versions** — `catalog_id`, `version`, `csv_key`, `db_key`, `db_bytes`, `song_count`, `status`, `created_at`. Lets cleanup find old Tigris objects, and gives admin a history.
+- **catalogs** — `user_id`, `name` (unique per user), `variant_display`, `status`, `active_version`, `building_version`, `song_count`, `errors_json`, `import_metadata_json` (source encoding, U+FFFD counts), `last_csv_sha256`, `delete_requested_at`.
+- **catalog_versions** — `catalog_id`, `version`, `csv_key`, `db_key`, `db_bytes`, `row_count`, `song_count`, `status`, `created_at`. Lets cleanup find old Tigris objects, and gives admin a history.
 - **shows** — `user_id`, `catalog_id` (nullable), `name`, `slug` (unique per user), `show_type`, `status`, `scheduled_at`, `started_at`, `ended_at`, `rotation_style`, `approval_required`, `manual_entry_enabled`, `max_songs_per_singer`. Partial unique index: one `active` show per user.
 - **audience_profiles** — `guest_token_hash` (unique, nullable), `user_id` (unique, nullable), `last_seen_at`.
 - **show_participants** — `show_id`, `audience_profile_id` (unique together), `display_name`.
@@ -165,9 +189,134 @@ Ported from `core/db/schema.rb`, simplified. Timestamps are UTC.
 - **saved_songs** — `audience_profile_id`, `fingerprint` (unique together), song fields, `source_catalog_id`, `request_count`, `last_requested_at`.
 - **feedback** — `user_id` (nullable), `category`, `message`, `page_url`, `status`, `admin_notes`.
 
+### Catalog CSV rules (ported from the Rails songs app)
+
+These rules took real work to settle and are ported as they behave in the Rails code (`songs/app/services/catalog_csv_encoding.rb`, `csv_validator.rb`, `catalog_db_builder.rb`, `catalog_search_service.rb`). Where the Rails docs (`docs/csv-upload.md`, `docs/song-search.md`) disagree with that code, the code wins; the differences are noted. Every rule here gets a test, and the Rails fixtures in `djm-mono/fixtures/csvs/` must give the same result in Go.
+
+**Upload**
+
+- One file per upload, multipart field `file`. No file: "No file provided".
+- Maximum 100 MB. Larger: 413 with "File too large. Maximum size is 100MB." Enforced while streaming (`http.MaxBytesReader`), not after.
+- Nothing about the contents is checked at upload time. Validation happens in the build.
+- Limit: 5 uploads per user per hour (documented in Rails, not enforced there).
+
+**Encoding**
+
+1. If the file starts with the UTF-8 BOM (`EF BB BF`), skip those 3 bytes. The BOM must never end up in the first header name.
+2. Scan the rest of the file in 64 KB chunks to check that it is valid UTF-8, carrying a partial multibyte sequence across chunk boundaries. Overlong forms, surrogate halves, and code points above U+10FFFF are invalid (Go's `utf8.Valid` rules match). Memory stays constant.
+3. Valid: read as UTF-8. The source encoding is recorded as `UTF-8` or `UTF-8-BOM`.
+4. Not valid: treat it as a Windows "ANSI" export and decode every byte as Windows-1252, which gets curly quotes, dashes, and the euro sign right. Ruby checked only the first 64 KB and fell back to ISO-8859-1 when that sample could not be decoded as Windows-1252; that only happens when the sample contains one of the five bytes Windows-1252 leaves undefined (`0x81`, `0x8D`, `0x8F`, `0x90`, `0x9D`). Port it the same way: if any of those bytes is in the first 64 KB, decode as ISO-8859-1 instead.
+5. If decoding still fails, the build fails with type `encoding_error`: "We couldn't read this CSV file. Please upload a UTF-8 CSV, or try exporting the song list again from the original source."
+6. The decoded stream is UTF-8 from here on. The source encoding is stored in `import_metadata_json`.
+
+**Parsing**
+
+- Lenient parsing, as Ruby's `liberal_parsing: true`: stray quotes inside unquoted fields are accepted (`LazyQuotes`), and rows may have more or fewer fields than the header (`FieldsPerRecord = -1`). A field missing from a short row reads as blank.
+- Row numbers in messages count CSV records, not physical lines: the header is row 1 and the first data row is row 2. A quoted field with a newline in it does not shift later row numbers.
+- A file that cannot be parsed fails with type `parse_error`: "Invalid CSV: {detail}". In Rails a parse error partway through the file surfaced as a generic job error; in Go it becomes a `parse_error` that includes the row number.
+
+**Headers**
+
+- The first record is the header. If there is no header, or no data row after it, or every header cell is empty, the file fails with one error, type `no_headers`: "CSV has no header row". (A header-only file gets this message in Rails too. Keep it, or change it to something like "CSV has no songs"; see open questions.)
+- Each header cell is trimmed and lowercased. Column order does not matter.
+- Recognized columns: `title`, `artist`, `version`, `album`, `id`. Any other column is ignored.
+- Header errors, all collected in one pass:
+  - `empty_header`, one per empty cell, with the 1-based column number: "Header cell {n} is empty". An empty cell anywhere is an error, including trailing empty cells from a spreadsheet export.
+  - `duplicate_header`, one per duplicated normalized name: "Duplicate header '{name}'". `Title` and ` title ` are duplicates.
+  - `missing_header`, for `title` and for `artist`: "Required header '{name}' is missing".
+- If any header error exists, stop. Rows are not checked.
+
+**Rows**
+
+- `title` and `artist` are trimmed and must not be empty. Each blank one is an error, type `blank_field`, with `row` and `column`: "Title is blank on row {n}" or "Artist is blank on row {n}". A row with both blank produces two errors.
+- `version`, `album`, and `id` are trimmed. Blank becomes NULL. They are always optional.
+- Stop collecting row errors after 20 (a row with two blanks can bring the total to 21, as in Rails).
+- Any row error fails the whole file. A catalog never goes live with some rows silently dropped.
+- Row limit: more than 1,000,000 data rows fails the file (type `too_many_rows`). Account limits are checked before the build starts: 100 catalogs per account (checked when creating a catalog), and 10,000,000 rows per account (the other catalogs' active row counts plus this file). Rails documented these limits but did not enforce them.
+
+**Corrupted characters (U+FFFD)**
+
+- While validating, count rows that contain U+FFFD, and the number of those characters (counting stops at 10,000). These usually mean the file was damaged before it reached us; they do not fail the build.
+- Store `has_replacement_characters`, `replacement_row_count`, and `replacement_character_count` in `import_metadata_json`.
+- When the build finishes with any such rows, the catalog page shows a warning in place of the plain "Catalog is ready!": "**Some song titles have funny or incorrect characters ({n} songs affected).** Everything will still work — this just affects how some titles appear. To fix it, try uploading a fresh copy of your original song list."
+
+**Error format**
+
+`errors_json` is a list of `{type, detail}` objects, with `row`, `column` where they apply, exactly as Rails stored them. The catalog page lists every `detail`. (The Rails `[object Object]` display bug is avoided by rendering server-side.)
+
+**Building the catalog database**
+
+The Rails docs show one `songs` row per CSV row with `version` and `external_id` columns. The code does something better, and that is what we port: rows with the same title and artist, ignoring case, become one song that carries every version and every ID.
+
+```sql
+CREATE TABLE songs (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  title TEXT NOT NULL,
+  artist TEXT NOT NULL,
+  album TEXT,
+  versions_json TEXT,      -- JSON array of distinct versions, or NULL
+  external_ids_json TEXT,  -- JSON array of distinct ids, or NULL
+  versions_text TEXT       -- distinct versions joined with spaces, for FTS
+);
+
+CREATE VIRTUAL TABLE songs_fts USING fts5(
+  title,
+  artist,
+  versions_text,
+  content=songs,
+  content_rowid=id,
+  tokenize="unicode61 remove_diacritics 2",
+  prefix='2 3'
+);
+```
+
+1. Stream every row into a scratch table `raw_songs(title, artist, album, version, external_id, lower_title, lower_artist)` inside one transaction with a prepared insert. `lower_*` are lowercased in Go (`strings.ToLower`, matching Ruby's Unicode `downcase`).
+2. Index `raw_songs(lower_title, lower_artist)`.
+3. Group into `songs` with one `INSERT … SELECT`, the same SQL as Rails:
+   - Group key: `lower_title`, `lower_artist`.
+   - `title`, `artist`, `album`: `MIN()` of each. That picks the first spelling in byte order (so `Queen` beats `queen`) and the first non-NULL album.
+   - `versions_json`: `json_group_array` over distinct non-NULL versions. `versions_text`: the same versions joined with spaces.
+   - `external_ids_json`: `json_group_array` over distinct non-NULL IDs.
+4. Drop `raw_songs`, then fill the FTS index with `INSERT INTO songs_fts(songs_fts) VALUES('rebuild')`.
+5. `song_count` is the number of grouped songs. `row_count` (data rows in the CSV) is stored separately and is what the row limits count.
+6. Build into `{path}.tmp` and rename when finished; delete the temp file on any failure.
+
+**Search**
+
+- Input: `q`, `limit` (default 25, clamped to 1–100), `offset` (default 0, at least 0), `sort` (`best_match` default, `title`, `artist`; anything else means `best_match`).
+- Turning `q` into an FTS5 query:
+  - Unicode NFC normalize (`golang.org/x/text/unicode/norm`), then split on whitespace.
+  - Split each piece into runs of characters that are legal in FTS5 barewords: ASCII letters, digits, `_`, and any code point above U+007F. Every other character ends a run, so `Mr.` gives `Mr` and `AC/DC` gives `AC` and `DC`.
+  - Drop `AND`, `OR`, `NOT`, `NEAR` (any case). Keep at most 20 tokens.
+  - Each token becomes a prefix term (`token*`), joined with spaces. Single characters too, so `Mr. B` finds "Mr. Brightside".
+  - No tokens left: no results, and no query is run.
+  - The MATCH string is always a bound parameter.
+- `total` is `SELECT COUNT(*) FROM songs_fts WHERE songs_fts MATCH ?`.
+- `bm25(songs_fts, 10.0, 5.0, 1.0)` (title, artist, versions) is computed as `rank`. Lower is better.
+- Ordering:
+  - `best_match`: an artist-match bucket first, using the raw query lowercased and trimmed with whitespace collapsed: exact artist match 0, artist starts with the query 1, artist contains the query 2, anything else 3. Then title (case-insensitive), artist (case-insensitive), `rank`, `id`. bm25 only breaks ties; the Rails docs describe ranking by bm25, the code does not. The bucket uses SQLite `LOWER()`, which only folds ASCII; ported as is.
+  - `title`: title, artist (both case-insensitive), `rank`, `id`.
+  - `artist`: artist, title (both case-insensitive), `rank`, `id`.
+  - `ORDER BY` clauses are fixed strings chosen by the sort mode, never built from input.
+- Each result: `id`, `title`, `artist`, `album`, `versions` (array), `external_ids` (array). No highlighting; the Rails docs mention `*_highlighted` fields the code never returned.
+- Searches slower than 500 ms are logged with sort mode, limit, offset, and result count, but not the query.
+
+**Versions and IDs on requests (`variant_display`)**
+
+- `none`: no version or ID column, nothing stored beyond title and artist.
+- `version`: a Version column appears in results only when at least one result has versions. A song with versions gets a picker, defaulting to the first; the choice is saved as `song_version` on the request.
+- `id`: the same, using `external_ids`, saved as `song_external_id`.
+- This applies on the DJ catalog page, the host add-song search, and the audience search.
+
+**Saved-song fingerprint**
+
+- Normalize a value by trimming, lowercasing, and collapsing whitespace runs to one space.
+- If the song has an external ID: `ext:{trimmed id}`.
+- Otherwise: `norm:{title}|{artist}|{version}`, with blank artist or version left empty.
+
 ### Catalog databases and the local cache
 
-Each catalog version is its own SQLite file with the same `songs` + `songs_fts` schema as today.
+Each catalog version is its own SQLite file with the schema above.
 
 **Tigris layout**
 
@@ -180,9 +329,9 @@ catalogs/{catalog_id}/v{version}.db    # built artifact
 
 1. Upload handler streams the multipart file straight to Tigris as `v{n}.csv` (with a size limit, 100 MB), computing sha256 as it goes. If the hash matches `last_csv_sha256`, discard and keep the current version.
 2. Insert `catalog_versions` row, set catalog `building_version = n`, `status = pending`, send the catalog id on the build channel.
-3. The builder downloads the CSV to a temp file, validates it in a streaming pass, builds `v{n}.db` in a temp path, runs `PRAGMA integrity_check` and a non-empty check, uploads it to Tigris, then moves it into the cache directory.
-4. In one transaction: `active_version = n`, `status = ready`, `song_count`. Searches switch on the next request. The old version stays until cleanup.
-5. On failure: `status = failed`, `errors_json` set, `active_version` unchanged, so search keeps working.
+3. The builder sets `status = processing`, downloads the CSV to a temp file, detects the encoding, validates it in one streaming pass, and builds `v{n}.db` in a temp path in a second pass (all per "Catalog CSV rules" below). It then checks the file (`PRAGMA integrity_check`, schema present, at least one song), uploads it to Tigris, and moves it into the cache directory.
+4. In one transaction: `active_version = n`, `status = ready`, `song_count`, `import_metadata_json`, `errors_json` cleared. Searches switch on the next request. The old version stays until cleanup.
+5. On failure: `status = failed`, `errors_json` set, `active_version` unchanged, so search keeps serving the previous version.
 6. On startup, any catalog left `pending` or `processing` is sent to the channel again.
 
 **Cache**
@@ -262,6 +411,65 @@ GET  /static/...
 
 All state changes are POST. GETs never write (except touching cache files and `last_seen_at`), which keeps the door open for read replicas or CDN caching later.
 
+### Look and feel
+
+**Pico, the track-anything way.** See `../track-anything/templates/layout.html` and `docs/development/DESIGN.md`.
+
+- One `layout.html`: `<header class="container"><nav>` with the brand mark on the left and account links on the right, then `<main class="container" id="content">` as the HTMX swap target. Variants for the audience page and the TV display are blocks in the same layout, not separate layouts.
+- Classless first. Use Pico's elements (`nav`, `article` for cards, `table`, `details`, `[role="group"]`, `[aria-busy]`, `button.outline.secondary`) before adding classes. `app.css` holds only what Pico does not cover: queue row controls, the now-playing panel, the search results list, the TV display's large type, the landing hero sections.
+- Pico's default primary blue stays the UI color. The Rails app never overrode `--pico-primary`; neither do we. The brand mark is the existing dark artwork.
+- A small inline `<style>` sets the `html` background before Pico loads (white, or `#13171f` for dark) so pages do not flash.
+- HTMX config meta tag as in track-anything, so 4xx validation messages swap in place.
+
+**Theme.** Port the Rails behavior: System / Light / Dark, chosen from a three-button control in the footer (so logged-out and audience visitors have it too) and on the Account page. The control is hidden until `app.js` runs, since it does nothing without JavaScript. The choice is saved in `localStorage` under `theme`. An inline script in `<head>` sets `data-theme` before the stylesheet paints; "System" removes the attribute and lets `prefers-color-scheme` decide. The TV display page is always `data-theme="dark"`. Turnstile renders with `theme: auto`. (track-anything has no switch; this is a DJM-specific addition carried over.)
+
+**Images carried over.** Copied from `djm-mono/core` into `static/` unchanged. The fingerprinted copies under `public/assets/` were Rails build output and were not copied.
+
+| File | Size | Used on |
+| --- | --- | --- |
+| `static/favicon.ico` | 16×16 (a PNG named `.ico`) | Every page |
+| `static/icon.png` | 32×32 | Every page (`<link rel="icon">`), web manifest |
+| `static/apple-touch-icon.png` | 180×180 | Every page |
+| `static/images/brand/dark_64.png` | 64×64 | Brand mark in the nav |
+| `static/images/brand/dark_192.png` | 192×192 | Not referenced in Rails views; use it as the 192 manifest icon |
+| `static/images/brand/open_graph_1200_630.png` | 1200×630, 1.1 MB | `og:image` and `twitter:image` on every public page |
+| `static/images/landing/queue/singer_view.png` | 1290×2796, 279 KB | Home landing, singer view screenshot |
+| `static/images/landing/queue/kj_display.png` | 1516×850, 128 KB | Home landing, KJ display screenshot |
+
+The paper landing page (`/landing/paper`, `bartop.png`, `paper_slip.png`) is no longer used and is not ported.
+
+Image fixes to make while porting:
+
+- **The manifest icons are wrong in Rails.** `manifest.json` lists `/icon.png` as 512×512 (and as the maskable icon), but the file is 32×32, so home-screen installs get a blurry icon. The manifest lists only `dark_192.png` as a 192×192 icon, with no maskable entry. Adding a 512 is a TODO under "Later". `theme_color` and `background_color` stay `#13171f`.
+- **Heavy images.** `open_graph_1200_630.png` (1.1 MB) is far larger than it needs to be. Losslessly compress it (e.g. `oxipng`), and resize the screenshots to roughly twice their displayed width. Keep PNG for the Open Graph image, since some link-preview crawlers don't handle WebP.
+- Every `<img>` gets `width`, `height`, and `alt` (the Rails alt text carries over), and below-the-fold images get `loading="lazy"`.
+- Images are embedded in the binary with the rest of `static/`. Static responses get a long `Cache-Control` with a content hash in the URL (`/static/{hash}/...` or `?v={hash}`), since Rails' fingerprinting goes away.
+
+**Icons.** Font Awesome icons map to Tabler like this. Copy in only these SVGs and add `aria-hidden="true"`, as track-anything does.
+
+| Font Awesome | Tabler | | Font Awesome | Tabler |
+| --- | --- | --- | --- | --- |
+| `lock` | `lock` | | `rotate` | `refresh` |
+| `user` | `user` | | `person-walking-arrow-right` | `walk` |
+| `music` | `music` | | `paper-plane` | `send` |
+| `flask` | `flask` | | `moon` | `moon` |
+| `envelope` | `mail` | | `sun` | `sun` |
+| `share-nodes` | `share` | | `mobile-screen-button` | `device-mobile` |
+| `print` | `printer` | | `magnifying-glass` | `search` |
+| `microphone` | `microphone` | | `list-check` | `list-check` |
+| `link` | `link` | | `lightbulb` | `bulb` |
+| `guitar` | `guitar-pick` | | `keyboard` | `keyboard` |
+| `copy` | `copy` | | `folder-open` | `folder-open` |
+| `circle-half-stroke` | `circle-half-2` | | `file-arrow-up` | `file-upload` |
+| `bell` | `bell` | | `face-smile` | `mood-smile` |
+| `wand-magic-sparkles` | `wand` | | `clock-rotate-left` | `history` |
+| `sparkles` | `sparkles` | | `circle-check` | `circle-check` |
+| `user-group` | `users-group` | | `check` | `check` |
+| `tv` | `device-tv` | | `calendar` | `calendar` |
+| `trash-can` | `trash` | | `bolt` | `bolt` |
+| `shuffle` | `arrows-shuffle` | | `circle` (regular) | `circle` |
+| `brands/reddit` | `brand-reddit` | | | |
+
 ### Security
 
 Same rules as track-anything: hashed session and magic tokens, `HttpOnly; Secure; SameSite=Lax` cookies, `http.CrossOriginProtection` on non-GET requests, `safeNext` redirects, security headers, trusted client IP header only when set explicitly. Never show an email on an audience-facing page. The guest cookie holds a random token; the database stores its hash.
@@ -278,22 +486,55 @@ Same rules as track-anything: hashed session and magic tokens, `HttpOnly; Secure
 | `BLOB_BACKEND` | `local` (dev/tests) or `s3` |
 | `BLOB_DIR` | Directory for the local backend |
 | `S3_ENDPOINT`, `S3_BUCKET`, `S3_REGION`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` | Tigris |
-| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM` | Email |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM` | Email (SES SMTP credentials in production) |
 | `TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET_KEY` | Bot protection |
-| `TRUSTED_IP_HEADER` | `CF-Connecting-IP`, `Fly-Client-IP`, `X-Forwarded-For`, or empty |
+| `TRUSTED_IP_HEADER` | `Fly-Client-IP` in production; empty in dev. `CF-Connecting-IP` and `X-Forwarded-For` accepted for later setups |
 
 ---
 
 ## Deployment
 
-### Now: one machine with Dokku
+### Now: homelab Dokku behind Fly.io ingress
 
+The same setup as track-anything (see its ARCHITECTURE.md, "Deployment"). Fly.io provides the public IP and TLS and forwards requests to the homelab box over WireGuard. The router has no open ports. The app knows nothing about this.
+
+```
+Browser ──HTTPS──▶ Fly Proxy (sets Fly-Client-IP)
+                     ▶ Fly nginx (overwrites Fly-Client-IP)
+                       ──plain HTTP over WireGuard──▶ box:80 (Dokku nginx, routes by Host)
+                                                        ▶ djm container (Go, plain HTTP on $PORT)
+```
+
+- No TLS in the Go server. `Secure` cookies still work because the browser sees HTTPS.
+- `TRUSTED_IP_HEADER=Fly-Client-IP` for rate limits and Turnstile `remoteip`.
+- The Host header must survive the chain, for Dokku routing and the CSRF origin check.
+- Upload size: Fly nginx and Dokku nginx both need `client_max_body_size` of at least 100 MB (`dokku nginx:set djm client-max-body-size 101m`), and timeouts long enough for a 100 MB upload over a slow connection.
 - Multi-stage Dockerfile: build the Go binary with `CGO_ENABLED=0`, copy it and the `litestream` binary into a small base image.
 - Entrypoint: `litestream restore -if-db-not-exists -if-replica-exists $DB_PATH`, then `litestream replicate -exec /djm`. Litestream runs the app as a child process and replicates while it runs.
 - `dokku storage:mount` a host directory at `/data` for `djm.db` and the catalog cache.
 - Health check via `app.json` on `/healthz`.
 - `git push dokku main` to deploy. Expect a few seconds of downtime per deploy (single instance, SQLite); acceptable for now. Avoid deploying during shows.
-- Cloudflare in front for TLS and, later, caching of versioned search URLs.
+- Email through Amazon SES SMTP (the existing `djmagic.io` SES setup, SPF and DKIM, carries over).
+- Tigris access is outbound HTTPS from the box. The catalog cache keeps that traffic low after the first search of each catalog.
+
+### First-time setup on the box
+
+```sh
+dokku apps:create djm
+dokku domains:set djm next.djmagic.io
+sudo mkdir -p /var/lib/dokku/data/storage/djm
+sudo chown 65532:65532 /var/lib/dokku/data/storage/djm   # the container runs as uid 65532
+dokku storage:mount djm /var/lib/dokku/data/storage/djm:/data
+dokku nginx:set djm client-max-body-size 101m
+dokku config:set djm BASE_URL=https://next.djmagic.io TRUSTED_IP_HEADER=Fly-Client-IP \
+  S3_BUCKET=<bucket> AWS_ACCESS_KEY_ID=<key> AWS_SECRET_ACCESS_KEY=<secret>
+git remote add dokku dokku@<box>:djm
+git push dokku main
+```
+
+On the Fly ingress app, route `next.djmagic.io` over WireGuard to the box, the same way track-anything's hostname is routed, and add the certificate (`fly certs add next.djmagic.io`).
+
+Restore test: `dokku ps:stop djm`, move the database files out of the storage directory, `dokku ps:start djm`, and confirm the entrypoint restored the database from Tigris.
 
 ### Backups
 
@@ -303,7 +544,7 @@ Same rules as track-anything: hashed session and magic tokens, `HttpOnly; Secure
 
 ### Later: Fly.io
 
-Same image. One machine, one volume for `djm.db` and the catalog cache, Litestream to the same Tigris bucket. The cache budget is set below the volume size, so the volume never needs to grow with the number of catalogs. Moving is: stop Dokku app, let Litestream finish, start on Fly (restore runs on boot), switch DNS.
+Same image. One machine, one volume for `djm.db` and the catalog cache, Litestream to the same Tigris bucket. The cache budget is set below the volume size, so the volume never needs to grow with the number of catalogs. Moving is: stop the Dokku app, let Litestream finish, start on Fly (restore runs on boot), point the Fly ingress at the new app instead of WireGuard. `TRUSTED_IP_HEADER` stays `Fly-Client-IP`.
 
 ---
 
@@ -311,8 +552,11 @@ Same image. One machine, one volume for `djm.db` and the catalog cache, Litestre
 
 Standard library `testing` and `httptest`, as in track-anything. Each test gets a temp app DB and a local-directory blob store.
 
-- **Pure logic:** CSV header and row validation against every fixture in `testdata/csvs/`; search query sanitizing (`Mr.`, `AC/DC`, reserved words, empty input, 20-token cap); rotation insert positions; position renumbering; wait estimate; fingerprint normalization.
-- **Catalog pipeline:** upload → build → search returns ranked, highlighted results; failed rebuild keeps the old version searchable; identical upload is skipped; cache miss downloads from the blob store; eviction respects the budget and never evicts an active show's catalog; restart re-queues a pending build.
+- **CSV rules:** every fixture in `testdata/csvs/` gives the same pass/fail and the same error list as Rails. Plus: UTF-8 with and without BOM (no BOM in the first header); Windows-1252 curly quotes and euro sign; a file with an undefined Windows-1252 byte decodes as ISO-8859-1; a multibyte character split across a 64 KB chunk boundary is still valid UTF-8; trailing empty header cells; `Title` vs ` title ` duplicates; a header-only file; ragged rows; stray quotes; a quoted newline does not shift row numbers; the 20-row-error cap; the 1M row limit; U+FFFD row and character counts and the 10,000 cap.
+- **Build:** rows that differ only in title or artist case become one song; `MIN()` picks the spelling and album; versions and IDs are distinct and complete; `versions_text` is searchable; `song_count` vs `row_count`; a failed build leaves no temp file.
+- **Search:** token sanitizing (`Mr.`, `Mr. B`, `AC/DC`, reserved words, non-ASCII, empty input, 20-token cap); diacritics (`Beyonce` finds `Beyoncé`); each sort mode's order including the artist buckets; `limit` and `offset` clamping; an unknown sort falls back to `best_match`.
+- **Other logic:** rotation insert positions; position renumbering; wait estimate; fingerprint normalization.
+- **Catalog pipeline:** upload → build → search; a rebuild in progress and a failed rebuild both keep the old version searchable; over-100 MB upload is rejected while streaming; upload and account limits; identical upload is skipped; cache miss downloads from the blob store; eviction respects the budget and never evicts an active show's catalog; restart re-queues a pending build.
 - **Handlers:** happy path and failures for every route; CSRF; logged-out redirect; a DJ cannot see or change another DJ's catalog, show, or request (404).
 - **Flows:** sign in by magic link; create catalog and upload; create and start a show; audience requests as a guest, sees position, signs in, and keeps their history; host approves, starts, completes; My Performances lists it; Sing Again requests it in the next show.
 
@@ -324,8 +568,11 @@ Each phase ends deployed and usable.
 
 ### Phase 0 — Skeleton and deploy
 
-- `main.go`, config, `.env`, middleware, render, layout with Pico and HTMX, `/healthz`.
-- App DB with migration runner.
+**Status:** code done and tested locally (server, layout, landing page, theme switch, static caching, health check, Dockerfile, Litestream config). Not yet done: building the Docker image, the Dokku and Fly setup above, and the restore test.
+
+- `main.go`, config, `.env`, middleware, render, `/healthz`.
+- Layout with Pico 2.1.1 and HTMX, the theme switch, brand mark, favicons, manifest (with the fixed icon sizes), Open Graph tags, Tabler icons, cache-busted static URLs.
+- App DB with GORM, pragmas, and `AutoMigrate`.
 - Dockerfile with Litestream, Dokku app, storage mount, Tigris bucket.
 - **Done when:** a push deploys, `/healthz` is green, and a Litestream restore onto a fresh container brings the DB back.
 
@@ -336,8 +583,8 @@ Each phase ends deployed and usable.
 
 ### Phase 2 — Catalogs and search
 
-- Blob store (local and Tigris), upload, build goroutine, versions, status page with errors, cache with eviction, search with highlights, delete, CSV format doc page.
-- **Done when:** a 1M-row CSV builds without memory growth, search answers in well under 100 ms on a warm cache, and deleting the local cache directory only costs one download on the next search.
+- Blob store (local and Tigris), upload, encoding detection, validation, build goroutine, versions, status page with errors and the U+FFFD warning, limits, cache with eviction, search with sort modes and variant pickers, delete, CSV format doc page (ported from the Rails docs page).
+- **Done when:** every Rails fixture gives the same result, a 1M-row CSV builds without memory growth, search answers in well under 100 ms on a warm cache, and deleting the local cache directory only costs one download on the next search.
 
 ### Phase 3 — Shows and the host queue
 
@@ -365,16 +612,24 @@ Each phase ends deployed and usable.
 - White-label show pages (DJ logo).
 - CompuHost and other karaoke software integration research.
 - Support email and About page; public "what's live" list.
+- **TODO:** export a 512×512 brand icon (plus a maskable version with safe-zone padding) from the original artwork and add both to the manifest alongside the 192.
 - Billing.
 
 ---
 
+## Decisions
+
+| Topic | Decision |
+| --- | --- |
+| Existing data | None to migrate. The Go app starts with an empty database. |
+| Data access | GORM, with raw SQL where needed. Catalog databases use `database/sql`. |
+| Hosting | Homelab Dokku behind Fly.io ingress over WireGuard, as track-anything. `TRUSTED_IP_HEADER=Fly-Client-IP`. |
+| Email | Amazon SES over SMTP. |
+| Limits | 100 MB per upload, 1M rows per catalog, 100 catalogs per account, 10M rows per account, 5 uploads per user per hour. Enforced. |
+| CSV and search rules | Ported from the Rails code as described in "Catalog CSV rules". |
+| Backups | Litestream to Tigris, not LiteFS. |
+| Domain | The Go app deploys to a subdomain (e.g. `next.djmagic.io`) while the Rails apps keep `djmagic.io`. Cut over at the end of phase 5. |
+
 ## Open questions
 
-1. **Backups:** OK to use Litestream rather than LiteFS? (LiteFS has no built-in S3 backup since LiteFS Cloud was retired.)
-2. **Data migration:** is there production data in the Rails apps (users, catalogs, shows, history) that must move over, or do we start fresh? If it moves, we write a one-off importer that reads the Rails SQLite files and re-uploads catalog CSVs.
-3. **ORM:** plain `database/sql` (suggested) or GORM to match track-anything?
-4. **Where does Dokku run:** homelab behind Fly ingress like track-anything, or a VPS? Affects `TRUSTED_IP_HEADER` and whether Cloudflare proxies from day one.
-5. **Email relay:** keep SES?
-6. **Domain:** keep `djmagic.io` and cut over from the Rails apps at the end of phase 5?
-7. **Catalog limits:** keep 1M rows per catalog, 100 catalogs per account, 10M rows per account, 5 uploads per hour?
+1. **Header-only CSV message:** keep Rails' "CSV has no header row" for a file with a header and no songs, or say "CSV has no songs"?

@@ -1,0 +1,10 @@
+{{define "title"}}{{.Data.Title}} · DJMagic.io{{end}}
+{{define "content"}}
+{{with .Data}}
+<article class="narrow">
+  <h1>{{.Title}}</h1>
+  <p>{{.Text}}</p>
+  <p><a href="/">Back to DJMagic.io</a></p>
+</article>
+{{end}}
+{{end}}

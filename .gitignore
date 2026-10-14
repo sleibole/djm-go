@@ -1,0 +1,21 @@
+# Local builds. `make build` writes bin/djm; a bare `go build` writes ./djm;
+# Air writes tmp/main.
+/bin/
+/tmp/
+/djm
+
+# App database and catalog cache. Defaults are data/djm.db and data/catalogs/*.db.
+/data/
+*.db
+*.db-shm
+*.db-wal
+*.db-journal
+
+# Secrets. .env.example stays tracked.
+.env
+
+# Go test binaries and coverage profiles.
+*.test
+*.out
+
+.DS_Store

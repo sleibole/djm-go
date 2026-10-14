@@ -1,0 +1,15 @@
+{
+  "healthchecks": {
+    "web": [
+      {
+        "type": "startup",
+        "name": "DJMagic health check",
+        "path": "/healthz",
+        "port": 8080,
+        "attempts": 3,
+        "timeout": 5,
+        "wait": 2
+      }
+    ]
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "name": "DJMagic.io",
+  "short_name": "DJMagic",
+  "description": "DJMagic.io — request songs and run your show.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "theme_color": "#13171f",
+  "background_color": "#13171f",
+  "icons": [
+    {
+      "src": "/static/images/brand/dark_192.png",
+      "type": "image/png",
+      "sizes": "192x192"
+    }
+  ]
+}

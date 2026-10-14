@@ -1,0 +1,64 @@
+{{define "layout"}}<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{block "title" .}}DJMagic.io{{end}}</title>
+  <meta name="theme-color" content="#13171f">
+  <meta name="application-name" content="DJMagic.io">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="DJMagic.io">
+  {{template "open_graph" .}}
+  <link rel="manifest" href="{{asset "manifest.webmanifest"}}">
+  <link rel="icon" href="{{asset "favicon.ico"}}" sizes="16x16">
+  <link rel="icon" href="{{asset "icon.png"}}" type="image/png" sizes="32x32">
+  <link rel="apple-touch-icon" href="{{asset "apple-touch-icon.png"}}" sizes="180x180">
+  <script>
+    try {
+      var t = localStorage.getItem("theme");
+      if (t === "light" || t === "dark") document.documentElement.setAttribute("data-theme", t);
+    } catch (e) {}
+  </script>
+  <style>
+    html { background-color: #fff; }
+    @media (prefers-color-scheme: dark) { html { background-color: #13171f; } }
+    html[data-theme="light"] { background-color: #fff; }
+    html[data-theme="dark"] { background-color: #13171f; }
+  </style>
+  <link rel="stylesheet" href="{{asset "pico.min.css"}}">
+  <link rel="stylesheet" href="{{asset "app.css"}}">
+  <meta name="htmx-config" content='{"responseHandling":[{"code":"204","swap":false},{"code":"[234]..","swap":true},{"code":"...","swap":false,"error":true}]}'>
+  <script src="{{asset "htmx.min.js"}}" defer></script>
+  <script src="{{asset "app.js"}}" defer></script>
+</head>
+<body>
+  <header class="container">
+    <nav>
+      <ul>
+        <li>
+          <a href="/" class="brand">
+            <img src="{{asset "images/brand/dark_64.png"}}" alt="" width="32" height="32">
+            <strong>DJMagic.io</strong>
+          </a>
+        </li>
+      </ul>
+      <ul>
+        <li><a href="/signin">Sign in</a></li>
+        <li><a href="/signin" role="button">Get started</a></li>
+      </ul>
+    </nav>
+  </header>
+  <main class="container" id="content" hx-target="#content" hx-swap="innerHTML show:none">
+    {{template "content" .}}
+  </main>
+  <footer class="container site-footer">
+    <small>
+      DJMagic.io ·
+      <a href="https://www.reddit.com/r/djmagicio/" target="_blank" rel="noopener noreferrer">{{icon "brand-reddit"}} r/djmagicio</a>
+    </small>
+    {{template "theme_switch" .}}
+  </footer>
+</body>
+</html>
+{{end}}

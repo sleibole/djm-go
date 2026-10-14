@@ -1,0 +1,6 @@
+# Continuous backup of the app database to Tigris.
+# Credentials come from AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY.
+dbs:
+  - path: ${DB_PATH}
+    replica:
+      url: s3://${S3_BUCKET}/litestream/djm.db?endpoint=fly.storage.tigris.dev&region=auto

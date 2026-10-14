@@ -1,0 +1,9 @@
+.git
+bin
+tmp
+data
+*.db
+*.db-shm
+*.db-wal
+.env
+PLAN.md
