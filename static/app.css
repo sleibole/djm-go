@@ -13,6 +13,13 @@
   text-decoration: none;
 }
 
+.brand-icon {
+  display: block;
+  height: 2rem;
+  width: auto;
+  border-radius: 8px;
+}
+
 .narrow {
   max-width: 42rem;
 }
@@ -47,6 +54,193 @@ main > section {
   width: 100%;
   height: auto;
   border-radius: var(--pico-border-radius);
+}
+
+nav form.inline {
+  margin: 0;
+}
+
+nav form.inline button {
+  margin: 0;
+  padding: 0.4rem 0.6rem;
+}
+
+.error {
+  color: var(--pico-del-color);
+}
+
+.saved {
+  color: var(--pico-ins-color);
+}
+
+/* Sign in: one card centered under the header. */
+
+main:has(.auth-card) {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-top: 3rem;
+}
+
+.auth-card {
+  width: min(100%, 30rem);
+  margin-bottom: 2rem;
+}
+
+.auth-card h1,
+.form-stack > hgroup h1 {
+  margin-bottom: 1.15rem;
+  font-size: 1.75rem;
+  line-height: 1.2;
+}
+
+.auth-form {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  margin-bottom: 0;
+}
+
+.auth-form label,
+.auth-form button,
+.auth-form select {
+  margin-bottom: 0;
+}
+
+.auth-form button,
+.auth-card [role="button"] {
+  width: 100%;
+}
+
+.auth-card [role="button"] {
+  display: block;
+  text-align: center;
+}
+
+.role-choice {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin: 0;
+}
+
+.role-choice legend {
+  margin-bottom: 0.5rem;
+}
+
+.role-choice small {
+  color: var(--pico-muted-color);
+}
+
+.cf-turnstile {
+  align-self: flex-start;
+}
+
+/* The password field and its button show only when the toggle is checked. */
+.auth-password,
+.auth-password-submit,
+.auth-form:has(.auth-password-toggle:checked) .auth-link-submit,
+.when-open,
+.auth-form:has(.auth-password-toggle:checked) .when-closed {
+  display: none;
+}
+
+.auth-form:has(.auth-password-toggle:checked) .auth-password,
+.auth-form:has(.auth-password-toggle:checked) .auth-password-submit {
+  display: block;
+}
+
+.auth-form:has(.auth-password-toggle:checked) .when-open {
+  display: inline;
+}
+
+.auth-card input.auth-password-toggle {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  appearance: none;
+}
+
+.auth-switch {
+  text-align: center;
+}
+
+.auth-switch label {
+  display: inline-block;
+  color: var(--pico-muted-color);
+  font-size: 0.875rem;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+}
+
+.auth-card input.auth-password-toggle:focus-visible + label {
+  outline: 2px solid var(--pico-primary);
+  outline-offset: 2px;
+}
+
+.auth-foot {
+  margin: 1.15rem 0 0;
+  text-align: center;
+  color: var(--pico-muted-color);
+  font-size: 0.875rem;
+}
+
+.auth-note {
+  color: var(--pico-muted-color);
+  font-size: 0.875rem;
+}
+
+/* Settings pages: a narrow column of cards. */
+
+.form-stack {
+  width: min(100%, 36rem);
+  margin-inline: auto;
+  padding-top: 2rem;
+}
+
+.form-card h2 {
+  margin-bottom: 0.85rem;
+  font-size: 1.25rem;
+}
+
+.form-card form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  margin-bottom: 0;
+}
+
+.form-card form + form {
+  margin-top: 0.85rem;
+}
+
+.form-card label,
+.form-card button,
+.form-card input,
+.form-card select {
+  margin-bottom: 0;
+}
+
+.form-card small {
+  display: block;
+  margin-top: 0.35rem;
+  color: var(--pico-muted-color);
+}
+
+.form-card details {
+  margin-bottom: 0;
+}
+
+@media (max-width: 576px) {
+  main:has(.auth-card),
+  .form-stack {
+    padding-top: 1.25rem;
+  }
 }
 
 /* Footer and theme switch */

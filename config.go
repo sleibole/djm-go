@@ -9,12 +9,19 @@ import (
 )
 
 type config struct {
-	Addr            string
-	DBPath          string
-	Env             string // "dev" or "prod"
-	BaseURL         string // public origin for emailed links, QR codes, and Open Graph URLs
-	TrustedIPHeader string // empty uses RemoteAddr; otherwise only this header, set by the trusted proxy
-	baseURLSet      bool   // true when BASE_URL was set in the environment
+	Addr               string
+	DBPath             string
+	Env                string // "dev" or "prod"
+	BaseURL            string // public origin for emailed links, QR codes, and Open Graph URLs
+	SMTPHost           string // empty = log emails to the console instead of sending
+	SMTPPort           string
+	SMTPUser           string
+	SMTPPass           string
+	MailFrom           string
+	TrustedIPHeader    string // empty uses RemoteAddr; otherwise only this header, set by the trusted proxy
+	TurnstileSiteKey   string // public widget key; production requires TURNSTILE_SITE_KEY
+	TurnstileSecretKey string // Siteverify secret; never log this
+	baseURLSet         bool   // true when BASE_URL was set in the environment
 }
 
 func loadConfig() config {
@@ -24,17 +31,37 @@ func loadConfig() config {
 		base = strings.TrimSuffix(rawBase, "/")
 	}
 	cfg := config{
-		Addr:            getenv("ADDR", ":8080"),
-		DBPath:          getenv("DB_PATH", "data/djm.db"),
-		Env:             getenv("ENV", "dev"),
-		BaseURL:         base,
-		baseURLSet:      rawBase != "",
-		TrustedIPHeader: strings.TrimSpace(os.Getenv("TRUSTED_IP_HEADER")),
+		Addr:               getenv("ADDR", ":8080"),
+		DBPath:             getenv("DB_PATH", "data/djm.db"),
+		Env:                getenv("ENV", "dev"),
+		BaseURL:            base,
+		baseURLSet:         rawBase != "",
+		SMTPHost:           os.Getenv("SMTP_HOST"),
+		SMTPPort:           getenv("SMTP_PORT", "587"),
+		SMTPUser:           os.Getenv("SMTP_USER"),
+		SMTPPass:           os.Getenv("SMTP_PASS"),
+		MailFrom:           getenv("MAIL_FROM", "DJMagic <noreply@djmagic.io>"),
+		TrustedIPHeader:    strings.TrimSpace(os.Getenv("TRUSTED_IP_HEADER")),
+		TurnstileSiteKey:   strings.TrimSpace(os.Getenv("TURNSTILE_SITE_KEY")),
+		TurnstileSecretKey: strings.TrimSpace(os.Getenv("TURNSTILE_SECRET_KEY")),
 	}
 	if port := os.Getenv("PORT"); port != "" && os.Getenv("ADDR") == "" {
 		cfg.Addr = ":" + port
 	}
+	cfg.applyTurnstileDevDefaults()
 	return cfg
+}
+
+// applyTurnstileDevDefaults fills Cloudflare's always-pass test keys when
+// development leaves both variables unset. Production never receives them.
+func (c *config) applyTurnstileDevDefaults() {
+	if c.Env == "prod" {
+		return
+	}
+	if c.TurnstileSiteKey == "" && c.TurnstileSecretKey == "" {
+		c.TurnstileSiteKey = turnstileTestSiteKey
+		c.TurnstileSecretKey = turnstileTestSecretKey
+	}
 }
 
 func (c config) validate() error {
@@ -48,6 +75,9 @@ func (c config) validate() error {
 	default:
 		return fmt.Errorf("TRUSTED_IP_HEADER must be empty, CF-Connecting-IP, Fly-Client-IP, or X-Forwarded-For, got %q", c.TrustedIPHeader)
 	}
+	if (c.TurnstileSiteKey == "") != (c.TurnstileSecretKey == "") {
+		return errors.New("TURNSTILE_SITE_KEY and TURNSTILE_SECRET_KEY must both be set or both be empty")
+	}
 	if c.Env != "prod" {
 		return nil
 	}
@@ -57,6 +87,9 @@ func (c config) validate() error {
 	u, err := url.Parse(c.BaseURL)
 	if err != nil || u.Scheme != "https" || u.Host == "" || u.User != nil {
 		return fmt.Errorf("production BASE_URL must be an https URL, got %q", c.BaseURL)
+	}
+	if c.TurnstileSiteKey == "" {
+		return errors.New("production requires TURNSTILE_SITE_KEY and TURNSTILE_SECRET_KEY")
 	}
 	return nil
 }

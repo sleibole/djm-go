@@ -83,7 +83,7 @@ These are changes beyond a straight port. Each one is a suggestion to accept or 
 8. **Wait estimate from real data.** Estimated wait = position × median of `completed_at - started_at` for this show, falling back to 4 minutes until there are a few completed songs.
 9. **"You're up next!" copy.** Position 1 says "You're up next!", now playing says "You're up!", others say "You are #N of M". This was an open TODO.
 10. **One active show per DJ.** Enforce with a partial unique index (`user_id` where `status = 'active'`). Also an open TODO.
-11. **Audience vs DJ accounts.** Everyone starts as `audience`. "Start hosting" upgrades to `dj` and asks for a handle. Audience pages pre-select the audience path. Keeps one login flow while giving audience members the lighter experience the TODO asked for.
+11. **Audience vs DJ accounts.** Signup keeps the Rails role choice, but with no default: two radio buttons, neither selected, and the server rejects a signup without one (in the Rails beta most audience members left the preselected "DJ/KJ" alone). Links from audience pages can pre-select with `/signup?role=audience`. An account created from the sign-in page, with no choice made, is `audience`. Audience accounts get a "Start hosting" button on Account that upgrades to `dj`. New DJs get a generated `dj-xxxxxx` handle, as Rails' `ensure_slug!` did, which they can change.
 12. **Stale guest cleanup.** The in-process cleanup goroutine (same one that deletes expired sessions and tokens) deletes guest profiles with no account and no activity in 14 days, and their saved songs. Completed requests keep their display name for the DJ's history.
 
 ---
@@ -104,7 +104,7 @@ These are changes beyond a straight port. Each one is a suggestion to accept or 
 | App database | SQLite, WAL, one file | `DB_PATH`, default `data/djm.db` |
 | SQLite driver | `github.com/glebarez/sqlite` (pure Go, built on `modernc.org/sqlite`, includes FTS5) | No CGO. Same as track-anything |
 | Data access | GORM for the app database; raw SQL through GORM (`db.Raw`, `db.Exec`) where GORM gets in the way | Raw SQL for: partial unique indexes, queue renumbering, and everything in catalog databases (FTS5, bm25, aggregation) |
-| Schema | `AutoMigrate` on startup, followed by a short list of raw `CREATE INDEX IF NOT EXISTS` statements for partial unique indexes | As in track-anything. No migration tool |
+| Schema | Numbered SQL files in `migrations/` (`001_accounts.sql`, ...), embedded, run on startup by a small runner in `migrate.go`. SQLite's `PRAGMA user_version` records the last one applied | Hand-rolled instead of Goose or `AutoMigrate` (see Decisions). GORM only maps rows; it never changes the schema |
 | Catalog databases | Opened with plain `database/sql` and the same driver, not GORM | They are built once and read-only after that; FTS5 queries are raw SQL anyway |
 | CSV parsing | `encoding/csv` with `LazyQuotes` and `FieldsPerRecord = -1` | Matches Ruby's `liberal_parsing: true` and ragged rows |
 | Legacy encodings | `golang.org/x/text/encoding/charmap` (Windows-1252, ISO-8859-1) | |
@@ -128,7 +128,9 @@ djm/
 ├── main.go              # config, open DB, migrate, build mux, start server, start goroutines
 ├── config.go            # env parsing and validation (prod requires BASE_URL, Turnstile keys, Tigris creds)
 ├── env.go               # load optional .env
-├── db.go                # open app DB (GORM), pragmas, AutoMigrate, raw partial indexes
+├── db.go                # open app DB (GORM), pragmas, run migrations
+├── migrate.go           # migration runner (user_version, one transaction per file)
+├── migrations/          # 001_accounts.sql, ... never edited after they ship
 ├── models.go            # GORM structs
 ├── auth.go              # email form, magic links, password, lockout, sessions
 ├── turnstile.go
@@ -144,7 +146,7 @@ djm/
 ├── search.go            # token sanitizing, sort modes, artist buckets, paging
 ├── fingerprint.go       # saved-song fingerprint
 ├── queue.go             # request lifecycle, rotation insert functions, positions
-├── handlers_account.go
+├── account.go           # Account page: password, profile, defaults, start hosting, delete
 ├── handlers_catalogs.go
 ├── handlers_shows.go    # host show page and queue actions
 ├── handlers_audience.go # /dj/{handle}, show page, request, queue, display
@@ -177,7 +179,7 @@ djm/
 
 Ported from `core/db/schema.rb`, simplified. Timestamps are UTC.
 
-- **users** — `email` (unique, lowercased), `role` (`audience`/`dj`/`admin`), `slug` (unique, nullable until hosting), `display_name`, `password_hash`, `email_confirmed_at`, `failed_login_attempts`, `locked_at`, `default_show_type`, `default_rotation_style`, `default_max_songs_per_singer`, `deletion_requested_at`.
+- **users** — `email` (unique, lowercased), `role` (`audience`/`dj`/`admin`), `slug` (unique, nullable until hosting), `display_name`, `password_hash`, `email_confirmed_at`, `failed_login_attempts`, `locked_at`, `default_show_type`, `default_rotation_style`, `default_max_songs_per_singer`. Deleting an account removes it right away, so there is no `deletion_requested_at`.
 - **sessions** — id is sha256 of the cookie token, `user_id`, `expires_at`.
 - **magic_tokens** — `user_id`, `token_hash` (unique), `expires_at`, `consumed_at`.
 - **catalogs** — `user_id`, `name` (unique per user), `variant_display`, `status`, `active_version`, `building_version`, `song_count`, `errors_json`, `import_metadata_json` (source encoding, U+FFFD counts), `last_csv_sha256`, `delete_requested_at`.
@@ -367,10 +369,14 @@ Later: a per-show in-memory broadcaster. Any queue change publishes the show id;
 
 ```
 GET  /                              landing (logged out) or dashboard
-GET  /signin, POST /signin          email form (magic link) and password login
+GET  /signin, GET /signup          email form; signup adds the role choice
+POST /signin/link                   email a magic link (creates the account if new)
+POST /signin                        password login
 GET  /auth/{token}, POST /auth/{token}   confirm page, then redeem
 POST /logout
-GET  /account, POST /account/...    password set/remove, handle, display name, defaults, delete
+GET  /account
+POST /account/password, /account/password/delete, /account/profile,
+     /account/defaults, /account/host, /account/delete
 
 GET  /catalogs                      list with status
 POST /catalogs                      create
@@ -564,22 +570,34 @@ Standard library `testing` and `httptest`, as in track-anything. Each test gets 
 
 ## Phases
 
-Each phase ends deployed and usable.
+Phases 0–5 build the whole app and run it locally (`bin/dev`). Deployment waits until phase 6. Each phase ends usable locally, with tests passing.
 
-### Phase 0 — Skeleton and deploy
+### Phase 0 — Skeleton
 
-**Status:** code done and tested locally (server, layout, landing page, theme switch, static caching, health check, Dockerfile, Litestream config). Not yet done: building the Docker image, the Dokku and Fly setup above, and the restore test.
+**Status:** done.
 
 - `main.go`, config, `.env`, middleware, render, `/healthz`.
 - Layout with Pico 2.1.1 and HTMX, the theme switch, brand mark, favicons, manifest (with the fixed icon sizes), Open Graph tags, Tabler icons, cache-busted static URLs.
-- App DB with GORM, pragmas, and `AutoMigrate`.
-- Dockerfile with Litestream, Dokku app, storage mount, Tigris bucket.
-- **Done when:** a push deploys, `/healthz` is green, and a Litestream restore onto a fresh container brings the DB back.
+- App DB with GORM and pragmas. (Started on `AutoMigrate`; replaced by SQL migrations during phase 1.)
+- `bin/dev` (Air autoreload).
+- The Dockerfile, `entrypoint.sh`, `litestream.yml`, and `app.json` are written but untested; they are finished in phase 6.
 
 ### Phase 1 — Accounts
 
+**Status:** done.
+
 - Email form, magic link, sessions, optional password, lockout, rate limits, Turnstile, Account page, handle and display name, DJ defaults.
 - **Done when:** a new user can sign in by email, set a password, and log in with it; ten bad passwords lock password login and a magic link unlocks it.
+
+How it works (`auth.go`, `account.go`, `cleanup.go`; mail, Turnstile, and rate limiting are track-anything's code):
+
+- **One email form.** Sign in and sign up both post to `/signin/link`. An existing account gets a sign-in link; a new email gets an account and a welcome link. The page says "check your email" either way, so the form doesn't reveal who has an account. (Rails told unknown emails "we couldn't find an account" on the sign-in page; that goes away because the same link now creates the account.)
+- **Magic links** as in Rails: 10 minutes, single use, a new link replaces the old one, email copy ported. Opening the link shows a confirm page that posts itself, so mail scanners can't use it up. Redeeming confirms the email and clears any lockout.
+- **Passwords:** 8–72 characters, set from Account once signed in, so the mailbox is already proven. No "current password" prompt; forgot password means "sign in by email, set a new one". Changing it signs out other devices. 10 wrong passwords lock password login until an email link is used.
+- **Rate limits** (in memory): email links 5 per address and 10 per IP per hour (Rails' numbers; past the per-address limit the page looks the same but nothing is sent), password attempts 10 per IP per minute. Turnstile on both forms; development uses Cloudflare's always-pass keys.
+- **Sessions:** random cookie token, sha256 in the `sessions` table, 30 days, renewed past halfway.
+- **Cleanup goroutine** (hourly): expired sessions, used or expired links, and accounts whose email was never confirmed within 7 days (mistyped addresses).
+- **Not yet:** admin role assignment (phase 5 admin; for now `UPDATE users SET role='admin'`), linking a guest's audience history on sign-in (phase 5), the "End all active shows" check on account deletion (phase 3).
 
 ### Phase 2 — Catalogs and search
 
@@ -600,6 +618,17 @@ Each phase ends deployed and usable.
 
 - Guest-to-account upgrade, My Performances, Sing Again, Saved Songs and request-from-saved. Feedback form. Admin users, log in as, feedback, catalog cache status. Cleanup goroutine.
 - **Done when:** feature parity with the Rails app (minus the dropped items above).
+
+### Phase 6 — Deploy
+
+Everything under "Deployment" above.
+
+- Build and run the Docker image locally (`make docker-run`).
+- Create the Tigris bucket and keys.
+- Create the Dokku app (see "First-time setup on the box"), route `next.djmagic.io` through the Fly ingress, `git push dokku main`.
+- Restore test, and the scratch-machine backup restore under "Backups".
+- Run a real show on `next.djmagic.io`, then cut `djmagic.io` over from the Rails apps.
+- **Done when:** a push deploys, `/healthz` is green, a Litestream restore onto a fresh container brings the DB back, and `djmagic.io` serves the Go app.
 
 ### Later (roadmap carried from `djm-mono/TODO.md`)
 
@@ -628,7 +657,9 @@ Each phase ends deployed and usable.
 | Limits | 100 MB per upload, 1M rows per catalog, 100 catalogs per account, 10M rows per account, 5 uploads per user per hour. Enforced. |
 | CSV and search rules | Ported from the Rails code as described in "Catalog CSV rules". |
 | Backups | Litestream to Tigris, not LiteFS. |
-| Domain | The Go app deploys to a subdomain (e.g. `next.djmagic.io`) while the Rails apps keep `djmagic.io`. Cut over at the end of phase 5. |
+| Domain | The Go app deploys to a subdomain (e.g. `next.djmagic.io`) while the Rails apps keep `djmagic.io`. Cut over at the end of phase 6. |
+| Migrations | Hand-rolled numbered SQL files, not `AutoMigrate` and not Goose. The schema is written down and reviewed; renames, backfills, and SQLite table rebuilds are explicit. One process and one database means the runner only needs `user_version` and a transaction per file. No down migrations: recover with a Litestream restore. Rules: never edit a shipped file; a table rebuild runs with foreign keys off and `PRAGMA foreign_key_check` before commit (the runner does both); `TestMigrationsMatchModels` fails if a GORM struct and its table disagree. |
+| Order of work | Build the whole app locally (phases 0–5) before any deployment work (phase 6). |
 
 ## Open questions
 

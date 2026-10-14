@@ -1,0 +1,7 @@
+{{define "turnstile"}}
+<div class="cf-turnstile" data-sitekey="{{.}}"></div>
+{{end}}
+
+{{define "turnstile-script"}}
+<script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit&onload=onTurnstileLoad" defer></script>
+{{end}}

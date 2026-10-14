@@ -2,8 +2,10 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/glebarez/sqlite"
 	"gorm.io/gorm"
@@ -23,8 +25,13 @@ func openDB(path string) (*gorm.DB, error) {
 		}
 	}
 
+	// "Record not found" is how lookups report a missing row; it isn't worth a log line.
 	db, err := gorm.Open(sqlite.Open(path+sqlitePragmas), &gorm.Config{
-		Logger: logger.Default.LogMode(logger.Warn),
+		Logger: logger.New(log.New(os.Stderr, "", log.LstdFlags), logger.Config{
+			SlowThreshold:             200 * time.Millisecond,
+			LogLevel:                  logger.Warn,
+			IgnoreRecordNotFoundError: true,
+		}),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("open db: %w", err)
@@ -41,9 +48,4 @@ func openDB(path string) (*gorm.DB, error) {
 		return nil, fmt.Errorf("migrate: %w", err)
 	}
 	return db, nil
-}
-
-// migrate creates or updates tables for every model. Add models here as phases introduce them.
-func migrate(db *gorm.DB) error {
-	return db.AutoMigrate()
 }

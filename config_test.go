@@ -8,7 +8,7 @@ import (
 )
 
 func TestConfigValidate(t *testing.T) {
-	prod := config{Env: "prod", BaseURL: "https://next.djmagic.io", baseURLSet: true}
+	prod := config{Env: "prod", BaseURL: "https://next.djmagic.io", baseURLSet: true, TurnstileSiteKey: "site", TurnstileSecretKey: "secret"}
 	tests := []struct {
 		name    string
 		cfg     config
@@ -21,6 +21,8 @@ func TestConfigValidate(t *testing.T) {
 		{"prod with http BASE_URL", config{Env: "prod", BaseURL: "http://next.djmagic.io", baseURLSet: true}, "must be an https URL"},
 		{"trusted Fly header", func() config { c := prod; c.TrustedIPHeader = "Fly-Client-IP"; return c }(), ""},
 		{"unknown trusted header", func() config { c := prod; c.TrustedIPHeader = "X-Real-IP"; return c }(), "TRUSTED_IP_HEADER"},
+		{"prod without Turnstile", func() config { c := prod; c.TurnstileSiteKey, c.TurnstileSecretKey = "", ""; return c }(), "requires TURNSTILE"},
+		{"half a Turnstile pair", config{Env: "dev", TurnstileSiteKey: "site"}, "must both be set"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -48,6 +50,19 @@ func TestLoadConfigUsesPortWhenAddrUnset(t *testing.T) {
 	}
 	if cfg.BaseURL != "https://next.djmagic.io" || !cfg.baseURLSet {
 		t.Errorf("BaseURL = %q set=%v", cfg.BaseURL, cfg.baseURLSet)
+	}
+}
+
+func TestLoadConfigTurnstileTestKeysInDevOnly(t *testing.T) {
+	t.Setenv("TURNSTILE_SITE_KEY", "")
+	t.Setenv("TURNSTILE_SECRET_KEY", "")
+	t.Setenv("ENV", "dev")
+	if cfg := loadConfig(); cfg.TurnstileSiteKey != turnstileTestSiteKey || cfg.TurnstileSecretKey != turnstileTestSecretKey {
+		t.Errorf("dev keys = %q %q", cfg.TurnstileSiteKey, cfg.TurnstileSecretKey)
+	}
+	t.Setenv("ENV", "prod")
+	if cfg := loadConfig(); cfg.TurnstileSiteKey != "" || cfg.TurnstileSecretKey != "" {
+		t.Errorf("prod got test keys")
 	}
 }
 

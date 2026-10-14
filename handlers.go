@@ -20,6 +20,10 @@ func (a *app) handleHealthz(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *app) handleHome(w http.ResponseWriter, r *http.Request) {
+	if currentUser(r) != nil {
+		a.render(w, r, http.StatusOK, "dashboard.html", nil)
+		return
+	}
 	a.render(w, r, http.StatusOK, "home.html", nil)
 }
 

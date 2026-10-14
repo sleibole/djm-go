@@ -1,0 +1,116 @@
+{{define "title"}}Account · DJMagic.io{{end}}
+{{define "content"}}
+{{with .Data}}
+<div class="form-stack">
+<hgroup>
+  <h1>Account</h1>
+  <p>Signed in as {{$.User.Email}}.</p>
+</hgroup>
+
+{{if $.User.Hosts}}
+<article class="form-card">
+  <h2>Public profile</h2>
+  {{if eq .Saved "hosting"}}<p role="status" class="saved">You can host shows now. Pick a handle for your public page.</p>{{end}}
+  {{if eq .Saved "profile"}}<p role="status" class="saved">Profile saved.</p>{{end}}
+  {{if .ProfileError}}<p role="alert" class="error">{{.ProfileError}}</p>{{end}}
+  <p>Your public page: <strong>{{$.BaseURL}}/dj/{{$.User.Handle}}</strong></p>
+  <form method="post" action="/account/profile">
+    <label>
+      {{icon "user"}} Display name
+      <input type="text" name="display_name" value="{{.DisplayName}}" maxlength="50" placeholder="e.g. DJ Mike" aria-describedby="display-name-help">
+      <small id="display-name-help">Shown to your audience. If empty, your handle is shown.</small>
+    </label>
+    <label>
+      {{icon "link"}} Handle
+      <input type="text" name="handle" value="{{.Handle}}" required minlength="3" maxlength="30"
+             pattern="[a-z0-9]([a-z0-9\-]*[a-z0-9])?" autocapitalize="none" spellcheck="false" aria-describedby="handle-help">
+      <small id="handle-help">Lowercase letters, numbers, and hyphens. 3&ndash;30 characters.</small>
+    </label>
+    <button type="submit">Save profile</button>
+  </form>
+</article>
+
+<article class="form-card">
+  <h2>Show defaults</h2>
+  {{if eq .Saved "defaults"}}<p role="status" class="saved">Defaults saved.</p>{{end}}
+  {{if .DefaultsError}}<p role="alert" class="error">{{.DefaultsError}}</p>{{end}}
+  <p>New shows start with these settings. You can change them on each show.</p>
+  <form method="post" action="/account/defaults">
+    <label>
+      Show type
+      <select name="show_type">
+        {{$current := .ShowType}}
+        {{range .ShowTypes}}<option value="{{.Value}}"{{if eq .Value $current}} selected{{end}}>{{.Label}}</option>{{end}}
+      </select>
+    </label>
+    <label>
+      Rotation
+      <select name="rotation_style" disabled>
+        <option selected>Standard</option>
+      </select>
+    </label>
+    <label>
+      Songs per singer
+      <input type="number" name="max_songs" value="{{.MaxSongs}}" min="1" max="99" inputmode="numeric" placeholder="No limit" aria-describedby="max-songs-help">
+      <small id="max-songs-help">How many songs one singer can have waiting at once. Leave blank for no limit.</small>
+    </label>
+    <button type="submit">Save defaults</button>
+  </form>
+</article>
+{{else}}
+<article class="form-card">
+  <h2>Host shows</h2>
+  <p>Run karaoke or DJ shows, upload your song catalog, and take requests from your audience.</p>
+  <form method="post" action="/account/host">
+    <button type="submit">Start hosting</button>
+  </form>
+</article>
+{{end}}
+
+<article class="form-card">
+  <h2>Appearance</h2>
+  <p>Saved on this device only. System follows your device's light or dark setting.</p>
+  {{template "theme_switch" $}}
+</article>
+
+<article class="form-card">
+  <h2>Password</h2>
+  {{if eq .Saved "password"}}<p role="status" class="saved">Password saved. Other devices have been signed out.</p>{{end}}
+  {{if eq .Saved "password-removed"}}<p role="status" class="saved">Password removed. You'll use email links to sign in.</p>{{end}}
+  {{if .PasswordError}}<p role="alert" class="error">{{.PasswordError}}</p>{{end}}
+  <p>{{if $.User.HasPassword}}You have a password. Change it, or remove it and use email links only. Other devices will be signed out when you change it.{{else}}You sign in with email links. Set a password if you'd like to use one too.{{end}}</p>
+  <form method="post" action="/account/password">
+    <label>
+      {{icon "lock"}} New password
+      <input type="password" name="password" required minlength="8" maxlength="72" autocomplete="new-password">
+    </label>
+    <label>
+      {{icon "lock-check"}} Confirm new password
+      <input type="password" name="confirm" required minlength="8" maxlength="72" autocomplete="new-password">
+    </label>
+    <button type="submit">{{if $.User.HasPassword}}Change password{{else}}Set password{{end}}</button>
+  </form>
+  {{if $.User.HasPassword}}
+  <form method="post" action="/account/password/delete">
+    <button type="submit" class="outline secondary">Remove password</button>
+  </form>
+  {{end}}
+</article>
+
+<article class="form-card">
+  <details{{if .DeleteError}} open{{end}}>
+    <summary>Delete account</summary>
+    {{if .DeleteError}}<p role="alert" class="error">{{.DeleteError}}</p>{{end}}
+    <p>Permanently delete your account and everything in it, including catalogs, shows, and request history. <strong>This cannot be undone.</strong></p>
+    <form method="post" action="/account/delete">
+      <label>
+        Type <strong>{{$.User.Email}}</strong> to confirm
+        <input type="text" name="confirm" required autocomplete="off" autocapitalize="none" spellcheck="false">
+      </label>
+      <button type="submit" class="contrast">{{icon "trash"}} Permanently delete my account</button>
+    </form>
+  </details>
+</article>
+</div>
+{{end}}
+{{end}}

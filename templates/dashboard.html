@@ -1,0 +1,13 @@
+{{define "title"}}Home · DJMagic.io{{end}}
+{{define "content"}}
+<hgroup>
+  <h1>Welcome back!</h1>
+  <p>Signed in as {{.User.Email}}.</p>
+</hgroup>
+{{if .User.Hosts}}
+<p>Your public page will be <strong>{{.BaseURL}}/dj/{{.User.Handle}}</strong>. Catalogs and shows are on the way.</p>
+{{else}}
+<p>Your performances and saved songs will show up here. Hosting a show? <a href="/account">Start hosting</a> from your account.</p>
+{{end}}
+<p><a href="/account" role="button" class="outline secondary">{{icon "user"}} Account</a></p>
+{{end}}

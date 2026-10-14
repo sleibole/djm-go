@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 )
 
@@ -23,11 +24,19 @@ func (a *app) logRequests(next http.Handler) http.Handler {
 		next.ServeHTTP(rec, r)
 		a.logger.Info("request",
 			"method", r.Method,
-			"path", r.URL.Path,
+			"path", logPath(r.URL.Path),
 			"status", rec.status,
 			"duration", time.Since(start),
 		)
 	})
+}
+
+// logPath hides the secret in magic-link paths so logs can't be used to sign in.
+func logPath(path string) string {
+	if strings.HasPrefix(path, "/auth/") && len(path) > len("/auth/") {
+		return "/auth/{token}"
+	}
+	return path
 }
 
 func securityHeaders(next http.Handler) http.Handler {

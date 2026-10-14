@@ -48,8 +48,10 @@ func loadViews(fsys fs.FS, static assets) (*views, error) {
 
 // view is what every template receives: what the layout needs, and the page's own data.
 type view struct {
-	BaseURL string
-	Data    any
+	BaseURL          string
+	User             *User
+	TurnstileSiteKey string
+	Data             any
 }
 
 // render writes a full page, or only the page's "content" block for HTMX requests.
@@ -71,7 +73,8 @@ func (a *app) renderBlock(w http.ResponseWriter, r *http.Request, status int, pa
 
 	// Render to a buffer first so a template error doesn't send a half-written page.
 	var buf bytes.Buffer
-	if err := t.ExecuteTemplate(&buf, block, view{BaseURL: a.cfg.BaseURL, Data: data}); err != nil {
+	v := view{BaseURL: a.cfg.BaseURL, User: currentUser(r), TurnstileSiteKey: a.cfg.TurnstileSiteKey, Data: data}
+	if err := t.ExecuteTemplate(&buf, block, v); err != nil {
 		a.serverError(w, r, err)
 		return
 	}
@@ -82,6 +85,6 @@ func (a *app) renderBlock(w http.ResponseWriter, r *http.Request, status int, pa
 }
 
 func (a *app) serverError(w http.ResponseWriter, r *http.Request, err error) {
-	a.logger.Error("server error", "method", r.Method, "path", r.URL.Path, "err", err)
+	a.logger.Error("server error", "method", r.Method, "path", logPath(r.URL.Path), "err", err)
 	http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 }

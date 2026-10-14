@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
@@ -8,9 +9,34 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"sync"
 	"testing"
 )
 
+type sentMail struct {
+	To, Subject, Body string
+}
+
+type testMailer struct {
+	mu   sync.Mutex
+	sent []sentMail
+}
+
+func (m *testMailer) Send(to, subject, body string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.sent = append(m.sent, sentMail{to, subject, body})
+	return nil
+}
+
+func (m *testMailer) all() []sentMail {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return append([]sentMail(nil), m.sent...)
+}
+
+// newTestApp uses a temp database, records email instead of sending it, and
+// answers Turnstile locally: every token passes except "bad".
 func newTestApp(t *testing.T) *app {
 	t.Helper()
 	db, err := openDB(filepath.Join(t.TempDir(), "test.db"))
@@ -22,10 +48,17 @@ func newTestApp(t *testing.T) *app {
 			sqlDB.Close()
 		}
 	})
-	a, err := newApp(config{Env: "dev", BaseURL: "http://example.test"}, db, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	a, err := newApp(config{Env: "dev", BaseURL: "http://example.test"}, db, slog.New(slog.NewTextHandler(io.Discard, nil)), &testMailer{})
 	if err != nil {
 		t.Fatal(err)
 	}
+	siteverify := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		r.ParseForm()
+		fmt.Fprintf(w, `{"success":%t}`, r.PostForm.Get("response") != "bad")
+	}))
+	t.Cleanup(siteverify.Close)
+	a.turnstile.endpoint = siteverify.URL
+	a.turnstile.client = siteverify.Client()
 	return a
 }
 

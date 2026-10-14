@@ -1,0 +1,18 @@
+{{define "title"}}Sign in · DJMagic.io{{end}}
+{{define "content"}}
+{{with .Data}}
+<article class="auth-card">
+  {{if .Valid}}
+  <h1>Signing you in…</h1>
+  <form method="post" class="auth-form" data-autosubmit>
+    <input type="hidden" name="next" value="{{.Next}}">
+    <button type="submit">Continue as {{.Email}}</button>
+  </form>
+  {{else}}
+  <h1>This link has expired</h1>
+  <p>This link has expired or already been used. Please request a new one.</p>
+  <p class="auth-foot"><a href="/signin" role="button">Get a new link</a></p>
+  {{end}}
+</article>
+{{end}}
+{{end}}

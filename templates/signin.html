@@ -1,0 +1,64 @@
+{{define "title"}}{{if .Data.Signup}}Sign up{{else}}Sign in{{end}} · DJMagic.io{{end}}
+{{define "scripts"}}{{template "turnstile-script" .}}{{end}}
+{{define "content"}}
+{{with .Data}}
+<article class="auth-card">
+  {{if .Signup}}
+  <h1>Sign up</h1>
+  <p class="auth-note">{{icon "flask"}} <strong>We're in beta!</strong> Sign up now and get <strong>3 months free</strong> when we launch.</p>
+  {{else}}
+  <h1>Sign in</h1>
+  <p>Enter your email and we'll send you a link to sign in.</p>
+  {{end}}
+  {{if .Error}}<p role="alert" class="error">{{.Error}}</p>{{end}}
+  <form method="post" action="{{if .ShowPassword}}/signin{{else}}/signin/link{{end}}" class="auth-form">
+    <input type="hidden" name="next" value="{{.Next}}">
+    <label>
+      {{icon "mail"}} Email
+      <input type="email" name="email" value="{{.Email}}" required autocomplete="email" placeholder="you@example.com" {{if not .ShowPassword}}autofocus{{end}}>
+    </label>
+    {{if .Signup}}
+    <input type="hidden" name="signup" value="1">
+    <fieldset class="role-choice">
+      <legend>Are you a DJ/KJ or an audience member?</legend>
+      <label>
+        <input type="radio" name="role" value="dj" required{{if eq .Role "dj"}} checked{{end}}>
+        <strong>DJ / KJ</strong> <small>I host shows</small>
+      </label>
+      <label>
+        <input type="radio" name="role" value="audience" required{{if eq .Role "audience"}} checked{{end}}>
+        <strong>Audience member</strong> <small>I sing or request songs</small>
+      </label>
+    </fieldset>
+    {{template "turnstile" $.TurnstileSiteKey}}
+    <button type="submit">Let's go</button>
+    {{else}}
+    <label class="auth-password">
+      {{icon "lock"}} Password
+      <input type="password" name="password" data-auth-password autocomplete="current-password" minlength="8" maxlength="72" {{if .ShowPassword}}autofocus{{end}}>
+    </label>
+    {{template "turnstile" $.TurnstileSiteKey}}
+    {{if .ShowPassword}}
+    <button type="submit" class="auth-password-submit" formaction="/signin">Sign in</button>
+    <button type="submit" class="auth-link-submit" formaction="/signin/link">Email me a link</button>
+    {{else}}
+    <button type="submit" class="auth-link-submit" formaction="/signin/link">Email me a link</button>
+    <button type="submit" class="auth-password-submit" formaction="/signin">Sign in</button>
+    {{end}}
+    <div class="auth-switch">
+      <input type="checkbox" id="signin-password" class="auth-password-toggle" {{if .ShowPassword}}checked{{end}}>
+      <label for="signin-password">
+        <span class="when-closed">Sign in with a password instead</span>
+        <span class="when-open">Use an email link instead</span>
+      </label>
+    </div>
+    {{end}}
+  </form>
+  {{if .Signup}}
+  <p class="auth-foot">Already have an account? <a href="/signin{{if .Next}}?next={{.Next | urlquery}}{{end}}">Sign in</a></p>
+  {{else}}
+  <p class="auth-foot">New here? The same link creates your account. <a href="/signup{{if .Next}}?next={{.Next | urlquery}}{{end}}">Sign up as a DJ</a></p>
+  {{end}}
+</article>
+{{end}}
+{{end}}

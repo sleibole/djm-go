@@ -1,14 +1,13 @@
 .PHONY: dev run build test docker-build docker-run
 
-# Air is a developer tool, run by version so it is not a module dependency.
 dev:
-	go run github.com/air-verse/air@v1.67.4
+	bin/dev
 
 run:
 	go run .
 
 build:
-	CGO_ENABLED=0 go build -o bin/djm .
+	CGO_ENABLED=0 go build -o djm .
 
 test:
 	go test ./...
