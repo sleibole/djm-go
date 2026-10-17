@@ -1,0 +1,330 @@
+{{define "title"}}{{.Data.Show.DisplayName}} · DJMagic.io{{end}}
+{{define "scripts"}}<script src="{{asset "reorder.js"}}" defer></script>{{end}}
+{{define "content"}}
+{{with .Data}}{{$s := .Show}}
+<hgroup>
+  <h1>{{$s.DisplayName}}</h1>
+  <p>
+    {{if $s.Scheduled}}<mark>Scheduled</mark> — {{if $s.Karaoke}}Karaoke{{else}}DJ{{end}} — {{localTime $s.ScheduledAt "datetime"}}
+    {{else if $s.Active}}<mark>Live</mark> — {{if $s.Karaoke}}Karaoke{{else}}DJ{{end}} — Started {{localTime $s.StartedAt "time"}}
+    {{else}}{{if $s.Karaoke}}Karaoke{{else}}DJ{{end}} — Ended {{localTime $s.EndedAt "datetime"}}{{end}}
+    {{with $s.Catalog}} — <a href="/catalogs/{{.ID}}">{{.Name}}</a>{{end}}
+  </p>
+</hgroup>
+
+{{if eq .Saved "started"}}<p role="status" class="saved">Show started!</p>{{end}}
+{{if eq .Saved "scheduled"}}<p role="status" class="saved">Show scheduled!</p>{{end}}
+{{if eq .Saved "settings"}}<p role="status" class="saved">Show settings updated.</p>{{end}}
+{{with .Added}}<p role="status" class="saved">{{.}} added to the queue.</p>{{end}}
+{{if .Error}}<p role="alert" class="error">{{.Error}}{{with .ActiveShow}} <a href="/shows/{{.ID}}">Go to {{.DisplayName}}</a>{{end}}</p>{{end}}
+
+{{if $s.Scheduled}}
+<section>
+  <p>This show is scheduled but not yet live. Start it when you're ready.</p>
+  <form method="post" action="/shows/{{$s.ID}}/start">
+    <button type="submit">Start Show</button>
+  </form>
+</section>
+{{end}}
+
+{{if $s.Active}}
+{{template "show_live" .Live}}
+
+<section id="add-to-queue">
+  <h2>Add to Queue</h2>
+  {{with .Add.Error}}<p role="alert" class="error">{{.}}</p>{{end}}
+  <form method="post" action="/shows/{{$s.ID}}/requests" id="add-form">
+    {{/* Enter in a field must not pick a search result; a disabled default button stops implicit submission. */}}
+    <button type="submit" disabled hidden aria-hidden="true" tabindex="-1"></button>
+    <label>
+      {{icon "user"}} {{$s.ParticipantLabel}}
+      <input type="text" name="participant_name" value="{{.Add.Participant}}" placeholder="{{$s.ParticipantLabel}}'s name"
+             required maxlength="50" autocomplete="off" list="participant-suggestions"
+             hx-get="/shows/{{$s.ID}}/participants" hx-trigger="input changed delay:200ms"
+             hx-target="#participant-suggestions" hx-swap="innerHTML">
+      <datalist id="participant-suggestions"></datalist>
+    </label>
+  </form>
+
+  {{if $s.Catalog}}
+  {{if $s.Catalog.ActiveVersion}}
+  <form role="search" method="get" action="/shows/{{$s.ID}}#add-to-queue">
+    <input type="search" name="q" value="{{.Search.Query}}" placeholder="Search by title, artist, or version…"
+           autocomplete="off" aria-label="Search songs"
+           hx-get="/shows/{{$s.ID}}/search" hx-trigger="input changed delay:300ms, search"
+           hx-target="#add-results" hx-swap="innerHTML" hx-sync="this:replace">
+  </form>
+  <div id="add-results" aria-live="polite">{{template "add_results" $}}</div>
+  {{else}}
+  <p><small>{{$s.Catalog.Name}} has no songs yet, so requests are typed in.</small></p>
+  {{end}}
+  <details class="section-panel"{{if or .Add.Manual (not $s.Catalog.ActiveVersion)}} open{{end}}>
+    <summary>{{icon "music"}} Enter a song manually</summary>
+    {{template "manual_fields" .}}
+  </details>
+  {{else}}
+  {{template "manual_fields" .}}
+  {{end}}
+</section>
+{{end}}
+
+{{if $s.Ended}}
+<section>
+  <h2>Songs Performed <small>({{len .Live.Done}})</small></h2>
+  {{if .Live.Done}}{{template "done_table" .Live}}{{else}}<p><small>No songs were performed.</small></p>{{end}}
+</section>
+{{end}}
+
+{{if not $s.Ended}}{{$f := .Settings}}
+<details class="section-panel"{{if or $s.Scheduled .SettingsError}} open{{end}}>
+  <summary>{{icon "settings"}} Show Settings</summary>
+  {{with .SettingsError}}<p role="alert" class="error">{{.}}</p>{{end}}
+  <form method="post" action="/shows/{{$s.ID}}" class="show-form">
+    <label>
+      Show Name
+      <input type="text" name="name" value="{{$f.Name}}" placeholder="e.g. Friday Night Karaoke" maxlength="100">
+    </label>
+    <label>
+      Show Type
+      <select name="show_type">
+        {{range .ShowTypes}}<option value="{{.Value}}"{{if eq .Value $f.ShowType}} selected{{end}}>{{.Label}}</option>{{end}}
+      </select>
+    </label>
+    <label>
+      Max Songs in Queue per {{$s.ParticipantLabel}}
+      <input type="number" name="max_songs" value="{{$f.MaxSongs}}" min="1" max="99" placeholder="Unlimited">
+      <small>Leave blank for unlimited.</small>
+    </label>
+    {{if $s.Scheduled}}
+    <label>
+      Scheduled Date &amp; Time
+      <input type="datetime-local" name="scheduled_local" value="{{$f.ScheduledLocal}}" data-utc="{{$f.ScheduledAt}}" data-utc-field="scheduled_at" required>
+      <input type="hidden" name="scheduled_at" value="{{$f.ScheduledAt}}">
+    </label>
+    {{end}}
+    <h4>Audience Settings</h4>
+    <label>
+      <input type="checkbox" name="approval_required" value="1"{{if $f.Approval}} checked{{end}}>
+      Require approval for audience requests
+    </label>
+    <small>When enabled, audience song requests must be approved before entering the queue.</small>
+    {{if $s.Catalog}}
+    <label>
+      <input type="checkbox" name="manual_entry_enabled" value="1"{{if $f.ManualEntry}} checked{{end}}>
+      Allow freeform song requests
+    </label>
+    <small>Let audience members request any song by typing in title and artist.</small>
+    {{end}}
+    <label>
+      Show URL slug
+      <input type="text" name="slug" value="{{$f.Slug}}" required maxlength="50" autocapitalize="off" spellcheck="false">
+      {{with $.Data.Handle}}<small>Public URL: {{$.BaseURL}}/dj/{{.}}/shows/{{$s.Slug}}</small>{{end}}
+    </label>
+    <button type="submit" class="secondary">Save Settings</button>
+  </form>
+</details>
+{{end}}
+
+{{if $s.Active}}
+<p class="end-show">
+  <button type="button" class="outline contrast" data-open-dialog="end-show-dialog">End Show</button>
+</p>
+<dialog id="end-show-dialog">
+  <article>
+    <header>
+      <button type="button" aria-label="Close" rel="prev" data-close-dialog></button>
+      <h3>End {{$s.DisplayName}}?</h3>
+    </header>
+    <p>The queue will be closed. The song on stage counts as performed, and anyone still waiting is taken off the queue. An ended show can't be started again.</p>
+    <form method="post" action="/shows/{{$s.ID}}/end">
+      <div role="group">
+        <button type="submit" class="contrast">End Show</button>
+        <button type="button" class="secondary" data-close-dialog>Cancel</button>
+      </div>
+    </form>
+  </article>
+</dialog>
+{{end}}
+
+<p><a href="/shows">Back to shows</a></p>
+{{end}}
+{{end}}
+
+{{define "manual_fields"}}
+<label>
+  {{icon "music"}} Song Title
+  <input type="text" name="song_title" value="{{.Add.Title}}" placeholder="Song title" maxlength="200" form="add-form">
+</label>
+<label>
+  {{icon "microphone"}} Artist
+  <input type="text" name="song_artist" value="{{.Add.Artist}}" placeholder="Artist" maxlength="200" form="add-form">
+</label>
+<button type="submit" form="add-form">Add to Queue</button>
+{{end}}
+
+{{define "show_live_block"}}{{template "show_live" .Data}}{{end}}
+
+{{define "show_live"}}{{$s := .Show}}
+<div id="show-live" hx-get="/shows/{{$s.ID}}/live" hx-trigger="every 5s [djmShouldPoll()], refresh"
+     hx-target="this" hx-swap="outerHTML">
+  {{with .Error}}<p role="alert" class="error">{{.}}</p>{{end}}
+
+  {{if .Pending}}
+  <section>
+    <h2>Pending Requests <small>({{len .Pending}})</small></h2>
+    <div class="overflow-auto">
+      <table class="striped queue-table">
+        <thead><tr><th>{{$s.ParticipantLabel}}</th><th>Song</th><th>Submitted</th><th></th></tr></thead>
+        <tbody>
+          {{range .Pending}}
+          <tr>
+            <td>{{.Participant}}</td>
+            <td>{{template "song_cell" .}}</td>
+            <td><small>{{localTime .RequestedAt "time"}}</small></td>
+            <td>
+              <div class="row-actions">
+                <form method="post" action="/requests/{{.ID}}/approve" hx-post="/requests/{{.ID}}/approve">
+                  <button type="submit" class="approve" title="Approve" aria-label="Approve {{.Participant}}">{{icon "check"}}</button>
+                </form>
+                <button type="button" class="outline contrast" title="Reject" aria-label="Reject {{.Participant}}" data-open-dialog="reject-{{.ID}}">{{icon "x"}}</button>
+              </div>
+              <dialog id="reject-{{.ID}}">
+                <article>
+                  <header>
+                    <button type="button" aria-label="Close" rel="prev" data-close-dialog></button>
+                    <h3>Reject request from {{.Participant}}?</h3>
+                  </header>
+                  <p><strong>{{.SongTitle}}</strong> — {{or .SongArtist "—"}}</p>
+                  <form method="post" action="/requests/{{.ID}}/reject" hx-post="/requests/{{.ID}}/reject">
+                    <textarea name="rejection_reason" placeholder="Reason (optional)" rows="2" maxlength="500"></textarea>
+                    <div role="group">
+                      <button type="submit" class="contrast">Reject</button>
+                      <button type="button" class="secondary" data-close-dialog>Cancel</button>
+                    </div>
+                  </form>
+                </article>
+              </dialog>
+            </td>
+          </tr>
+          {{end}}
+        </tbody>
+      </table>
+    </div>
+  </section>
+  {{end}}
+
+  <section id="now-playing">
+    <h2>Now Playing</h2>
+    {{with .NowPlaying}}
+    <article class="now-playing">
+      <p><strong>{{.Participant}}</strong> — {{.SongTitle}}{{with .SongArtist}} by {{.}}{{end}}{{with .Version}} ({{.}}){{end}}{{with .ExternalID}} · ID: {{.}}{{end}}</p>
+      <div role="group">
+        <form method="post" action="/requests/{{.ID}}/done" hx-post="/requests/{{.ID}}/done"><button type="submit">Done</button></form>
+        <form method="post" action="/requests/{{.ID}}/skip" hx-post="/requests/{{.ID}}/skip"><button type="submit" class="secondary">Skip</button></form>
+      </div>
+    </article>
+    {{else}}
+    <p><small>No one is performing right now.</small></p>
+    {{end}}
+  </section>
+
+  <section id="queue">
+    <h2>Queue <small>({{len .Queue}})</small></h2>
+    {{if .Queue}}
+    <div class="overflow-auto">
+      <table class="striped queue-table">
+        <thead><tr><th><span class="visually-hidden">Reorder</span></th><th>#</th><th>{{$s.ParticipantLabel}}</th><th>Song</th><th></th></tr></thead>
+        <tbody data-reorder-list>
+          {{range $i, $r := .Queue}}
+          <tr data-reorder-item data-id="{{$r.ID}}">
+            <td class="drag-cell"><button type="button" class="drag-handle" data-drag-handle aria-label="Drag to reorder {{$r.Participant}}">{{icon "grip-vertical"}}</button></td>
+            <td>{{$r.QueuePosition}}</td>
+            <td>{{$r.Participant}}</td>
+            <td>{{template "song_cell" $r}}</td>
+            <td>
+              <div class="row-actions">
+                <form method="post" action="/requests/{{$r.ID}}/start" hx-post="/requests/{{$r.ID}}/start">
+                  <button type="submit" class="outline" title="Start" aria-label="Start {{$r.Participant}}">{{icon "player-play"}}</button>
+                </form>
+                <form method="post" action="/requests/{{$r.ID}}/delete" hx-post="/requests/{{$r.ID}}/delete" hx-confirm="Remove {{$r.Participant}} from the queue?">
+                  <button type="submit" class="outline contrast" title="Remove" aria-label="Remove {{$r.Participant}}">{{icon "x"}}</button>
+                </form>
+              </div>
+            </td>
+          </tr>
+          {{end}}
+        </tbody>
+      </table>
+    </div>
+    {{else}}
+    <p><small>The queue is empty. Add someone below.</small></p>
+    {{end}}
+  </section>
+
+  {{if .Done}}
+  <details id="completed-songs" class="section-panel">
+    <summary>Completed ({{len .Done}})</summary>
+    {{template "done_table" .}}
+  </details>
+  {{end}}
+</div>
+{{end}}
+
+{{define "done_table"}}
+<div class="overflow-auto">
+  <table class="striped">
+    <thead><tr><th>{{.Show.ParticipantLabel}}</th><th>Song</th><th>Time</th><th>Status</th></tr></thead>
+    <tbody>
+      {{range .Done}}
+      <tr>
+        <td>{{.Participant}}</td>
+        <td>{{template "song_cell" .}}</td>
+        <td>{{localTime .CompletedAt "time"}}</td>
+        <td>{{if eq .Status "skipped"}}Skipped{{else}}Completed{{end}}</td>
+      </tr>
+      {{end}}
+    </tbody>
+  </table>
+</div>
+{{end}}
+
+{{define "song_cell"}}{{.SongTitle}} — {{or .SongArtist "—"}}{{with .Version}}<br><small>{{.}}</small>{{end}}{{with .ExternalID}}<br><small>ID: {{.}}</small>{{end}}{{end}}
+
+{{define "participant_options"}}{{range .Data}}<option value="{{.}}"></option>{{end}}{{end}}
+
+{{define "add_results"}}{{$s := .Data.Show}}{{with .Data.Search}}{{$v := .}}
+{{if .Error}}
+<p role="alert" class="error">{{.Error}}</p>
+{{else if .Query}}
+{{if not .Result.Songs}}
+<p><small>No songs found.</small></p>
+{{else}}
+<div class="overflow-auto">
+  <table class="striped">
+    <thead>
+      <tr>
+        <th>Title</th>
+        <th>Artist</th>
+        {{if .ShowVersion}}<th>Version</th>{{end}}
+        {{if .ShowID}}<th>ID</th>{{end}}
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {{range .Result.Songs}}
+      <tr>
+        <td>{{.Title}}</td>
+        <td>{{.Artist}}</td>
+        {{if $v.ShowVersion}}<td>{{template "pick_variant" (pickVariantView .ID .Versions)}}</td>{{end}}
+        {{if $v.ShowID}}<td>{{template "pick_variant" (pickVariantView .ID .ExternalIDs)}}</td>{{end}}
+        <td><button type="submit" form="add-form" name="song" value="{{$v.Version}}:{{.ID}}" class="outline">Add</button></td>
+      </tr>
+      {{end}}
+    </tbody>
+  </table>
+</div>
+{{end}}
+{{end}}
+{{end}}{{end}}
+
+{{define "pick_variant"}}{{if eq (len .Options) 1}}{{index .Options 0}}{{else if .Options}}<select name="variant-{{.SongID}}" form="add-form" aria-label="Variant">{{range .Options}}<option>{{.}}</option>{{end}}</select>{{end}}{{end}}

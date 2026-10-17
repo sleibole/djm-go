@@ -131,6 +131,118 @@ func (c Catalog) ImportMetadata() importMetadata {
 	return m
 }
 
+const (
+	showScheduled = "scheduled"
+	showActive    = "active"
+	showEnded     = "ended"
+)
+
+type Show struct {
+	ID                 uint
+	UserID             uint
+	CatalogID          *uint
+	Name               string
+	Slug               string
+	ShowType           string `gorm:"default:karaoke"`
+	Status             string
+	ScheduledAt        *time.Time
+	StartedAt          *time.Time
+	EndedAt            *time.Time
+	RotationStyle      string `gorm:"default:standard"`
+	ApprovalRequired   bool
+	ManualEntryEnabled bool
+	MaxSongsPerSinger  *int
+	CreatedAt          time.Time
+	UpdatedAt          time.Time
+
+	Catalog *Catalog `gorm:"-"` // loaded by the handlers that need it
+}
+
+func (s Show) Scheduled() bool { return s.Status == showScheduled }
+func (s Show) Active() bool    { return s.Status == showActive }
+func (s Show) Ended() bool     { return s.Status == showEnded }
+func (s Show) Karaoke() bool   { return s.ShowType == showTypeKaraoke }
+
+// DisplayName is the show's name, else its catalog's, as in Rails.
+func (s Show) DisplayName() string {
+	switch {
+	case s.Name != "":
+		return s.Name
+	case s.Catalog != nil:
+		return s.Catalog.Name
+	default:
+		return "Untitled Show"
+	}
+}
+
+// ParticipantLabel is what the people in the queue are called.
+func (s Show) ParticipantLabel() string {
+	if s.Karaoke() {
+		return "Singer"
+	}
+	return "Guest"
+}
+
+// VariantDisplay is the catalog's setting. A show without a catalog shows
+// whatever a request carries.
+func (s Show) VariantDisplay() string {
+	if s.Catalog == nil {
+		return ""
+	}
+	return s.Catalog.VariantDisplay
+}
+
+type AudienceProfile struct {
+	ID             uint
+	GuestTokenHash *string
+	UserID         *uint
+	LastSeenAt     *time.Time
+	CreatedAt      time.Time
+}
+
+type ShowParticipant struct {
+	ID                uint
+	ShowID            uint
+	AudienceProfileID *uint
+	DisplayName       string
+	CreatedAt         time.Time
+}
+
+const (
+	requestPending    = "pending"
+	requestQueued     = "queued"
+	requestNowPlaying = "now_playing"
+	requestCompleted  = "completed"
+	requestSkipped    = "skipped"
+	requestRejected   = "rejected"
+	requestCanceled   = "canceled"
+
+	sourceAudience    = "audience"
+	sourceHostManual  = "host_manual"
+	sourceHostCatalog = "host_catalog"
+)
+
+type SongRequest struct {
+	ID                uint
+	ShowID            uint
+	ShowParticipantID uint
+	SongTitle         string
+	SongArtist        string
+	SongVersion       string
+	SongExternalID    string `gorm:"column:song_external_id"`
+	RequestSource     string
+	Status            string
+	QueuePosition     *int
+	RequestedAt       time.Time
+	StartedAt         *time.Time
+	CompletedAt       *time.Time
+	RejectedAt        *time.Time
+	RejectionReason   string
+	CanceledAt        *time.Time
+
+	Participant string `gorm:"-"` // the participant's display name, filled by queries that join it
+}
+
 type CatalogVersion struct {
 	ID             uint
 	CatalogID      uint

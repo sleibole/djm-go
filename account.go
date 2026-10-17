@@ -236,6 +236,15 @@ func (a *app) handleAccountDelete(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+	live, err := a.activeShow(u.ID)
+	if err != nil {
+		a.serverError(w, r, err)
+		return
+	}
+	if live != nil {
+		fail("End all active shows before deleting your account.")
+		return
+	}
 	if err := a.deleteUser(u.ID); err != nil {
 		a.serverError(w, r, err)
 		return

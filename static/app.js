@@ -90,6 +90,53 @@ document.addEventListener("click", (e) => {
   if (closer) closer.closest("dialog")?.close();
 });
 
+// Times are rendered in UTC; show them in the viewer's time zone.
+const timeFormats = {
+  datetime: { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" },
+  time: { hour: "numeric", minute: "2-digit" },
+  date: { month: "short", day: "numeric", year: "numeric" },
+};
+
+function localizeTimes(root) {
+  root.querySelectorAll("time[data-local]").forEach((el) => {
+    const d = new Date(el.dateTime);
+    if (!isNaN(d)) el.textContent = d.toLocaleString([], timeFormats[el.dataset.local] || timeFormats.datetime);
+  });
+  // A datetime-local field shows the device's time zone. Its hidden partner
+  // (data-utc-field) carries the same moment in UTC to the server.
+  root.querySelectorAll("input[data-utc]:not([data-localized])").forEach((input) => {
+    input.dataset.localized = "1";
+    const d = new Date(input.dataset.utc);
+    if (input.dataset.utc && !isNaN(d)) {
+      input.value = new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+    }
+  });
+}
+
+document.addEventListener("submit", (e) => {
+  e.target.querySelectorAll?.("input[data-utc-field]").forEach((input) => {
+    const hidden = e.target.elements[input.dataset.utcField];
+    const d = new Date(input.value);
+    if (hidden) hidden.value = input.value && !isNaN(d) ? d.toISOString() : "";
+  });
+});
+
+document.addEventListener("DOMContentLoaded", () => localizeTimes(document));
+
+// The host page polls its queue. A refresh would close an open dialog or
+// snap a dragged row back, so it waits.
+window.djmShouldPoll = () =>
+  !document.hidden && !document.documentElement.dataset.reordering && !document.querySelector("dialog[open]");
+
+// Polling replaces <details> elements; keep the ones the host opened open.
+let openDetails = [];
+document.addEventListener("htmx:beforeSwap", () => {
+  openDetails = [...document.querySelectorAll("details[id][open]")].map((d) => d.id);
+});
+document.addEventListener("htmx:afterSwap", () => {
+  openDetails.forEach((id) => document.getElementById(id)?.setAttribute("open", ""));
+});
+
 // Turnstile tokens are single-use. A failed submit that stays on the form, including
 // an HTMX swap of the same form, needs a new widget before the next attempt.
 // The API script is deferred, so it calls onTurnstileLoad instead of turnstile.ready.
@@ -110,4 +157,5 @@ window.onTurnstileLoad = function () {
 
 document.addEventListener("htmx:afterSettle", (event) => {
   renderTurnstile(event.detail?.target || document);
+  localizeTimes(document);
 });

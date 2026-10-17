@@ -296,3 +296,108 @@ td select {
   padding-top: 0.25rem;
   padding-bottom: 0.25rem;
 }
+
+/* Shows */
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+}
+
+#freeform-field {
+  margin-bottom: var(--pico-spacing);
+}
+
+.show-form fieldset label,
+.show-form fieldset small {
+  display: block;
+}
+
+/* New show: the schedule field and button label follow the When choice,
+   and the freeform option only matters with a catalog. */
+.show-form:has([name="timing"][value="later"]:checked) .when-now,
+.show-form:not(:has([name="timing"][value="later"]:checked)) .when-later,
+.show-form:has([name="catalog_id"] option[value=""]:checked) #freeform-field {
+  display: none;
+}
+
+.row-actions {
+  display: flex;
+  gap: 0.25rem;
+  justify-content: flex-end;
+}
+
+.row-actions form {
+  margin: 0;
+}
+
+.row-actions button {
+  margin: 0;
+  padding: 0.3rem 0.5rem;
+}
+
+.row-actions .approve {
+  --pico-background-color: var(--pico-ins-color);
+  --pico-border-color: var(--pico-ins-color);
+}
+
+.queue-table td {
+  vertical-align: middle;
+}
+
+.now-playing [role="group"] form {
+  margin: 0;
+  flex: 1;
+}
+
+.now-playing [role="group"] button {
+  width: 100%;
+}
+
+.end-show {
+  margin-top: var(--pico-spacing);
+}
+
+#add-results button {
+  margin: 0;
+  padding: 0.3rem 0.75rem;
+}
+
+/* Drag handles appear once reorder.js runs; touch-action lets a finger drag
+   the row instead of scrolling the page. */
+.drag-cell {
+  width: 1%;
+  padding-right: 0;
+}
+
+.drag-handle {
+  margin: 0;
+  padding: 0.25rem;
+  border: none;
+  background: none;
+  color: var(--pico-muted-color);
+  cursor: grab;
+  touch-action: none;
+  display: none;
+}
+
+html[data-reorder] .drag-handle {
+  display: inline-block;
+}
+
+html[data-reordering] .drag-handle {
+  cursor: grabbing;
+}
+
+tr.is-dragging {
+  opacity: 0.85;
+  outline: 2px solid var(--pico-primary);
+}
+
+html[data-reordering] {
+  user-select: none;
+}

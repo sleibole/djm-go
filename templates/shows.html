@@ -1,0 +1,75 @@
+{{define "title"}}Shows · DJMagic.io{{end}}
+{{define "content"}}
+{{with .Data}}
+<h1>Shows</h1>
+{{if eq .Saved "ended"}}<p role="status" class="saved">Show ended.</p>{{end}}
+
+<p><a href="/shows/new" role="button">{{icon "microphone"}} New Show</a></p>
+
+{{if .Active}}
+<h2>Live</h2>
+<div class="overflow-auto">
+  <table class="striped">
+    <thead><tr><th>Name</th><th>Type</th><th>Started</th><th>Queue</th><th></th></tr></thead>
+    <tbody>
+      {{range .Active}}
+      <tr>
+        <td><a href="/shows/{{.ID}}">{{.DisplayName}}</a></td>
+        <td>{{if .Karaoke}}Karaoke{{else}}DJ{{end}}</td>
+        <td>{{localTime .StartedAt "datetime"}}</td>
+        <td>{{.Queued}} in queue</td>
+        <td><a href="/shows/{{.ID}}">Manage</a></td>
+      </tr>
+      {{end}}
+    </tbody>
+  </table>
+</div>
+{{end}}
+
+{{if .Scheduled}}
+<h2>Scheduled</h2>
+<div class="overflow-auto">
+  <table class="striped">
+    <thead><tr><th>Name</th><th>Catalog</th><th>Type</th><th>Scheduled For</th><th></th></tr></thead>
+    <tbody>
+      {{range .Scheduled}}
+      <tr>
+        <td><a href="/shows/{{.ID}}">{{.DisplayName}}</a></td>
+        <td>{{with .Catalog}}{{.Name}}{{else}}Freeform{{end}}</td>
+        <td>{{if .Karaoke}}Karaoke{{else}}DJ{{end}}</td>
+        <td>{{localTime .ScheduledAt "datetime"}}</td>
+        <td><a href="/shows/{{.ID}}">Manage</a></td>
+      </tr>
+      {{end}}
+    </tbody>
+  </table>
+</div>
+{{end}}
+
+{{if .Ended}}
+<details class="section-panel">
+  <summary>Recent Shows</summary>
+  <div class="overflow-auto">
+    <table class="striped">
+      <thead><tr><th>Name</th><th>Type</th><th>Date</th><th>Songs Played</th><th></th></tr></thead>
+      <tbody>
+        {{range .Ended}}
+        <tr>
+          <td><a href="/shows/{{.ID}}">{{.DisplayName}}</a></td>
+          <td>{{if .Karaoke}}Karaoke{{else}}DJ{{end}}</td>
+          <td>{{localTime .EndedAt "date"}}</td>
+          <td>{{.Played}}</td>
+          <td><a href="/shows/{{.ID}}">View</a></td>
+        </tr>
+        {{end}}
+      </tbody>
+    </table>
+  </div>
+</details>
+{{end}}
+
+{{if not (or .Active .Scheduled .Ended)}}
+<p>No shows yet. Start one when you're ready to take requests.</p>
+{{end}}
+{{end}}
+{{end}}

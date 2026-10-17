@@ -119,6 +119,17 @@ func searchCatalog(db *sql.DB, query string, limit, offset int, sort string) (se
 	return res, rows.Err()
 }
 
+// catalogSongByID loads one song, e.g. the search result a host picked.
+// sql.ErrNoRows if the version has no such song.
+func catalogSongByID(db *sql.DB, id int64) (catalogSong, error) {
+	var s catalogSong
+	var versions, ids sql.NullString
+	err := db.QueryRow(searchSelect+"\nFROM songs WHERE songs.id = ?", id).
+		Scan(&s.ID, &s.Title, &s.Artist, &s.Album, &versions, &ids)
+	s.Versions, s.ExternalIDs = jsonList(versions.String), jsonList(ids.String)
+	return s, err
+}
+
 func jsonList(s string) []string {
 	out := []string{}
 	if s != "" {

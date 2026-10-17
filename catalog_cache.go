@@ -25,6 +25,7 @@ type catalogCache struct {
 	mu      sync.Mutex
 	files   map[string]*cachedCatalog // by file name
 	loading map[string]chan struct{}  // downloads in progress
+	pinned  map[uint]bool             // catalogs of live shows; never evicted
 	total   int64
 	hits    int64
 	misses  int64
@@ -206,13 +207,30 @@ func (c *catalogCache) removeCatalog(catalogID uint) {
 	}
 }
 
+// setPinned replaces the set of catalogs that must stay cached.
+func (c *catalogCache) setPinned(catalogIDs []uint) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.pinned = map[uint]bool{}
+	for _, id := range catalogIDs {
+		c.pinned[id] = true
+	}
+}
+
+func (c *catalogCache) pinnedLocked(name string) bool {
+	var id uint
+	_, err := fmt.Sscanf(name, "%d_v", &id)
+	return err == nil && c.pinned[id]
+}
+
 // evictLocked removes least recently used files until the cache fits, never
-// the one named keep, which was just added or used.
+// the one named keep, which was just added or used, nor a live show's
+// catalog. The cache can stay over budget if live shows need the space.
 func (c *catalogCache) evictLocked(keep string) {
 	for c.total > c.maxBytes {
 		var oldest string
 		for name, f := range c.files {
-			if name != keep && (oldest == "" || f.lastUsed.Before(c.files[oldest].lastUsed)) {
+			if name != keep && !c.pinnedLocked(name) && (oldest == "" || f.lastUsed.Before(c.files[oldest].lastUsed)) {
 				oldest = name
 			}
 		}

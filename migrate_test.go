@@ -14,7 +14,8 @@ import (
 )
 
 // appModels is every GORM struct backed by a table. Add new models here.
-var appModels = []any{&User{}, &Session{}, &MagicToken{}, &Catalog{}, &CatalogVersion{}}
+var appModels = []any{&User{}, &Session{}, &MagicToken{}, &Catalog{}, &CatalogVersion{},
+	&Show{}, &AudienceProfile{}, &ShowParticipant{}, &SongRequest{}}
 
 // TestMigrationsMatchModels catches a model and its migration drifting apart:
 // every model field has a column, and every column has a field.

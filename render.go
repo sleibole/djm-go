@@ -7,6 +7,7 @@ import (
 	"io/fs"
 	"net/http"
 	"path"
+	"time"
 )
 
 // views holds one parsed template set per page: layout + partials + the page itself.
@@ -25,9 +26,12 @@ func loadViews(fsys fs.FS, static assets) (*views, error) {
 		return nil, err
 	}
 	funcs := template.FuncMap{
-		"icon":   icon,
-		"asset":  static.url,
-		"commas": commas,
+		"icon":      icon,
+		"asset":     static.url,
+		"commas":    commas,
+		"localTime": localTime,
+
+		"pickVariantView": pickVariantView,
 	}
 
 	v := &views{pages: map[string]*template.Template{}}
@@ -83,6 +87,31 @@ func (a *app) renderBlock(w http.ResponseWriter, r *http.Request, status int, pa
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.WriteHeader(status)
 	buf.WriteTo(w)
+}
+
+// localTime writes a <time> element that app.js rewrites in the viewer's time
+// zone. style is "datetime", "time" or "date". The text before that is UTC.
+// t may be a time.Time or *time.Time; nil gives "—".
+func localTime(t any, style string) template.HTML {
+	var tt time.Time
+	switch v := t.(type) {
+	case time.Time:
+		tt = v
+	case *time.Time:
+		if v == nil {
+			return "—"
+		}
+		tt = *v
+	default:
+		return "—"
+	}
+	layout := map[string]string{"time": "3:04 PM UTC", "date": "Jan 2, 2006"}[style]
+	if layout == "" {
+		layout = "Jan 2, 3:04 PM UTC"
+	}
+	tt = tt.UTC()
+	return template.HTML(fmt.Sprintf(`<time datetime="%s" data-local="%s">%s</time>`,
+		tt.Format(time.RFC3339), template.HTMLEscapeString(style), tt.Format(layout)))
 }
 
 func (a *app) serverError(w http.ResponseWriter, r *http.Request, err error) {

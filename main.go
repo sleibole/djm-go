@@ -85,6 +85,7 @@ func newApp(cfg config, db *gorm.DB, logger *slog.Logger, m mailer) (*app, error
 	if err != nil {
 		return nil, fmt.Errorf("catalog cache: %w", err)
 	}
+	a.refreshPins()
 	return a, nil
 }
 
@@ -191,6 +192,19 @@ func (a *app) routes() http.Handler {
 	mux.HandleFunc("GET /catalogs/{id}/status", a.requireHost(a.handleCatalogStatus))
 	mux.HandleFunc("GET /catalogs/{id}/search", a.requireHost(a.handleCatalogSearch))
 	mux.HandleFunc("POST /catalogs/{id}/delete", a.requireHost(a.handleCatalogDelete))
+
+	mux.HandleFunc("GET /shows", a.requireHost(a.handleShows))
+	mux.HandleFunc("GET /shows/new", a.requireHost(a.handleNewShow))
+	mux.HandleFunc("POST /shows", a.requireHost(a.handleCreateShow))
+	mux.HandleFunc("GET /shows/{id}", a.requireHost(a.handleShow))
+	mux.HandleFunc("POST /shows/{id}", a.requireHost(a.handleShowSettings))
+	mux.HandleFunc("POST /shows/{id}/start", a.requireHost(a.handleStartShow))
+	mux.HandleFunc("POST /shows/{id}/end", a.requireHost(a.handleEndShow))
+	mux.HandleFunc("GET /shows/{id}/live", a.requireHost(a.handleShowLive))
+	mux.HandleFunc("GET /shows/{id}/search", a.requireHost(a.handleShowSearch))
+	mux.HandleFunc("GET /shows/{id}/participants", a.requireHost(a.handleParticipantSuggestions))
+	mux.HandleFunc("POST /shows/{id}/requests", a.requireHost(a.handleAddRequest))
+	mux.HandleFunc("POST /requests/{rid}/{action}", a.requireHost(a.handleRequestAction))
 
 	mux.HandleFunc("GET /docs/csv-format", a.handleCSVFormatDoc)
 

@@ -34,8 +34,8 @@ var (
 func (a *app) requireHost(next http.HandlerFunc) http.HandlerFunc {
 	return a.requireUser(func(w http.ResponseWriter, r *http.Request) {
 		if !currentUser(r).Hosts() {
-			a.message(w, r, http.StatusForbidden, "Catalogs are for hosts",
-				"Start hosting from your account page to upload a song catalog.")
+			a.message(w, r, http.StatusForbidden, "This page is for hosts",
+				"Start hosting from your account page to run shows and upload song catalogs.")
 			return
 		}
 		next(w, r)
@@ -134,12 +134,14 @@ type catalogPage struct {
 	Saved          string
 	Built          bool // the page was loaded because a build just finished
 	UploadError    string
+	DeleteError    string
 	VariantChoices []choice
 	Search         catalogSearchView
 }
 
 type catalogSearchView struct {
 	CatalogID   uint
+	Version     int // the catalog version searched
 	Query       string
 	Result      searchResult
 	Error       string
@@ -345,7 +347,7 @@ func (a *app) handleCatalogSearch(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *app) searchView(r *http.Request, c Catalog, q string) catalogSearchView {
-	view := catalogSearchView{CatalogID: c.ID, Query: q}
+	view := catalogSearchView{CatalogID: c.ID, Version: *c.ActiveVersion, Query: q}
 	db, err := a.cache.open(r.Context(), c.ID, *c.ActiveVersion)
 	if err == nil {
 		start := time.Now()
@@ -371,6 +373,17 @@ func (a *app) searchView(r *http.Request, c Catalog, q string) catalogSearchView
 func (a *app) handleCatalogDelete(w http.ResponseWriter, r *http.Request) {
 	c, ok := a.ownCatalog(w, r)
 	if !ok {
+		return
+	}
+	var live int64
+	if err := a.db.Model(&Show{}).Where("catalog_id = ? AND status = ?", c.ID, showActive).Count(&live).Error; err != nil {
+		a.serverError(w, r, err)
+		return
+	}
+	if live > 0 {
+		page := a.catalogPageFor(r, c)
+		page.DeleteError = "End all active shows before deleting this catalog."
+		a.render(w, r, http.StatusConflict, "catalog.html", page)
 		return
 	}
 	if err := a.db.Delete(&c).Error; err != nil {

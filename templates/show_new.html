@@ -1,0 +1,74 @@
+{{define "title"}}New Show · DJMagic.io{{end}}
+{{define "content"}}
+{{with .Data}}{{$f := .Form}}
+<div class="narrow">
+<h1>New Show</h1>
+
+{{if .Error}}<p role="alert" class="error">{{.Error}}{{with .ActiveShow}} <a href="/shows/{{.ID}}">Go to {{.DisplayName}}</a>{{end}}</p>
+{{else if .ActiveShow}}{{with .ActiveShow}}<p role="status" class="warning">{{.DisplayName}} is live now. You can schedule another show, but end that one before starting a new one. <a href="/shows/{{.ID}}">Go to {{.DisplayName}}</a></p>{{end}}{{end}}
+
+<form method="post" action="/shows" class="show-form">
+  <label>
+    {{icon "microphone"}} Show Name <small>(optional)</small>
+    <input type="text" name="name" value="{{$f.Name}}" placeholder="e.g. Friday Night Karaoke" maxlength="100">
+  </label>
+
+  <label>
+    {{icon "link"}} URL Slug <small>(optional — made from the name)</small>
+    <input type="text" name="slug" value="{{$f.Slug}}" placeholder="auto-generated" maxlength="50" autocapitalize="off" spellcheck="false">
+  </label>
+
+  <label>
+    {{icon "music"}} Catalog
+    <select name="catalog_id">
+      <option value="">None (freeform requests only)</option>
+      {{range .Catalogs}}<option value="{{.ID}}"{{if eq (printf "%d" .ID) $f.CatalogID}} selected{{end}}>{{.Name}}</option>{{end}}
+    </select>
+  </label>
+
+  <div id="freeform-field">
+    <label>
+      <input type="checkbox" name="manual_entry_enabled" value="1"{{if $f.ManualEntry}} checked{{end}}>
+      Allow freeform song requests
+    </label>
+    <small>Let audience members request any song by typing in title and artist. Shows without a catalog always allow this.</small>
+  </div>
+
+  <fieldset>
+    <legend>Show Type</legend>
+    {{range .ShowTypes}}
+    <label><input type="radio" name="show_type" value="{{.Value}}"{{if eq .Value $f.ShowType}} checked{{end}}> {{.Label}}</label>
+    {{end}}
+  </fieldset>
+
+  <fieldset>
+    <legend>Audience requests</legend>
+    <label><input type="radio" name="approval_required" value="1"{{if $f.Approval}} checked{{end}}> Require approval before requests join the queue</label>
+    <label><input type="radio" name="approval_required" value="0"{{if not $f.Approval}} checked{{end}}> Add requests to the queue immediately</label>
+    <small>When approval is required, you review each request before it appears in your live queue.</small>
+  </fieldset>
+
+  <label>
+    Max Songs in Queue per Singer <small>(optional)</small>
+    <input type="number" name="max_songs" value="{{$f.MaxSongs}}" min="1" max="99" placeholder="Unlimited">
+  </label>
+
+  <fieldset>
+    <legend>When</legend>
+    <label><input type="radio" name="timing" value="now"{{if ne $f.Timing "later"}} checked{{end}}> Start Now</label>
+    <label><input type="radio" name="timing" value="later"{{if eq $f.Timing "later"}} checked{{end}}> Schedule for Later</label>
+  </fieldset>
+
+  <label class="when-later">
+    {{icon "calendar"}} Scheduled Date &amp; Time
+    <input type="datetime-local" name="scheduled_local" value="{{$f.ScheduledLocal}}" data-utc="{{$f.ScheduledAt}}" data-utc-field="scheduled_at">
+    <input type="hidden" name="scheduled_at" value="{{$f.ScheduledAt}}">
+  </label>
+
+  <button type="submit"><span class="when-now">Start Show</span><span class="when-later">Schedule Show</span></button>
+</form>
+
+<p><a href="/shows">Back to shows</a></p>
+</div>
+{{end}}
+{{end}}

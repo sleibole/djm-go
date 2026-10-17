@@ -146,9 +146,9 @@ djm/
 ├── catalog_search.go    # token sanitizing, sort modes, artist buckets, paging
 ├── catalogs.go          # catalog pages: list, create, upload, status, search, settings, delete
 ├── fingerprint.go       # saved-song fingerprint
-├── queue.go             # request lifecycle, rotation insert functions, positions
+├── shows.go             # shows list, new show, show page, settings, start, end, cache pins
+├── queue.go             # request lifecycle, rotation insert, positions, host add, autocomplete
 ├── account.go           # Account page: password, profile, defaults, start hosting, delete
-├── handlers_shows.go    # host show page and queue actions
 ├── handlers_audience.go # /dj/{handle}, show page, request, queue, display
 ├── handlers_memory.go   # my performances, saved songs, sing again
 ├── handlers_admin.go    # users, log in as, feedback, cache status
@@ -161,7 +161,8 @@ djm/
 │   ├── pico.min.css     # Pico 2.1.1 (copied in)
 │   ├── app.css
 │   ├── htmx.min.js
-│   ├── app.js           # theme switch, search-as-you-type, copy link
+│   ├── app.js           # theme switch, dialogs, local times, polling guard, copy link
+│   ├── reorder.js       # queue drag and drop (host show page)
 │   ├── manifest.webmanifest
 │   ├── favicon.ico, icon.png, apple-touch-icon.png   # copied from djm-mono
 │   └── images/
@@ -359,7 +360,7 @@ catalogs/{catalog_id}/v{version}.db    # built artifact
 - On search: if the file is missing, download from Tigris (one download per file at a time; other searches for it wait), then open it read-only (`mode=ro`, `immutable=1`).
 - One open read-only handle per cached file, closed when evicted.
 - Track last use in memory, and touch the file mtime (at most once a minute) so it survives restarts. On startup the directory is scanned and leftover `.tmp` files are deleted.
-- When total bytes exceed `CATALOG_CACHE_MAX_BYTES` (default 10 GB), delete least-recently-used files. Never evict the active version of a catalog that an active show uses (phase 3).
+- When total bytes exceed `CATALOG_CACHE_MAX_BYTES` (default 10 GB), delete least-recently-used files. Catalogs of live shows are pinned and never evicted (any version, so a host's search results from just before a rebuild still resolve). Pins are refreshed at startup and whenever a show starts or ends.
 - Admin page shows: cached files and bytes, budget, hits/misses since boot, catalogs whose active version is missing from Tigris.
 
 **Remote cleanup.** The hourly cleanup deletes the files and row of any version that is neither active nor building and is older than 48 hours. Deleting a catalog (or the account) deletes all its files right away.
@@ -369,12 +370,13 @@ catalogs/{catalog_id}/v{version}.db    # built artifact
 - The live queue is `song_requests` with `status = queued`, ordered by `queue_position`. Positions are rewritten densely in the same transaction as any change.
 - `pending` requests (approval on) have no position until approved.
 - Starting a request marks any current `now_playing` as `completed`, then sets this one `now_playing`.
-- `max_songs_per_singer` counts that participant's `pending` + `queued`.
+- `max_songs_per_singer` counts that participant's `pending` + `queued`, including requests the host added.
+- Ending a show marks the `now_playing` request `completed` and cancels everything `pending` or `queued`, in one transaction with the status change.
 - Rotation style is a function that returns the insert position:
   - `standard` (launch): new requests go to the bottom.
   - `traditional` (later): same as standard for new requests; differs only in what happens after a singer finishes.
   - Groups and fairness rules (later) live in these functions.
-- Host actions are POSTs that redirect back to the show page; HTMX swaps the queue in place.
+- Host actions are POSTs that redirect back to the show page; HTMX swaps the live part of the page in place. A refused action (409) shows Rails' message above the queue.
 
 ### Real-time updates
 
@@ -406,14 +408,17 @@ POST /catalogs/{id}/delete
 GET  /docs/csv-format               public CSV guide
 
 GET  /shows, POST /shows
-GET  /shows/{id}                    host view: pending, now playing, queue, completed
+GET  /shows/new
+GET  /shows/{id}                    host view: pending, now playing, queue, completed (?q= searches without JS)
 POST /shows/{id}                    settings
 POST /shows/{id}/start, /end
-POST /shows/{id}/requests           host add (catalog or manual)
+GET  /shows/{id}/live               polled queue fragment; HX-Redirect once the show isn't live
+GET  /shows/{id}/search             Add to Queue search fragment
+POST /shows/{id}/requests           host add (song={version}:{song id}, or title and artist)
 POST /requests/{rid}/approve|reject|start|done|skip|delete
 POST /requests/{rid}/move           after={rid} (empty = top); drag and drop, 204
-GET  /shows/{id}/participants?q=    autocomplete fragment
-GET  /shows/{id}/qr.png
+GET  /shows/{id}/participants?participant_name=   autocomplete <option>s
+GET  /shows/{id}/qr.png             (phase 4)
 
 GET  /dj/{handle}                         DJ profile, upcoming and live shows
 GET  /dj/{handle}/shows/{slug}            audience show page with search
@@ -619,7 +624,7 @@ How it works (`auth.go`, `account.go`, `cleanup.go`; mail, Turnstile, and rate l
 - **Rate limits** (in memory): email links 5 per address and 10 per IP per hour (Rails' numbers; past the per-address limit the page looks the same but nothing is sent), password attempts 10 per IP per minute. Turnstile on both forms; development uses Cloudflare's always-pass keys.
 - **Sessions:** random cookie token, sha256 in the `sessions` table, 30 days, renewed past halfway.
 - **Cleanup goroutine** (hourly): expired sessions, used or expired links, and accounts whose email was never confirmed within 7 days (mistyped addresses).
-- **Not yet:** admin role assignment (phase 5 admin; for now `UPDATE users SET role='admin'`), linking a guest's audience history on sign-in (phase 5), the "End all active shows" check on account deletion (phase 3).
+- **Not yet:** admin role assignment (phase 5 admin; for now `UPDATE users SET role='admin'`), linking a guest's audience history on sign-in (phase 5).
 
 ### Phase 2 — Catalogs and search
 
@@ -636,7 +641,6 @@ How it works (`csv_read.go`, `csv_import.go`, `catalog_build.go`, `catalog_cache
 - **Measured** on a synthetic 1M-row CSV (`DJM_BIG=1 go test -run TestBigCatalog`; it repeats a small set of artist and title words, so queries match far more rows than a real catalog would): the build takes 36 s with about 7 MB peak heap, producing a 204 MB DB. Warm searches: "queen" 55 ms sorted by title and 120 ms best match; "l" 117–237 ms; "artist 42" 159–255 ms. A query matching every row ("key") is the worst case, about 1.4–1.7 s before bm25 was dropped (not re-measured since). Typical catalogs (tens of thousands of songs) should be far faster, but that hasn't been measured on real data yet. Search time grows with how many songs match, because sorting by title needs all of them.
 - **Not yet:**
   - The Tigris blob store (phase 6); dev and tests use `BLOB_DIR`.
-  - Keeping an active show's catalog in the cache, and refusing to delete a catalog an active show uses (phase 3).
   - Audience search URLs that include the version so they can be cached (phase 4).
   - Admin cache status page (phase 5). `catalogCache.stats()` already reports files, bytes, hits, and misses.
 
@@ -655,6 +659,22 @@ How it works (`csv_read.go`, `csv_import.go`, `catalog_build.go`, `catalog_cache
     - Without JavaScript the handles stay hidden. The host page already needs HTMX for polling.
     - **Change from track-anything:** it posts the whole list and refuses (409) if the list changed meanwhile. A live queue changes constantly as audience requests arrive, so here the client posts only the moved request and the request it now follows (`after`, empty for the top). The server places it there in the current queue, in one transaction with renumbering. If either request has left the queue (started, removed), the server answers 409 and the page reloads the queue.
     - Polling pauses during a drag and while the save is in flight, so a refresh can't snap the row back.
+
+**Status:** done.
+
+How it works (`shows.go`, `queue.go`, `migrations/003_shows.sql`, `templates/show*.html`, `static/reorder.js`):
+
+- **Shows list** (`/shows`, "Shows" in the nav and "My Shows" on the dashboard): Live, Scheduled, and the 20 most recent ended shows with how many songs were performed.
+- **New show:** name, slug, catalog, freeform requests (only shown with a catalog; a show without one always allows them), show type, approval, max songs, and Start Now or Schedule for Later. Defaults come from the DJ's Account defaults. A blank slug is made from the name as Rails did (`parameterize`, 30 characters, `-1`, `-2`… on collision); an unnamed show gets `show-xxxx`. The first show gives the DJ a handle if they don't have one.
+- **Times** are stored in UTC and shown in the viewer's time zone by `app.js` (`<time data-local>`). The schedule field is a `datetime-local` input; `app.js` adds the same moment in UTC on submit. Without JavaScript the typed time is taken as UTC.
+- **Show page:** the live region (pending requests with approve and a reject dialog with an optional reason, Now Playing with Done and Skip, the queue with drag handles, Start and Remove, and a collapsed Completed list) polls `/shows/{id}/live` every 5 seconds. Polling waits while the tab is hidden, during a drag, and while a dialog is open; open `<details>` stay open across refreshes. Below it: Add to Queue, Show Settings, and End Show (with a confirmation dialog). An ended show shows Songs Performed instead.
+- **Add to Queue:** the singer's name (suggestions are this show's singers), then a catalog search whose results have Add buttons and the version or ID picker when the catalog uses one, or the manual title and artist fields. The Add button names the catalog version searched, so a rebuild in between can't swap in a different song ("That song is no longer in the catalog. Search again."). A name matching an existing singer in this show (ignoring case) reuses them; a new name gets an anonymous audience profile and participant, which phase 4/5 can link to a real guest later.
+- **Host actions** use Rails' error messages, e.g. "Only the current song can be marked done." and "Alice already has the maximum number of songs queued." Requests for another DJ's show are a 404.
+- **Catalogs and accounts:** deleting a catalog an active show uses is refused ("End all active shows before deleting this catalog."), as is deleting an account with an active show. Deleting a catalog deletes its past shows too, as in Rails; the delete dialog says so.
+- **Not yet:**
+  - The public show URL, QR code, audience pages, and TV display (phase 4). The settings show the public URL already.
+  - Audience requests: there is no way to create a `pending` request yet except in tests.
+  - Rotation styles other than standard.
 
 ### Phase 4 — Audience
 

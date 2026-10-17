@@ -46,7 +46,10 @@
       </ul>
       <ul>
         {{with .User}}
-        {{if .Hosts}}<li><a href="/catalogs">{{icon "music"}} Catalogs</a></li>{{end}}
+        {{if .Hosts}}
+        <li><a href="/shows">{{icon "microphone"}} Shows</a></li>
+        <li><a href="/catalogs">{{icon "music"}} Catalogs</a></li>
+        {{end}}
         <li><a href="/account" aria-label="Account" title="Account">{{icon "user"}}</a></li>
         <li>
           <form method="post" action="/logout" class="inline">

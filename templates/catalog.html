@@ -49,8 +49,9 @@
   </form>
 </details>
 
-<details class="section-panel">
+<details class="section-panel"{{if .DeleteError}} open{{end}}>
   <summary>{{icon "trash"}} Delete Catalog</summary>
+  {{if .DeleteError}}<p role="alert" class="error">{{.DeleteError}}</p>{{end}}
   <p>Permanently delete <strong>{{$c.Name}}</strong> and all its shows, queue history, and uploaded songs. This cannot be undone.</p>
   <button type="button" class="outline contrast" data-open-dialog="delete-catalog-dialog">Delete this catalog</button>
   <dialog id="delete-catalog-dialog">
