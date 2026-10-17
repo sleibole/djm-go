@@ -28,6 +28,32 @@
 {{end}}
 
 {{if $s.Active}}
+{{with .Handle}}{{$url := printf "%s%s" $.BaseURL (showPath . $s.Slug)}}
+<div class="share-actions" role="group">
+  <button type="button" class="outline secondary" data-open-dialog="share-dialog">{{icon "share"}} Share</button>
+  <a href="{{showPath . $s.Slug}}/display" class="outline secondary" role="button" target="_blank">{{icon "device-tv"}} Display</a>
+</div>
+<dialog id="share-dialog" class="share-dialog">
+  <article>
+    <header class="no-print">
+      <button type="button" aria-label="Close" rel="prev" data-close-dialog></button>
+      <h3>Share with your audience</h3>
+    </header>
+    <div class="share-dialog-body">
+      <h4>{{$s.DisplayName}}</h4>
+      {{qrSVG $url "qr-code share-qr"}}
+      <p><small><code id="show-url">{{$url}}</code></small></p>
+      <div class="no-print" role="group">
+        <button type="button" class="outline secondary" data-copy="show-url">{{icon "copy"}} <span>Copy link</span></button>
+        <button type="button" class="outline secondary" data-print>{{icon "printer"}} Print</button>
+      </div>
+    </div>
+  </article>
+</dialog>
+{{else}}
+<p><a href="/account">Set your handle</a> to share a QR code and public link with your audience.</p>
+{{end}}
+
 {{template "show_live" .Live}}
 
 <section id="add-to-queue">

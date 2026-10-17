@@ -1,0 +1,150 @@
+{{define "title"}}{{.Data.Show.DisplayName}} · {{.Data.DJ.PublicName}} · DJMagic.io{{end}}
+{{define "content"}}
+{{with .Data}}{{$s := .Show}}
+<div class="narrow">
+{{template "queue_banner" .Banner}}
+<hgroup>
+  <h1>{{$s.DisplayName}}</h1>
+  <p>
+    {{if $s.Active}}<mark>Live</mark> — {{template "show_type" $s}} with {{.DJ.PublicName}}
+    {{else if $s.Scheduled}}{{template "show_type" $s}} with {{.DJ.PublicName}}{{with $s.ScheduledAt}} — {{localTime . "datetime"}}{{end}}
+    {{else}}{{template "show_type" $s}} with {{.DJ.PublicName}} — Ended{{end}}
+  </p>
+</hgroup>
+
+{{with .Error}}<p role="alert" class="error">{{.}}</p>{{end}}
+
+{{if $s.Scheduled}}
+<p>This show hasn't started yet. Check back at the scheduled time!</p>
+{{else if not $s.Active}}
+<p>This show has ended and is no longer accepting requests.</p>
+{{else if .LimitReached}}
+<article role="status">
+  <p>You can't request more songs until the ones you've already requested are sung.</p>
+  <a href="{{.Path}}/queue" role="button" class="secondary">See the queue</a>
+</article>
+{{else if .Picked}}
+{{template "audience_step2" .}}
+{{else if $s.Catalog}}
+  {{if $s.Catalog.ActiveVersion}}
+  <section id="step-search">
+    <h3>Step 1: Find your song</h3>
+    <form role="search" method="get" action="{{.Path}}">
+      <input type="hidden" name="v" value="{{.Search.Version}}">
+      <input type="search" name="q" value="{{.Search.Query}}" placeholder="Search by title or artist…"
+             autocomplete="off" aria-label="Search songs"
+             hx-get="{{.Path}}/search" hx-trigger="input changed delay:300ms, search" hx-include="closest form"
+             hx-target="#audience-results" hx-swap="innerHTML" hx-sync="this:replace">
+    </form>
+    <form id="pick-form" method="get" action="{{.Path}}"></form>
+    <div id="audience-results" aria-live="polite">{{template "audience_results" $}}</div>
+  </section>
+  {{else if not $s.ManualEntryEnabled}}
+  <p>The song list isn't ready yet. Check back soon!</p>
+  {{end}}
+  {{if $s.ManualEntryEnabled}}
+  <details class="section-panel"{{if or .Title (not $s.Catalog.ActiveVersion)}} open{{end}}>
+    <summary>{{icon "music"}} Can't find your song?</summary>
+    {{template "audience_manual" .}}
+  </details>
+  {{end}}
+{{else}}
+<section>
+  <h3>Request a Song</h3>
+  {{template "audience_manual" .}}
+</section>
+{{end}}
+
+<p>
+  {{if $s.Active}}<a href="{{.Path}}/queue">See the queue</a> · {{end}}
+  <a href="/dj/{{.DJ.Handle}}">Back to {{.DJ.PublicName}}</a>
+</p>
+</div>
+{{end}}
+{{end}}
+
+{{define "audience_name_field"}}
+<label>
+  {{icon "user"}} Your name
+  <input type="text" name="participant_name" value="{{.Name}}" placeholder="e.g. Mike S." required maxlength="50" autocomplete="off">
+  <small>Add a last initial if it's a common name so the host can tell you apart.</small>
+</label>
+{{end}}
+
+{{define "audience_manual"}}
+<form method="post" action="{{.Path}}/requests">
+  <label>
+    {{icon "music"}} Song title
+    <input type="text" name="song_title" value="{{.Title}}" placeholder="Song title" required maxlength="200">
+  </label>
+  <label>
+    {{icon "microphone"}} Artist
+    <input type="text" name="song_artist" value="{{.Artist}}" placeholder="Artist (optional)" maxlength="200">
+  </label>
+  {{template "audience_name_field" .}}
+  <button type="submit">Submit Request</button>
+</form>
+{{end}}
+
+{{define "audience_step2"}}{{$p := .}}{{with .Picked}}
+<section id="step-submit">
+  <h3>Step 2: Enter your name</h3>
+  <article class="selected-song">
+    <p><strong>{{.Song.Title}}</strong> — {{or .Song.Artist "—"}}{{with .Variant}}<br><small>{{.}}</small>{{end}}</p>
+    <a href="{{$p.Path}}">Change song</a>
+  </article>
+  <form method="post" action="{{$p.Path}}/requests">
+    <input type="hidden" name="song" value="{{.Pick}}">
+    {{with .Variant}}<input type="hidden" name="variant-{{$p.Picked.Song.ID}}" value="{{.}}">{{end}}
+    {{template "audience_name_field" $p}}
+    <button type="submit">Submit Request</button>
+  </form>
+</section>
+{{end}}{{end}}
+
+{{define "audience_results"}}{{$p := .Data}}{{with $p.Search}}
+{{if .Error}}
+<p role="alert" class="error">{{.Error}}</p>
+{{else if .Query}}
+{{if not .Result.Songs}}
+<p><small>No songs found. Try a different search{{if $p.Show.ManualEntryEnabled}}, or enter your song below{{end}}.</small></p>
+{{else}}
+<div class="overflow-auto">
+  <table class="striped">
+    <thead>
+      <tr>
+        <th>Title</th>
+        <th>Artist</th>
+        {{if .ShowVersion}}<th>Version</th>{{end}}
+        {{if .ShowID}}<th>ID</th>{{end}}
+        <th></th>
+      </tr>
+    </thead>
+    <tbody id="audience-results-body">{{template "audience_rows" $p}}</tbody>
+  </table>
+</div>
+<div id="audience-load-more">{{template "audience_load_more_button" $p}}</div>
+{{end}}
+{{end}}
+{{end}}{{end}}
+
+{{define "audience_more_results"}}{{template "audience_rows" .Data}}
+<div id="audience-load-more" hx-swap-oob="true">{{template "audience_load_more_button" .Data}}</div>{{end}}
+
+{{define "audience_rows"}}{{with .Search}}{{$v := .}}{{range .Result.Songs}}
+<tr>
+  <td>{{.Title}}</td>
+  <td>{{.Artist}}</td>
+  {{if $v.ShowVersion}}<td>{{template "audience_variant" (pickVariantView .ID .Versions)}}</td>{{end}}
+  {{if $v.ShowID}}<td>{{template "audience_variant" (pickVariantView .ID .ExternalIDs)}}</td>{{end}}
+  <td><button type="submit" form="pick-form" name="song" value="{{$v.Version}}:{{.ID}}" class="outline">Select</button></td>
+</tr>
+{{end}}{{end}}{{end}}
+
+{{define "audience_variant"}}{{if eq (len .Options) 1}}{{index .Options 0}}{{else if .Options}}<select name="variant-{{.SongID}}" form="pick-form" aria-label="Variant">{{range .Options}}<option>{{.}}</option>{{end}}</select>{{end}}{{end}}
+
+{{define "audience_load_more_button"}}{{$p := .}}{{with .Search.NextOffset}}
+<a href="{{$p.Path}}?q={{$p.Search.Query}}&amp;offset={{.}}" role="button" class="outline secondary"
+   hx-get="{{$p.Path}}/search?q={{urlquery $p.Search.Query}}&amp;v={{$p.Search.Version}}&amp;offset={{.}}"
+   hx-target="#audience-results-body" hx-swap="beforeend">Load more results</a>
+{{end}}{{end}}

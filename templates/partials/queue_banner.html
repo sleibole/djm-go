@@ -1,0 +1,9 @@
+{{define "queue_banner"}}{{if .}}
+<aside class="queue-status-banner" aria-label="Your requests">
+  {{range .}}
+  <a href="{{.URL}}">{{icon "microphone"}} {{if .Up}}<strong>You're up!</strong>{{else}}You're in the queue{{end}} at {{.Show}} &rarr;</a>
+  {{end}}
+</aside>
+{{end}}{{end}}
+
+{{define "show_type"}}{{if .Karaoke}}Karaoke{{else}}DJ{{end}}{{end}}

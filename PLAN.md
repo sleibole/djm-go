@@ -113,7 +113,7 @@ These are changes beyond a straight port. Each one is a suggestion to accept or 
 | Email | `net/smtp` to Amazon SES SMTP | Console logger in dev; MailHog optional |
 | Bot protection | Cloudflare Turnstile | Same as both existing apps |
 | Passwords | `golang.org/x/crypto/bcrypt` | |
-| QR codes | `rsc.io/qr` (tiny) or vendored JS generator | Rendered as PNG or SVG on the show page and display page |
+| QR codes | `rsc.io/qr` | Rendered as inline SVG in the host's share dialog and on the display page |
 | Logging | `log/slog` | |
 | Dev reload | Air, run by version | As in track-anything |
 
@@ -149,7 +149,8 @@ djm/
 ├── shows.go             # shows list, new show, show page, settings, start, end, cache pins
 ├── queue.go             # request lifecycle, rotation insert, positions, host add, autocomplete
 ├── account.go           # Account page: password, profile, defaults, start hosting, delete
-├── handlers_audience.go # /dj/{handle}, show page, request, queue, display
+├── audience.go          # guest identity, /dj/{handle}, show page, request, cancel, queue, display
+├── qr.go                # QR code as inline SVG
 ├── handlers_memory.go   # my performances, saved songs, sing again
 ├── handlers_admin.go    # users, log in as, feedback, cache status
 ├── cleanup.go           # expired sessions/tokens, stale guests, old local versions
@@ -418,14 +419,14 @@ POST /shows/{id}/requests           host add (song={version}:{song id}, or title
 POST /requests/{rid}/approve|reject|start|done|skip|delete
 POST /requests/{rid}/move           after={rid} (empty = top); drag and drop, 204
 GET  /shows/{id}/participants?participant_name=   autocomplete <option>s
-GET  /shows/{id}/qr.png             (phase 4)
 
 GET  /dj/{handle}                         DJ profile, upcoming and live shows
-GET  /dj/{handle}/shows/{slug}            audience show page with search
-GET  /dj/{handle}/shows/{slug}/search     search fragment; includes the catalog version so it can be cached
+GET  /dj/{handle}/shows/{slug}            audience show page (?q= searches, ?song= picks, without JS)
+GET  /dj/{handle}/shows/{slug}/search     search fragment (?q=&v={version}&offset=); cacheable for the current version
 POST /dj/{handle}/shows/{slug}/requests   request a song
-GET  /dj/{handle}/shows/{slug}/queue      queue and "where am I"
-GET  /dj/{handle}/shows/{slug}/display    TV display
+POST /dj/{handle}/shows/{slug}/requests/{rid}/cancel   cancel your own pending or queued request
+GET  /dj/{handle}/shows/{slug}/queue      queue and "where am I"; HX-Target audience-live returns the polled part
+GET  /dj/{handle}/shows/{slug}/display    TV display; HX-Target display-live returns the polled part
 
 GET  /me/performances
 GET  /me/saved, POST /me/saved, POST /me/saved/{id}/delete, POST /me/saved/{id}/request
@@ -641,7 +642,6 @@ How it works (`csv_read.go`, `csv_import.go`, `catalog_build.go`, `catalog_cache
 - **Measured** on a synthetic 1M-row CSV (`DJM_BIG=1 go test -run TestBigCatalog`; it repeats a small set of artist and title words, so queries match far more rows than a real catalog would): the build takes 36 s with about 7 MB peak heap, producing a 204 MB DB. Warm searches: "queen" 55 ms sorted by title and 120 ms best match; "l" 117–237 ms; "artist 42" 159–255 ms. A query matching every row ("key") is the worst case, about 1.4–1.7 s before bm25 was dropped (not re-measured since). Typical catalogs (tens of thousands of songs) should be far faster, but that hasn't been measured on real data yet. Search time grows with how many songs match, because sorting by title needs all of them.
 - **Not yet:**
   - The Tigris blob store (phase 6); dev and tests use `BLOB_DIR`.
-  - Audience search URLs that include the version so they can be cached (phase 4).
   - Admin cache status page (phase 5). `catalogCache.stats()` already reports files, bytes, hits, and misses.
 
 ### Phase 3 — Shows and the host queue
@@ -672,8 +672,6 @@ How it works (`shows.go`, `queue.go`, `migrations/003_shows.sql`, `templates/sho
 - **Host actions** use Rails' error messages, e.g. "Only the current song can be marked done." and "Alice already has the maximum number of songs queued." Requests for another DJ's show are a 404.
 - **Catalogs and accounts:** deleting a catalog an active show uses is refused ("End all active shows before deleting this catalog."), as is deleting an account with an active show. Deleting a catalog deletes its past shows too, as in Rails; the delete dialog says so.
 - **Not yet:**
-  - The public show URL, QR code, audience pages, and TV display (phase 4). The settings show the public URL already.
-  - Audience requests: there is no way to create a `pending` request yet except in tests.
   - Rotation styles other than standard.
 
 ### Phase 4 — Audience
@@ -685,6 +683,26 @@ How it works (`shows.go`, `queue.go`, `migrations/003_shows.sql`, `templates/sho
   - **Audience members can cancel their own requests** while pending or queued, with a confirmation. (Rails: only the host could remove them.)
   - **Rate limit on audience requests**, in memory, per IP and show (about 10 per 10 minutes), on top of the per-singer song limit. No Turnstile, so requesting stays one tap.
   - **The request form fills in the name the guest last used at any show**, still editable. (Rails: only once they had requested in this show.)
+
+**Status:** done.
+
+How it works (`audience.go`, `qr.go`, `templates/dj_profile.html`, `audience_show.html`, `audience_queue.html`, `display.html`, `partials/queue_banner.html`):
+
+- **Identity.** A guest gets a random token in an `HttpOnly` cookie (`guest`, 400 days) the first time they request a song, not when they only look; the database stores its sha256 in `audience_profiles`. An audience account uses a profile keyed by its user instead, with no cookie. Anyone else, including a DJ visiting a show, is a guest, as in Rails. An unknown cookie is cleared. `last_seen_at` is touched at most hourly.
+- **DJ profile** (`/dj/{handle}`): Live Now with "Browse Songs & Request" (catalog) or "Make a Request", Upcoming, or an empty message. Unknown handle: "DJ Not Found". Unknown show: "Show Not Found" with a link back to the DJ.
+- **Request page.** With a catalog: Step 1 searches as you type (HTMX, 25 results with Load more), Select picks a song (and version or ID when the catalog shows them), Step 2 asks for the name. Without JavaScript, the search box and Select buttons are plain GET forms, so the same steps work. Freeform: "Can't find your song?" under the search when the show allows it, or "Request a Song" when the show has no catalog. The name field fills in the name from this show, else the last name used at any show. At the song limit the form is replaced by Rails' message.
+- **Search fragment** URLs carry the catalog version (`?v=`); a response for the current version is `Cache-Control: private, max-age=300`.
+- **Requesting** checks, in order: the show is live (Rails' scheduled and ended messages), a catalog pick or a title, the name (Rails' messages), then the rate limit (10 per IP per show per 10 minutes: "You're sending requests too quickly. Please wait a few minutes and try again."). In one transaction it finds or creates this profile's participant (renaming it if the name changed), checks the song limit, and creates the request (`pending` with approval, else queued at the bottom). It redirects to the queue page with Rails' notice.
+- **Queue page** polls every 5 seconds while the show is live. It shows a callout ("You're up!", "You're up next!", or "You're in the queue!" with "You are number N of M." / "Your spots: #2, #5 of 9." and the wait estimate), Now Playing with "(That's you!)", the queue with the visitor's rows highlighted, Your Pending Requests, and Rejected Requests with the reason. Signed-out visitors get the "Create a free account" tip.
+- **Cancel:** an X on the visitor's own pending or queued rows, with a confirmation. Anyone else's request is a 404; one that has moved on gives "This request can no longer be canceled."; an ended show gives "This show has ended."
+- **Wait estimate:** position × the median start-to-done time of this show's completed songs, or 4 minutes per song until 3 are done.
+- **Queue banner** on the DJ profile and request page: each live show where the visitor has a request waiting or on stage, linking to its queue.
+- **TV display** (`.../display`, opened from the host page in a new tab): always dark, no nav, show name, QR code with "Scan to request a song", Now Playing, Up Next. Polls every 5 seconds.
+- **Host page:** Share opens a dialog with the QR code, the public URL, Copy link, and Print (prints only the dialog); Display opens the TV page. A DJ without a handle sees "Set your handle" instead.
+- **QR codes** are SVG from `rsc.io/qr` (medium error correction, white background, 4-module quiet zone), inline in the page.
+- **Not yet:**
+  - Linking a guest's history to an account when they sign in, Saved Songs, Sing Again (phase 5). The sign-up tip says only what works today.
+  - Live updates without polling (later: SSE).
 
 ### Phase 5 — Song memory and admin
 

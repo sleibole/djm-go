@@ -36,8 +36,10 @@ func (a *app) handleFavicon(w http.ResponseWriter, r *http.Request) {
 }
 
 type messagePage struct {
-	Title string
-	Text  string
+	Title    string
+	Text     string
+	LinkURL  string // where to go instead of the home page, if set
+	LinkText string
 }
 
 func (a *app) message(w http.ResponseWriter, r *http.Request, status int, title, text string) {

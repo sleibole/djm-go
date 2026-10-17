@@ -143,11 +143,20 @@ type catalogSearchView struct {
 	CatalogID   uint
 	Version     int // the catalog version searched
 	Query       string
+	Offset      int // where this page of results starts
 	Result      searchResult
 	Error       string
 	ShowVersion bool
 	ShowID      bool
 	ShowAlbum   bool
+}
+
+// NextOffset is where the next page starts, or 0 when this is the last page.
+func (v catalogSearchView) NextOffset() int {
+	if next := v.Offset + len(v.Result.Songs); next < v.Result.Total {
+		return next
+	}
+	return 0
 }
 
 func (a *app) catalogPageFor(r *http.Request, c Catalog) catalogPage {
@@ -347,11 +356,16 @@ func (a *app) handleCatalogSearch(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *app) searchView(r *http.Request, c Catalog, q string) catalogSearchView {
-	view := catalogSearchView{CatalogID: c.ID, Version: *c.ActiveVersion, Query: q}
+	return a.searchPage(r, c, q, 0, catalogSearchLimit)
+}
+
+// searchPage is one page of results, for "Load more".
+func (a *app) searchPage(r *http.Request, c Catalog, q string, offset, limit int) catalogSearchView {
+	view := catalogSearchView{CatalogID: c.ID, Version: *c.ActiveVersion, Query: q, Offset: offset}
 	db, err := a.cache.open(r.Context(), c.ID, *c.ActiveVersion)
 	if err == nil {
 		start := time.Now()
-		view.Result, err = searchCatalog(db, q, catalogSearchLimit, 0, r.URL.Query().Get("sort"))
+		view.Result, err = searchCatalog(db, q, limit, offset, r.URL.Query().Get("sort"))
 		if d := time.Since(start); d > 500*time.Millisecond {
 			a.logger.Info("slow catalog search", "catalog_id", c.ID, "ms", d.Milliseconds(),
 				"sort", view.Result.Sort, "returned", len(view.Result.Songs))

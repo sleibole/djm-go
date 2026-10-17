@@ -1,0 +1,38 @@
+{{define "title"}}{{.Data.DJ.PublicName}} · DJMagic.io{{end}}
+{{define "content"}}
+{{with .Data}}{{$dj := .DJ}}
+<div class="narrow">
+{{template "queue_banner" .Banner}}
+<h1>{{$dj.PublicName}}</h1>
+
+{{if .Active}}
+<section>
+  <h2>Live Now</h2>
+  {{range .Active}}
+  <article>
+    <h3>{{.DisplayName}}</h3>
+    <p><mark>Live</mark> — {{template "show_type" .}} — Started {{localTime .StartedAt "time"}}</p>
+    <a href="{{showPath $dj.Handle .Slug}}" role="button">{{if .Catalog}}Browse Songs &amp; Request{{else}}Make a Request{{end}}</a>
+  </article>
+  {{end}}
+</section>
+{{end}}
+
+{{if .Scheduled}}
+<section>
+  <h2>Upcoming</h2>
+  {{range .Scheduled}}
+  <article>
+    <h3>{{.DisplayName}}</h3>
+    <p>{{template "show_type" .}}{{with .ScheduledAt}} — {{localTime . "datetime"}}{{end}}</p>
+  </article>
+  {{end}}
+</section>
+{{end}}
+
+{{if not (or .Active .Scheduled)}}
+<p>{{$dj.PublicName}} doesn't have any shows right now. Check back later!</p>
+{{end}}
+</div>
+{{end}}
+{{end}}

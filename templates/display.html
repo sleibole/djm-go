@@ -1,0 +1,64 @@
+{{define "title"}}{{.Data.Show.DisplayName}} · {{.Data.DJ.PublicName}} · DJMagic.io{{end}}
+{{define "html_attrs"}} data-theme="dark"{{end}}
+{{define "theme_script"}}<meta name="color-scheme" content="dark">{{end}}
+{{define "body"}}<main class="display-layout">{{template "display_live" .Data}}</main>{{end}}
+{{define "content"}}{{template "display_live" .Data}}{{end}}
+{{define "display_live_block"}}{{template "display_live" .Data}}{{end}}
+
+{{define "display_live"}}{{$s := .Show}}
+<div id="display-live" class="display-page"{{if $s.Active}} hx-get="{{showPath .DJ.Handle $s.Slug}}/display"
+     hx-trigger="every 5s [djmShouldPoll()]" hx-target="this" hx-swap="outerHTML"{{end}}>
+  <header class="display-header">
+    <div class="display-header-info">
+      <h1>{{$s.DisplayName}}</h1>
+      <p>
+        <mark>{{template "show_type" $s}}</mark>
+        <span class="display-dj-name">{{.DJ.PublicName}}</span>
+        {{if $s.Scheduled}}<span>— This show hasn't started yet.</span>{{else if not $s.Active}}<span>— This show has ended.</span>{{end}}
+      </p>
+    </div>
+    {{if $s.Active}}
+    <div class="display-qr">
+      {{qrSVG .URL "qr-code display-qr-svg"}}
+      <small>Scan to request a song</small>
+    </div>
+    {{end}}
+  </header>
+
+  <section class="display-now-playing">
+    <h2>{{icon "music"}} Now Playing</h2>
+    {{with .Live.NowPlaying}}
+    <div class="display-now-playing-content">
+      <span class="display-song-title">{{.SongTitle}}</span>
+      {{with .SongArtist}}<span class="display-song-artist">{{.}}</span>{{end}}
+      {{with .Version}}<span class="display-song-version">{{.}}</span>{{end}}
+      <span class="display-performer">{{icon "user"}} {{.Participant}}</span>
+    </div>
+    {{else}}
+    <p class="display-empty">No one is performing right now.</p>
+    {{end}}
+  </section>
+
+  <section class="display-queue">
+    <h2>Up Next <small>({{len .Live.Queue}})</small></h2>
+    {{if .Live.Queue}}
+    <table class="display-queue-table">
+      <tbody>
+        {{range $i, $r := .Live.Queue}}
+        <tr>
+          <td class="display-queue-position">{{$r.QueuePosition}}</td>
+          <td class="display-queue-name">{{$r.Participant}}</td>
+          <td class="display-queue-song">
+            {{$r.SongTitle}} <span class="display-queue-artist">— {{or $r.SongArtist "—"}}</span>
+            {{with $r.Version}}<span class="display-queue-version">({{.}})</span>{{end}}
+          </td>
+        </tr>
+        {{end}}
+      </tbody>
+    </table>
+    {{else}}
+    <p class="display-empty">The queue is empty{{if $s.Active}} — scan the QR code to request a song!{{end}}</p>
+    {{end}}
+  </section>
+</div>
+{{end}}

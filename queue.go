@@ -545,9 +545,8 @@ func checkSongLimit(tx *gorm.DB, s Show, p ShowParticipant) error {
 	if s.MaxSongsPerSinger == nil {
 		return nil
 	}
-	var n int64
-	if err := tx.Model(&SongRequest{}).Where("show_participant_id = ? AND status IN ?", p.ID,
-		[]string{requestPending, requestQueued}).Count(&n).Error; err != nil {
+	n, err := waitingCount(tx, p.ID)
+	if err != nil {
 		return err
 	}
 	if n >= int64(*s.MaxSongsPerSinger) {

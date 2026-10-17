@@ -1,5 +1,5 @@
 {{define "layout"}}<!doctype html>
-<html lang="en">
+<html lang="en"{{block "html_attrs" .}}{{end}}>
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -14,12 +14,12 @@
   <link rel="icon" href="{{asset "favicon.ico"}}" sizes="16x16">
   <link rel="icon" href="{{asset "icon.png"}}" type="image/png" sizes="32x32">
   <link rel="apple-touch-icon" href="{{asset "apple-touch-icon.png"}}" sizes="180x180">
-  <script>
+  {{block "theme_script" .}}<script>
     try {
       var t = localStorage.getItem("theme");
       if (t === "light" || t === "dark") document.documentElement.setAttribute("data-theme", t);
     } catch (e) {}
-  </script>
+  </script>{{end}}
   <style>
     html { background-color: #fff; }
     @media (prefers-color-scheme: dark) { html { background-color: #13171f; } }
@@ -34,6 +34,7 @@
   {{block "scripts" .}}{{end}}
 </head>
 <body>
+  {{block "body" .}}
   <header class="container">
     <nav>
       <ul>
@@ -73,6 +74,7 @@
     </small>
     {{template "theme_switch" .}}
   </footer>
+  {{end}}
 </body>
 </html>
 {{end}}

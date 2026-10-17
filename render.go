@@ -30,7 +30,10 @@ func loadViews(fsys fs.FS, static assets) (*views, error) {
 		"asset":     static.url,
 		"commas":    commas,
 		"localTime": localTime,
+		"qrSVG":     qrSVG,
+		"showPath":  showPath,
 
+		"cancelView":      cancelView,
 		"pickVariantView": pickVariantView,
 	}
 

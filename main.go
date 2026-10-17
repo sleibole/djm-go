@@ -38,6 +38,7 @@ type app struct {
 	linkIPLimiter    *rateLimiter
 	linkEmailLimiter *rateLimiter
 	uploadLimiter    *rateLimiter
+	audienceLimiter  *rateLimiter // song requests per IP and show
 	turnstile        *turnstileVerifier
 
 	blobs     blobStore
@@ -81,6 +82,7 @@ func newApp(cfg config, db *gorm.DB, logger *slog.Logger, m mailer) (*app, error
 	a.linkIPLimiter = newRateLimiter(10, time.Hour, clock)
 	a.linkEmailLimiter = newRateLimiter(5, time.Hour, clock)
 	a.uploadLimiter = newRateLimiter(5, time.Hour, clock)
+	a.audienceLimiter = newRateLimiter(audienceRequestLimit, audienceRequestWindow, clock)
 	a.cache, err = newCatalogCache(cfg.CatalogCacheDir, cfg.CatalogCacheMax, a.blobs, logger, clock)
 	if err != nil {
 		return nil, fmt.Errorf("catalog cache: %w", err)
@@ -205,6 +207,14 @@ func (a *app) routes() http.Handler {
 	mux.HandleFunc("GET /shows/{id}/participants", a.requireHost(a.handleParticipantSuggestions))
 	mux.HandleFunc("POST /shows/{id}/requests", a.requireHost(a.handleAddRequest))
 	mux.HandleFunc("POST /requests/{rid}/{action}", a.requireHost(a.handleRequestAction))
+
+	mux.HandleFunc("GET /dj/{handle}", a.handleDJProfile)
+	mux.HandleFunc("GET /dj/{handle}/shows/{slug}", a.handleAudienceShow)
+	mux.HandleFunc("GET /dj/{handle}/shows/{slug}/search", a.handleAudienceSearch)
+	mux.HandleFunc("POST /dj/{handle}/shows/{slug}/requests", a.handleAudienceRequest)
+	mux.HandleFunc("POST /dj/{handle}/shows/{slug}/requests/{rid}/cancel", a.handleAudienceCancel)
+	mux.HandleFunc("GET /dj/{handle}/shows/{slug}/queue", a.handleAudienceQueue)
+	mux.HandleFunc("GET /dj/{handle}/shows/{slug}/display", a.handleDisplay)
 
 	mux.HandleFunc("GET /docs/csv-format", a.handleCSVFormatDoc)
 

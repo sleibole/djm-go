@@ -90,6 +90,27 @@ document.addEventListener("click", (e) => {
   if (closer) closer.closest("dialog")?.close();
 });
 
+document.addEventListener("click", async (e) => {
+  const copy = e.target.closest("[data-copy]");
+  if (copy) {
+    const label = copy.querySelector("span") || copy;
+    const source = document.getElementById(copy.dataset.copy);
+    try {
+      await navigator.clipboard.writeText(source.textContent.trim());
+      label.textContent = "Copied!";
+    } catch (err) {
+      // Some browsers refuse the async clipboard; a selection still copies.
+      const range = document.createRange();
+      range.selectNodeContents(source);
+      getSelection().removeAllRanges();
+      getSelection().addRange(range);
+      label.textContent = document.execCommand("copy") ? "Copied!" : "Link selected";
+    }
+    setTimeout(() => (label.textContent = "Copy link"), 2000);
+  }
+  if (e.target.closest("[data-print]")) window.print();
+});
+
 // Times are rendered in UTC; show them in the viewer's time zone.
 const timeFormats = {
   datetime: { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" },

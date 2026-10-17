@@ -427,3 +427,378 @@ tr.is-dragging {
 html[data-reordering] {
   user-select: none;
 }
+
+/* --- Sharing a show --- */
+
+.share-actions {
+  width: auto;
+  margin-bottom: var(--pico-spacing);
+}
+
+/* QR codes need a white background in the dark theme. */
+.qr-code {
+  display: block;
+  background: #fff;
+  border-radius: 0.5rem;
+}
+
+.share-dialog-body {
+  text-align: center;
+}
+
+.share-dialog-body h4 {
+  font-size: 1.5rem;
+}
+
+.share-qr {
+  width: 100%;
+  max-width: 200px;
+  margin: 0 auto var(--pico-spacing);
+}
+
+.share-dialog-body [role="group"] {
+  justify-content: center;
+}
+
+@media print {
+  body:has(#share-dialog[open]) * {
+    visibility: hidden;
+  }
+
+  #share-dialog[open],
+  #share-dialog[open] * {
+    visibility: visible;
+    color: #000;
+  }
+
+  #share-dialog[open] {
+    position: absolute;
+    inset: 0;
+    background: #fff;
+  }
+
+  #share-dialog article {
+    box-shadow: none;
+    background: #fff;
+  }
+
+  #share-dialog h4 {
+    font-size: 2.5rem;
+  }
+
+  #share-dialog .share-qr {
+    max-width: 300px;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+}
+
+/* --- Audience pages --- */
+
+.queue-status-banner {
+  display: grid;
+  gap: 0.5rem;
+  margin-bottom: var(--pico-spacing);
+}
+
+.queue-status-banner a {
+  display: block;
+  padding: 0.6rem 1rem;
+  border-radius: var(--pico-border-radius);
+  background: color-mix(in srgb, var(--pico-primary) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--pico-primary) 30%, transparent);
+  text-decoration: none;
+}
+
+#audience-results button,
+.queue-table td form button {
+  margin: 0;
+  padding: 0.3rem 0.75rem;
+}
+
+#audience-load-more {
+  text-align: center;
+}
+
+.selected-song {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.selected-song p {
+  margin: 0;
+}
+
+.queue-you {
+  font-weight: 600;
+}
+
+.queue-you td {
+  background: color-mix(in srgb, var(--pico-primary) 12%, transparent);
+}
+
+.queue-you td:first-child {
+  border-left: 3px solid var(--pico-primary);
+}
+
+.queue-position-callout {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  border-radius: var(--pico-border-radius);
+  background: color-mix(in srgb, var(--pico-primary) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--pico-primary) 30%, transparent);
+  margin-bottom: var(--pico-spacing);
+}
+
+.queue-position-callout .position-number {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--pico-primary);
+  line-height: 1;
+}
+
+.queue-position-callout p {
+  margin: 0;
+}
+
+.now-playing-you {
+  border: 1px solid var(--pico-primary);
+  background: color-mix(in srgb, var(--pico-primary) 12%, transparent);
+}
+
+article.queue-signup-cta {
+  padding: 0.85rem 1rem 0.85rem 1.125rem;
+  border: 1px solid color-mix(in srgb, var(--pico-muted-border-color) 68%, transparent);
+  border-left: 2px solid var(--pico-primary);
+  box-shadow: none;
+}
+
+article.queue-signup-cta p {
+  margin: 0 0 0.35rem;
+}
+
+article.queue-signup-cta p:last-child {
+  margin: 0;
+}
+
+.queue-signup-cta__label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--pico-muted-color);
+}
+
+/* --- Venue display (always dark) --- */
+
+.display-layout {
+  margin: 0;
+  padding: 2rem 3rem;
+  min-height: 100vh;
+  overflow: hidden;
+}
+
+.display-page {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  height: calc(100vh - 4rem);
+}
+
+.display-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 2rem;
+  padding-bottom: 1rem;
+  border-bottom: 2px solid var(--pico-muted-border-color);
+}
+
+.display-header-info h1 {
+  font-size: 2.5rem;
+  margin-bottom: 0.25rem;
+}
+
+.display-header-info p {
+  font-size: 1.1rem;
+  margin-bottom: 0;
+  color: var(--pico-muted-color);
+}
+
+.display-header-info mark {
+  font-size: 0.9rem;
+}
+
+.display-dj-name {
+  margin-left: 0.5rem;
+}
+
+.display-qr {
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.display-qr-svg {
+  width: 120px;
+  height: 120px;
+}
+
+.display-qr small {
+  display: block;
+  margin-top: 0.25rem;
+  color: var(--pico-muted-color);
+  font-size: 0.8rem;
+}
+
+.display-now-playing {
+  padding: 1.5rem 2rem;
+  border-radius: var(--pico-border-radius);
+  background: color-mix(in srgb, var(--pico-primary) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--pico-primary) 30%, transparent);
+}
+
+.display-now-playing h2 {
+  font-size: 1.4rem;
+  margin-bottom: 0.75rem;
+  color: var(--pico-primary);
+}
+
+.display-now-playing-content {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.5rem 1rem;
+}
+
+.display-song-title {
+  font-size: 2.2rem;
+  font-weight: 700;
+}
+
+.display-song-artist {
+  font-size: 1.6rem;
+  color: var(--pico-muted-color);
+}
+
+.display-song-artist::before {
+  content: "by ";
+}
+
+.display-song-version {
+  font-size: 1.2rem;
+  color: var(--pico-muted-color);
+}
+
+.display-performer {
+  font-size: 1.4rem;
+  width: 100%;
+  color: var(--pico-primary);
+}
+
+.display-empty {
+  font-size: 1.3rem;
+  color: var(--pico-muted-color);
+  margin: 0;
+}
+
+.display-queue {
+  flex: 1;
+  overflow: hidden;
+}
+
+.display-queue h2 {
+  font-size: 1.4rem;
+  margin-bottom: 0.75rem;
+}
+
+.display-queue h2 small {
+  color: var(--pico-muted-color);
+}
+
+.display-queue-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 1.4rem;
+}
+
+.display-queue-table tbody tr {
+  border-bottom: 1px solid var(--pico-muted-border-color);
+}
+
+.display-queue-table td {
+  padding: 0.6rem 0.75rem;
+  vertical-align: middle;
+  background: none;
+}
+
+.display-queue-table tbody tr:nth-child(even) td {
+  background: color-mix(in srgb, var(--pico-color) 4%, transparent);
+}
+
+.display-queue-position {
+  width: 3rem;
+  text-align: center;
+  font-weight: 700;
+  color: var(--pico-muted-color);
+  font-size: 1.2rem;
+}
+
+.display-queue-name {
+  font-weight: 600;
+  white-space: nowrap;
+  width: 1%;
+  padding-right: 1.5rem !important;
+}
+
+.display-queue-artist,
+.display-queue-version {
+  color: var(--pico-muted-color);
+}
+
+.display-queue-version {
+  font-size: 1rem;
+  margin-left: 0.5rem;
+}
+
+@media (max-width: 768px) {
+  .display-layout {
+    padding: 1rem 1.5rem;
+  }
+
+  .display-page {
+    height: auto;
+    min-height: calc(100vh - 2rem);
+  }
+
+  .display-header {
+    flex-direction: column;
+    text-align: center;
+    gap: 1rem;
+  }
+
+  .display-header-info h1 {
+    font-size: 1.8rem;
+  }
+
+  .display-song-title {
+    font-size: 1.6rem;
+  }
+
+  .display-song-artist {
+    font-size: 1.2rem;
+  }
+
+  .display-performer {
+    font-size: 1.1rem;
+  }
+
+  .display-queue-table {
+    font-size: 1.1rem;
+  }
+}

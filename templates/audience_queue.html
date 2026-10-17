@@ -1,0 +1,123 @@
+{{define "title"}}Queue · {{.Data.Show.DisplayName}} · DJMagic.io{{end}}
+{{define "content"}}
+{{with .Data}}
+<div class="narrow">
+{{with .Notice}}<p role="status" class="saved">{{.}}</p>{{end}}
+{{with .Error}}<p role="alert" class="error">{{.}}</p>{{end}}
+
+{{template "audience_live" .Live}}
+
+{{if not .SignedIn}}
+<article class="queue-signup-cta" aria-label="Create an account">
+  <p class="queue-signup-cta__label">Tip</p>
+  <p>Create a free account to keep your requests with you on any device.</p>
+  <p><a href="/signup?role=audience">Create a free account &rarr;</a></p>
+</article>
+{{end}}
+
+<p>
+  {{if .Show.Active}}<a href="{{.Path}}">Request another song</a> · {{end}}
+  <a href="/dj/{{.DJ.Handle}}">Back to {{.DJ.PublicName}}</a>
+</p>
+</div>
+{{end}}
+{{end}}
+
+{{define "audience_live_block"}}{{template "audience_live" .Data}}{{end}}
+
+{{define "audience_live"}}{{$s := .Show}}{{$l := .}}
+<div id="audience-live"{{if $s.Active}} hx-get="{{.Path}}/queue" hx-trigger="every 5s [djmShouldPoll()]" hx-target="this" hx-swap="outerHTML"{{end}}>
+  <hgroup>
+    <h1>{{$s.DisplayName}}</h1>
+    <p>{{if $s.Active}}<mark>Live</mark> — {{template "show_type" $s}}{{else if $s.Scheduled}}This show hasn't started yet.{{else}}This show has ended.{{end}}</p>
+  </hgroup>
+
+  {{if .Up}}
+  <div class="queue-position-callout is-up" role="status">
+    <span class="position-number">{{icon "microphone"}}</span>
+    <p><strong>You're up!</strong><br><small>Head to the stage.</small></p>
+  </div>
+  {{else if .Positions}}{{$first := index .Positions 0}}
+  <div class="queue-position-callout" role="status">
+    <span class="position-number">#{{$first}}</span>
+    <p>
+      <strong>{{if eq $first 1}}You're up next!{{else}}You're in the queue!{{end}}</strong><br>
+      <small>{{.PositionText}}{{if gt $first 1}} Estimated wait: about {{.WaitMinutes}} {{if eq .WaitMinutes 1}}minute{{else}}minutes{{end}}.{{end}}</small>
+    </p>
+  </div>
+  {{end}}
+
+  <section>
+    <h2>Now Playing</h2>
+    {{with .NowPlaying}}
+    <article class="now-playing{{if $l.Up}} now-playing-you{{end}}">
+      <p><strong>{{.Participant}}</strong>{{if $l.Up}} (That's you!){{end}} — {{.SongTitle}}{{with .SongArtist}} by {{.}}{{end}}{{with .Version}} ({{.}}){{end}}</p>
+    </article>
+    {{else}}
+    <p><small>No one is performing right now.</small></p>
+    {{end}}
+  </section>
+
+  <section>
+    <h2>Queue <small>({{len .Queue}})</small></h2>
+    {{if .Queue}}
+    <div class="overflow-auto">
+      <table class="striped queue-table">
+        <thead><tr><th>#</th><th>{{$s.ParticipantLabel}}</th><th>Song</th><th></th></tr></thead>
+        <tbody>
+          {{range $i, $r := .Queue}}{{$mine := eq $r.ShowParticipantID $l.MeID}}
+          <tr{{if $mine}} class="queue-you"{{end}}>
+            <td>{{$r.QueuePosition}}</td>
+            <td>{{$r.Participant}}{{if $mine}} <small>(you)</small>{{end}}</td>
+            <td>{{$r.SongTitle}} — {{or $r.SongArtist "—"}}{{with $r.Version}}<br><small>{{.}}</small>{{end}}</td>
+            <td>{{if $mine}}{{template "audience_cancel" (cancelView $l $r)}}{{end}}</td>
+          </tr>
+          {{end}}
+        </tbody>
+      </table>
+    </div>
+    {{else}}
+    <p><small>The queue is empty.</small></p>
+    {{end}}
+  </section>
+
+  {{if .Pending}}
+  <section>
+    <h2>Your Pending Requests <small>({{len .Pending}})</small></h2>
+    <p><small>The host will review these shortly.</small></p>
+    <div class="overflow-auto">
+      <table class="striped queue-table">
+        <thead><tr><th>Song</th><th>Submitted</th><th></th></tr></thead>
+        <tbody>
+          {{range .Pending}}
+          <tr>
+            <td>{{.SongTitle}} — {{or .SongArtist "—"}}{{with .Version}}<br><small>{{.}}</small>{{end}}</td>
+            <td><small>{{localTime .RequestedAt "time"}}</small></td>
+            <td>{{template "audience_cancel" (cancelView $l .)}}</td>
+          </tr>
+          {{end}}
+        </tbody>
+      </table>
+    </div>
+  </section>
+  {{end}}
+
+  {{if .Rejected}}
+  <section>
+    <h2>Rejected Requests</h2>
+    <ul>
+      {{range .Rejected}}
+      <li>{{.SongTitle}}{{with .SongArtist}} — {{.}}{{end}}{{with .RejectionReason}}<br><small>Reason: {{.}}</small>{{end}}</li>
+      {{end}}
+    </ul>
+  </section>
+  {{end}}
+</div>
+{{end}}
+
+{{define "audience_cancel"}}
+<form method="post" action="{{.Path}}/requests/{{.Row.ID}}/cancel" hx-post="{{.Path}}/requests/{{.Row.ID}}/cancel"
+      hx-target="#content" hx-swap="innerHTML show:none" hx-confirm="Cancel your request for {{.Row.SongTitle}}?">
+  <button type="submit" class="outline danger" title="Cancel request" aria-label="Cancel your request for {{.Row.SongTitle}}">{{icon "x"}}</button>
+</form>
+{{end}}
