@@ -680,6 +680,11 @@ How it works (`shows.go`, `queue.go`, `migrations/003_shows.sql`, `templates/sho
 
 - DJ profile page, audience show page with search and request, guest cookie identity, queue page with "You're up next!" wording and wait estimate, TV display page, QR code.
 - **Done when:** a singer can scan, request, and watch their position with no account.
+- Decided before starting:
+  - **Duplicate names stay separate, as Rails.** Names aren't unique within a show. An audience request always uses that phone's own participant, so a guest named "Alice" and a host-added "Alice" are two singers with separate song limits. (A host add reuses an existing singer in the show with the same name; Go matches ignoring case, Rails matched exactly.)
+  - **Audience members can cancel their own requests** while pending or queued, with a confirmation. (Rails: only the host could remove them.)
+  - **Rate limit on audience requests**, in memory, per IP and show (about 10 per 10 minutes), on top of the per-singer song limit. No Turnstile, so requesting stays one tap.
+  - **The request form fills in the name the guest last used at any show**, still editable. (Rails: only once they had requested in this show.)
 
 ### Phase 5 — Song memory and admin
 
