@@ -38,7 +38,7 @@ This is the feature inventory from `djm-mono/core` and `djm-mono/songs`, with wh
 | CSV rules | Ported exactly: encoding detection, header rules, row rules, error types and limits, grouping rows into songs, the catalog database schema. See "Catalog CSV rules" below. Fixtures in `djm-mono/fixtures/csvs/` come over as test data. |
 | Search | Ported exactly: token sanitizing, prefix matching, the three sort modes, artist-match buckets, paging. See "Search" under "Catalog CSV rules". |
 | Shows | Name, slug, type, status (`scheduled`, `active`, `ended`), optional catalog, `approval_required`, `manual_entry_enabled`, `max_songs_per_singer`, `rotation_style`. Schedule ahead, start, end. |
-| Queue | Song requests with statuses `pending`, `queued`, `now_playing`, `completed`, `skipped`, `rejected`, `canceled`. One `now_playing` per show (partial unique index). Host can add from search or manually, approve, reject with reason, start, mark done, skip, move, remove. Participant autocomplete from the DJ's past shows. |
+| Queue | Song requests with statuses `pending`, `queued`, `now_playing`, `completed`, `skipped`, `rejected`, `canceled`. One `now_playing` per show (partial unique index). Host can add from search or manually, approve, reject with reason, start, mark done, skip, move, remove. Participant autocomplete from this show's singers. |
 | Audience | `/dj/{handle}` profile, show page with search and request, queue page ("You are #N"), TV display page, QR code for the show. Guest identity from a cookie, upgraded when they sign in. |
 | Song memory | My Performances (completed requests across shows), Sing Again, Saved Songs with request-from-saved. Saved songs keyed by a normalized fingerprint, not a catalog row id. |
 | Marketing | Home landing page with the singer-view and KJ-display screenshots. Open Graph and Twitter card tags with the 1200×630 image. |
@@ -643,6 +643,12 @@ How it works (`csv_read.go`, `csv_import.go`, `catalog_build.go`, `catalog_cache
 
 - Shows CRUD, schedule, start, end, one active show per DJ. Host show page: pending, now playing, queue, completed. Add from search or manual entry, approve, reject, start, done, skip, move, remove. Participant autocomplete. Polling refresh.
 - **Done when:** a KJ can run a full night from the host page.
+- Decided before starting:
+  - **Starting a song while another is playing** marks the current one completed and starts the new one in one click. (Rails refused with "Finish or skip … before starting another song.")
+  - **Singer autocomplete** suggests singers already in this show, as Rails. Suggesting singers from past shows can come once guest identity exists (phase 4/5).
+  - **Starting a second show** while one is active is refused, with a link to the active show. Creating a show without a schedule starts it, so this applies there too.
+  - **Deleting an account with an active show** is refused: "End all active shows before deleting your account." (as Rails).
+  - **Ended is final.** An ended show can't be started again; the host creates a new one. Ending a show asks for confirmation first. (Rails allowed restarting and ended without asking.)
 
 ### Phase 4 — Audience
 
