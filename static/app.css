@@ -297,6 +297,32 @@ td select {
   padding-bottom: 0.25rem;
 }
 
+/* Destructive actions, as Rails' .btn-danger. */
+button.danger {
+  --pico-background-color: var(--pico-del-color);
+  --pico-border-color: var(--pico-del-color);
+  --pico-color: #fff;
+}
+
+button.danger:hover,
+button.danger:focus {
+  --pico-background-color: color-mix(in srgb, var(--pico-del-color) 85%, #000);
+  --pico-border-color: color-mix(in srgb, var(--pico-del-color) 85%, #000);
+}
+
+button.danger.outline {
+  --pico-color: var(--pico-del-color);
+  --pico-border-color: var(--pico-del-color);
+  --pico-background-color: transparent;
+}
+
+button.danger.outline:hover,
+button.danger.outline:focus {
+  --pico-color: #fff;
+  --pico-border-color: var(--pico-del-color);
+  --pico-background-color: var(--pico-del-color);
+}
+
 /* Shows */
 
 .visually-hidden {

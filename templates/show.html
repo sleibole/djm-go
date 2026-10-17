@@ -127,7 +127,7 @@
 
 {{if $s.Active}}
 <p class="end-show">
-  <button type="button" class="outline contrast" data-open-dialog="end-show-dialog">End Show</button>
+  <button type="button" class="outline danger" data-open-dialog="end-show-dialog">End Show</button>
 </p>
 <dialog id="end-show-dialog">
   <article>
@@ -138,7 +138,7 @@
     <p>The queue will be closed. The song on stage counts as performed, and anyone still waiting is taken off the queue. An ended show can't be started again.</p>
     <form method="post" action="/shows/{{$s.ID}}/end">
       <div role="group">
-        <button type="submit" class="contrast">End Show</button>
+        <button type="submit" class="danger">End Show</button>
         <button type="button" class="secondary" data-close-dialog>Cancel</button>
       </div>
     </form>
@@ -186,7 +186,7 @@
                 <form method="post" action="/requests/{{.ID}}/approve" hx-post="/requests/{{.ID}}/approve">
                   <button type="submit" class="approve" title="Approve" aria-label="Approve {{.Participant}}">{{icon "check"}}</button>
                 </form>
-                <button type="button" class="outline contrast" title="Reject" aria-label="Reject {{.Participant}}" data-open-dialog="reject-{{.ID}}">{{icon "x"}}</button>
+                <button type="button" class="outline danger" title="Reject" aria-label="Reject {{.Participant}}" data-open-dialog="reject-{{.ID}}">{{icon "x"}}</button>
               </div>
               <dialog id="reject-{{.ID}}">
                 <article>
@@ -198,7 +198,7 @@
                   <form method="post" action="/requests/{{.ID}}/reject" hx-post="/requests/{{.ID}}/reject">
                     <textarea name="rejection_reason" placeholder="Reason (optional)" rows="2" maxlength="500"></textarea>
                     <div role="group">
-                      <button type="submit" class="contrast">Reject</button>
+                      <button type="submit" class="danger">Reject</button>
                       <button type="button" class="secondary" data-close-dialog>Cancel</button>
                     </div>
                   </form>
@@ -247,7 +247,7 @@
                   <button type="submit" class="outline" title="Start" aria-label="Start {{$r.Participant}}">{{icon "player-play"}}</button>
                 </form>
                 <form method="post" action="/requests/{{$r.ID}}/delete" hx-post="/requests/{{$r.ID}}/delete" hx-confirm="Remove {{$r.Participant}} from the queue?">
-                  <button type="submit" class="outline contrast" title="Remove" aria-label="Remove {{$r.Participant}}">{{icon "x"}}</button>
+                  <button type="submit" class="outline danger" title="Remove" aria-label="Remove {{$r.Participant}}">{{icon "x"}}</button>
                 </form>
               </div>
             </td>
