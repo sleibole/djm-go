@@ -410,7 +410,8 @@ GET  /shows/{id}                    host view: pending, now playing, queue, comp
 POST /shows/{id}                    settings
 POST /shows/{id}/start, /end
 POST /shows/{id}/requests           host add (catalog or manual)
-POST /requests/{rid}/approve|reject|start|done|skip|move|delete
+POST /requests/{rid}/approve|reject|start|done|skip|delete
+POST /requests/{rid}/move           after={rid} (empty = top); drag and drop, 204
 GET  /shows/{id}/participants?q=    autocomplete fragment
 GET  /shows/{id}/qr.png
 
@@ -494,7 +495,7 @@ Image fixes to make while porting:
 | `tv` | `device-tv` | | `calendar` | `calendar` |
 | `trash-can` | `trash` | | `bolt` | `bolt` |
 | `shuffle` | `arrows-shuffle` | | `circle` (regular) | `circle` |
-| `brands/reddit` | `brand-reddit` | | | |
+| `brands/reddit` | `brand-reddit` | | (new) drag handle | `grip-vertical` |
 
 ### Security
 
@@ -649,6 +650,11 @@ How it works (`csv_read.go`, `csv_import.go`, `catalog_build.go`, `catalog_cache
   - **Starting a second show** while one is active is refused, with a link to the active show. Creating a show without a schedule starts it, so this applies there too.
   - **Deleting an account with an active show** is refused: "End all active shows before deleting your account." (as Rails).
   - **Ended is final.** An ended show can't be started again; the host creates a new one. Ending a show asks for confirmation first. (Rails allowed restarting and ended without asking.)
+  - **Drag and drop to reorder the queue**, replacing Rails' ↑/↓ buttons. Ported from track-anything's `static/reorder.js` and `order.go`:
+    - Each queued row has a grip handle (`grip-vertical` icon), the only drag target, so the row's buttons still work. Pointer events, so mouse and touch both work; an 8 px threshold before a drag starts; auto-scroll near the screen edges; the row moves on screen immediately and the save happens in the background.
+    - Without JavaScript the handles stay hidden. The host page already needs HTMX for polling.
+    - **Change from track-anything:** it posts the whole list and refuses (409) if the list changed meanwhile. A live queue changes constantly as audience requests arrive, so here the client posts only the moved request and the request it now follows (`after`, empty for the top). The server places it there in the current queue, in one transaction with renumbering. If either request has left the queue (started, removed), the server answers 409 and the page reloads the queue.
+    - Polling pauses during a drag and while the save is in flight, so a refresh can't snap the row back.
 
 ### Phase 4 — Audience
 
