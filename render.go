@@ -26,15 +26,17 @@ func loadViews(fsys fs.FS, static assets) (*views, error) {
 		return nil, err
 	}
 	funcs := template.FuncMap{
-		"icon":      icon,
-		"asset":     static.url,
-		"commas":    commas,
-		"localTime": localTime,
-		"qrSVG":     qrSVG,
-		"showPath":  showPath,
+		"icon":       icon,
+		"asset":      static.url,
+		"commas":     commas,
+		"humanBytes": humanBytes,
+		"localTime":  localTime,
+		"qrSVG":      qrSVG,
+		"showPath":   showPath,
 
-		"cancelView":      cancelView,
-		"pickVariantView": pickVariantView,
+		"cancelView":        cancelView,
+		"memoryRequestView": memoryRequestView,
+		"pickVariantView":   pickVariantView,
 	}
 
 	v := &views{pages: map[string]*template.Template{}}
@@ -59,6 +61,7 @@ type view struct {
 	BaseURL          string
 	User             *User
 	TurnstileSiteKey string
+	Impersonating    bool // an admin is using "log in as"
 	Data             any
 }
 
@@ -81,7 +84,8 @@ func (a *app) renderBlock(w http.ResponseWriter, r *http.Request, status int, pa
 
 	// Render to a buffer first so a template error doesn't send a half-written page.
 	var buf bytes.Buffer
-	v := view{BaseURL: a.cfg.BaseURL, User: currentUser(r), TurnstileSiteKey: a.cfg.TurnstileSiteKey, Data: data}
+	v := view{BaseURL: a.cfg.BaseURL, User: currentUser(r), TurnstileSiteKey: a.cfg.TurnstileSiteKey,
+		Impersonating: impersonatorID(r) != 0, Data: data}
 	if err := t.ExecuteTemplate(&buf, block, v); err != nil {
 		a.serverError(w, r, err)
 		return

@@ -1,0 +1,33 @@
+{{define "title"}}Feedback · Admin · DJMagic.io{{end}}
+{{define "content"}}
+{{with .Data}}
+<h1>{{icon "shield"}} Feedback</h1>
+{{template "admin_nav" "feedback"}}
+
+<p class="filter-links">
+  <a href="/admin/feedback"{{if not .Status}} aria-current="page"{{end}}>All</a>
+  {{range .Statuses}} · <a href="/admin/feedback?status={{.Value}}"{{if eq .Value $.Data.Status}} aria-current="page"{{end}}>{{.Label}}</a>{{end}}
+</p>
+
+{{if .Items}}
+<div class="overflow-auto">
+  <table class="striped">
+    <thead><tr><th>Received</th><th>Category</th><th>Message</th><th>From</th><th>Status</th></tr></thead>
+    <tbody>
+      {{range .Items}}
+      <tr>
+        <td><a href="/admin/feedback/{{.ID}}">{{localTime .CreatedAt "datetime"}}</a></td>
+        <td>{{.CategoryLabel}}</td>
+        <td class="feedback-excerpt">{{.Message}}</td>
+        <td>{{or .Email "Guest"}}</td>
+        <td>{{.StatusLabel}}</td>
+      </tr>
+      {{end}}
+    </tbody>
+  </table>
+</div>
+{{else}}
+<p>No feedback{{if .Status}} with this status{{end}}.</p>
+{{end}}
+{{end}}
+{{end}}

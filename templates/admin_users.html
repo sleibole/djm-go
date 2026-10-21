@@ -1,0 +1,36 @@
+{{define "title"}}Users · Admin · DJMagic.io{{end}}
+{{define "content"}}
+{{with .Data}}
+<h1>{{icon "shield"}} Users</h1>
+{{template "admin_nav" "users"}}
+
+<form role="search" method="get" action="/admin/users">
+  <input type="search" name="q" value="{{.Query}}" placeholder="Email, handle or name" aria-label="Search users">
+  <button type="submit">{{icon "search"}} Search</button>
+</form>
+
+{{if .Users}}
+<div class="overflow-auto">
+  <table class="striped">
+    <thead><tr><th>Email</th><th>Name</th><th>Role</th><th>Joined</th></tr></thead>
+    <tbody>
+      {{range .Users}}
+      <tr>
+        <td><a href="/admin/users/{{.ID}}">{{.Email}}</a>{{if .LockedAt}} <small>{{icon "lock"}} Locked</small>{{end}}</td>
+        <td>{{.PublicName}}</td>
+        <td>{{.RoleLabel}}</td>
+        <td>{{localTime .CreatedAt "date"}}</td>
+      </tr>
+      {{end}}
+    </tbody>
+  </table>
+</div>
+<p>
+  {{if gt .Page 1}}<a href="{{.PrevURL}}">&larr; Newer</a>{{end}}
+  {{if .More}}<a href="{{.NextURL}}">Older &rarr;</a>{{end}}
+</p>
+{{else}}
+<p>{{if .Query}}No users match “{{.Query}}”.{{else}}No users yet.{{end}}</p>
+{{end}}
+{{end}}
+{{end}}

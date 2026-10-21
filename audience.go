@@ -57,12 +57,11 @@ func (a *app) clearGuestCookie(w http.ResponseWriter) {
 }
 
 // audienceProfile is the visitor's audience identity, or nil; it never
-// creates one. An audience account has its own profile. Everyone else,
-// including a DJ visiting a show, is a guest identified by the guest cookie,
-// as in Rails.
+// creates one. A signed-in account, of any role, has its own profile. A
+// signed-out visitor is a guest identified by the guest cookie.
 func (a *app) audienceProfile(w http.ResponseWriter, r *http.Request) (*AudienceProfile, error) {
 	var found []AudienceProfile
-	if u := currentUser(r); u != nil && u.Role == roleAudience {
+	if u := currentUser(r); u != nil {
 		if err := a.db.Where("user_id = ?", u.ID).Limit(1).Find(&found).Error; err != nil {
 			return nil, err
 		}
@@ -95,7 +94,7 @@ func (a *app) ensureAudienceProfile(w http.ResponseWriter, r *http.Request) (*Au
 	}
 	now := a.now()
 	p := AudienceProfile{LastSeenAt: &now, CreatedAt: now}
-	if u := currentUser(r); u != nil && u.Role == roleAudience {
+	if u := currentUser(r); u != nil {
 		p.UserID = &u.ID
 		return &p, a.db.Create(&p).Error
 	}
@@ -305,6 +304,31 @@ type audienceShowPage struct {
 	Artist       string
 	Error        string
 	Banner       []bannerEntry
+	Hearts       bool // signed in, so results can be saved
+	Lookup       savedLookup
+}
+
+// Heart is the save toggle for a search result. It shows as saved when any
+// version of the song is saved.
+func (p audienceShowPage) Heart(song catalogSong) heartView {
+	return heartView{
+		SavedID: p.Lookup.bySong[songKey(song.Title, song.Artist)],
+		ShowID:  p.Show.ID,
+		Pick:    fmt.Sprintf("%d:%d", p.Search.Version, song.ID),
+		Next:    p.Path + "?q=" + url.QueryEscape(p.Search.Query),
+		Title:   song.Title,
+	}
+}
+
+// withHearts turns on save toggles for a signed-in visitor.
+func (a *app) withHearts(r *http.Request, page *audienceShowPage, profile *AudienceProfile) error {
+	if currentUser(r) == nil {
+		return nil
+	}
+	page.Hearts = true
+	var err error
+	page.Lookup, err = a.savedLookupFor(profile)
+	return err
 }
 
 func (a *app) audienceShowPageFor(w http.ResponseWriter, r *http.Request, dj User, s Show) (audienceShowPage, error) {
@@ -316,6 +340,9 @@ func (a *app) audienceShowPageFor(w http.ResponseWriter, r *http.Request, dj Use
 		}
 	}
 	profile, err := a.audienceProfile(w, r)
+	if err == nil {
+		err = a.withHearts(r, &page, profile)
+	}
 	if err != nil || profile == nil {
 		return page, err
 	}
@@ -323,20 +350,12 @@ func (a *app) audienceShowPageFor(w http.ResponseWriter, r *http.Request, dj Use
 		return page, err
 	}
 	p, err := showParticipant(a.db, s.ID, profile)
-	if err != nil {
+	if err == nil {
+		page.Name, err = a.prefillName(profile, p)
+	}
+	if err != nil || p == nil {
 		return page, err
 	}
-	if p == nil {
-		// The name they used last, at any show.
-		var names []string
-		err := a.db.Model(&ShowParticipant{}).Where("audience_profile_id = ?", profile.ID).
-			Order("id DESC").Limit(1).Pluck("display_name", &names).Error
-		if len(names) > 0 {
-			page.Name = names[0]
-		}
-		return page, err
-	}
-	page.Name = p.DisplayName
 	if s.MaxSongsPerSinger != nil {
 		n, err := waitingCount(a.db, p.ID)
 		if err != nil {
@@ -345,6 +364,24 @@ func (a *app) audienceShowPageFor(w http.ResponseWriter, r *http.Request, dj Use
 		page.LimitReached = n >= int64(*s.MaxSongsPerSinger)
 	}
 	return page, nil
+}
+
+// prefillName is the name for the request form: the singer's name in this
+// show (p, may be nil), else the name the profile used last at any show.
+func (a *app) prefillName(profile *AudienceProfile, p *ShowParticipant) (string, error) {
+	if p != nil {
+		return p.DisplayName, nil
+	}
+	if profile == nil {
+		return "", nil
+	}
+	var names []string
+	err := a.db.Model(&ShowParticipant{}).Where("audience_profile_id = ?", profile.ID).
+		Order("id DESC").Limit(1).Pluck("display_name", &names).Error
+	if len(names) == 0 {
+		return "", err
+	}
+	return names[0], err
 }
 
 // searchable is whether the audience can search the show's catalog now.
@@ -388,12 +425,21 @@ func (a *app) handleAudienceSearch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	page := audienceShowPage{DJ: dj, Show: s, Path: showPath(dj.Handle(), s.Slug)}
+	profile, err := a.audienceProfile(w, r)
+	if err == nil {
+		err = a.withHearts(r, &page, profile)
+	}
+	if err != nil {
+		a.serverError(w, r, err)
+		return
+	}
 	q := r.URL.Query()
 	if searchable(s) {
 		if query := q.Get("q"); strings.TrimSpace(query) != "" {
 			offset, _ := strconv.Atoi(q.Get("offset"))
 			page.Search = a.searchPage(r, *s.Catalog, query, max(offset, 0), audiencePageSize)
-			if q.Get("v") == strconv.Itoa(page.Search.Version) && page.Search.Error == "" {
+			// Hearts change as songs are saved, so only signed-out results are cached.
+			if !page.Hearts && q.Get("v") == strconv.Itoa(page.Search.Version) && page.Search.Error == "" {
 				w.Header().Set("Cache-Control", "private, max-age=300")
 			}
 		}
@@ -423,20 +469,12 @@ func (a *app) handleAudienceRequest(w http.ResponseWriter, r *http.Request) {
 		page.Error = msg
 		a.render(w, r, status, "audience_show.html", page)
 	}
-	if !s.Active() {
-		msg := "This show has ended and is no longer accepting requests."
-		if s.Scheduled() {
-			msg = "This show hasn't started yet."
-		}
+	if msg := notOpenMessage(s); msg != "" {
 		fail(http.StatusConflict, msg)
 		return
 	}
 
-	status := requestQueued
-	if s.ApprovalRequired {
-		status = requestPending
-	}
-	sr := SongRequest{ShowID: s.ID, RequestSource: sourceAudience, Status: status, RequestedAt: a.now()}
+	sr := SongRequest{RequestSource: sourceAudience}
 	if pick := r.PostFormValue("song"); pick != "" {
 		picked, msg, err := a.audiencePick(r, s, pick)
 		if err != nil {
@@ -466,23 +504,53 @@ func (a *app) handleAudienceRequest(w http.ResponseWriter, r *http.Request) {
 		}
 		sr.SongTitle, sr.SongArtist = page.Title, page.Artist
 	}
-	switch {
-	case name == "":
-		fail(http.StatusUnprocessableEntity, "Please enter your name.")
-		return
-	case utf8.RuneCountInString(name) > maxDisplayNameLen:
-		fail(http.StatusUnprocessableEntity, fmt.Sprintf("Name is too long (maximum is %d characters)", maxDisplayNameLen))
-		return
-	}
-	if !a.audienceLimiter.allow(a.clientIP(r) + "|" + strconv.FormatUint(uint64(s.ID), 10)) {
-		fail(http.StatusTooManyRequests, "You're sending requests too quickly. Please wait a few minutes and try again.")
-		return
-	}
-
-	profile, err := a.ensureAudienceProfile(w, r)
+	status, msg, err := a.placeAudienceRequest(w, r, s, name, &sr)
 	if err != nil {
 		a.serverError(w, r, err)
 		return
+	}
+	if msg != "" {
+		fail(status, msg)
+		return
+	}
+	http.Redirect(w, r, page.Path+"/queue?requested="+sr.Status, http.StatusSeeOther)
+}
+
+// notOpenMessage is why a show isn't taking requests, or "".
+func notOpenMessage(s Show) string {
+	switch {
+	case s.Active():
+		return ""
+	case s.Scheduled():
+		return "This show hasn't started yet."
+	default:
+		return "This show has ended and is no longer accepting requests."
+	}
+}
+
+// placeAudienceRequest adds sr (song fields and source set) for the visitor's
+// own singer in s, named name. A refusal is a status and message.
+func (a *app) placeAudienceRequest(w http.ResponseWriter, r *http.Request, s Show, name string, sr *SongRequest) (int, string, error) {
+	if msg := notOpenMessage(s); msg != "" {
+		return http.StatusConflict, msg, nil
+	}
+	switch {
+	case name == "":
+		return http.StatusUnprocessableEntity, "Please enter your name.", nil
+	case utf8.RuneCountInString(name) > maxDisplayNameLen:
+		return http.StatusUnprocessableEntity, fmt.Sprintf("Name is too long (maximum is %d characters)", maxDisplayNameLen), nil
+	}
+	if !a.audienceLimiter.allow(a.clientIP(r) + "|" + strconv.FormatUint(uint64(s.ID), 10)) {
+		return http.StatusTooManyRequests, "You're sending requests too quickly. Please wait a few minutes and try again.", nil
+	}
+
+	sr.ShowID, sr.Status, sr.RequestedAt = s.ID, requestQueued, a.now()
+	if s.ApprovalRequired {
+		sr.Status = requestPending
+	}
+	profile, err := a.ensureAudienceProfile(w, r)
+	if err != nil {
+		return 0, "", err
 	}
 	err = a.db.Transaction(func(tx *gorm.DB) error {
 		p, err := showParticipant(tx, s.ID, profile)
@@ -509,7 +577,7 @@ func (a *app) handleAudienceRequest(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		sr.ShowParticipantID = p.ID
-		if err := tx.Create(&sr).Error; err != nil {
+		if err := tx.Create(sr).Error; err != nil {
 			return err
 		}
 		if sr.Status == requestQueued {
@@ -519,14 +587,9 @@ func (a *app) handleAudienceRequest(w http.ResponseWriter, r *http.Request) {
 	})
 	var qerr queueError
 	if errors.As(err, &qerr) {
-		fail(http.StatusUnprocessableEntity, qerr.Error())
-		return
+		return http.StatusUnprocessableEntity, qerr.Error(), nil
 	}
-	if err != nil {
-		a.serverError(w, r, err)
-		return
-	}
-	http.Redirect(w, r, page.Path+"/queue?requested="+sr.Status, http.StatusSeeOther)
+	return 0, "", err
 }
 
 // audienceLive is the polled part of the queue page.

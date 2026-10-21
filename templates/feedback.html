@@ -1,0 +1,28 @@
+{{define "title"}}Feedback · DJMagic.io{{end}}
+{{define "content"}}
+{{with .Data}}
+<article class="narrow">
+  <hgroup>
+    <h1>{{icon "message"}} Send Feedback</h1>
+    <p>Found a bug, have an idea, or something confusing? Let us know.</p>
+  </hgroup>
+  {{with .Error}}<p role="alert" class="error">{{.}}</p>{{end}}
+  <form method="post" action="/feedback">
+    <input type="hidden" name="page_url" value="{{.PageURL}}">
+    <label>
+      Category
+      <select name="category" required>
+        <option value="">Choose one…</option>
+        {{range .Categories}}<option value="{{.Value}}"{{if eq .Value $.Data.Category}} selected{{end}}>{{.Label}}</option>{{end}}
+      </select>
+    </label>
+    <label>
+      Message
+      <textarea name="message" rows="6" required maxlength="5000" placeholder="What happened, or what would help?">{{.Message}}</textarea>
+    </label>
+    {{if not $.User}}<p><small>Want a reply? Include your email in the message.</small></p>{{end}}
+    <button type="submit">Send Feedback</button>
+  </form>
+</article>
+{{end}}
+{{end}}

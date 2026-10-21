@@ -57,6 +57,7 @@
 
 <p>
   {{if $s.Active}}<a href="{{.Path}}/queue">See the queue</a> · {{end}}
+  {{if .Hearts}}{{template "memory_links" $s.ID}} · {{end}}
   <a href="/dj/{{.DJ.Handle}}">Back to {{.DJ.PublicName}}</a>
 </p>
 </div>
@@ -131,13 +132,16 @@
 {{define "audience_more_results"}}{{template "audience_rows" .Data}}
 <div id="audience-load-more" hx-swap-oob="true">{{template "audience_load_more_button" .Data}}</div>{{end}}
 
-{{define "audience_rows"}}{{with .Search}}{{$v := .}}{{range .Result.Songs}}
+{{define "audience_rows"}}{{$p := .}}{{with .Search}}{{$v := .}}{{range .Result.Songs}}
 <tr>
   <td>{{.Title}}</td>
   <td>{{.Artist}}</td>
   {{if $v.ShowVersion}}<td>{{template "audience_variant" (pickVariantView .ID .Versions)}}</td>{{end}}
   {{if $v.ShowID}}<td>{{template "audience_variant" (pickVariantView .ID .ExternalIDs)}}</td>{{end}}
-  <td><button type="submit" form="pick-form" name="song" value="{{$v.Version}}:{{.ID}}" class="outline">Select</button></td>
+  <td class="row-actions">
+    {{if $p.Hearts}}{{template "heart" ($p.Heart .)}}{{end}}
+    <button type="submit" form="pick-form" name="song" value="{{$v.Version}}:{{.ID}}" class="outline">Select</button>
+  </td>
 </tr>
 {{end}}{{end}}{{end}}
 

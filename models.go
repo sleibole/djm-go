@@ -57,10 +57,11 @@ func (u User) PublicName() string {
 }
 
 type Session struct {
-	ID        string // sha256 hex of the cookie value; the raw token is only in the cookie
-	UserID    uint
-	ExpiresAt time.Time
-	CreatedAt time.Time
+	ID             string // sha256 hex of the cookie value; the raw token is only in the cookie
+	UserID         uint
+	ImpersonatorID *uint // the admin using "log in as"
+	ExpiresAt      time.Time
+	CreatedAt      time.Time
 }
 
 // MagicToken is a one-time sign-in link. Only the hash is stored,
@@ -220,6 +221,7 @@ const (
 	sourceAudience    = "audience"
 	sourceHostManual  = "host_manual"
 	sourceHostCatalog = "host_catalog"
+	sourceSaved       = "saved" // from Saved Songs or My Performances
 )
 
 type SongRequest struct {
@@ -242,6 +244,52 @@ type SongRequest struct {
 
 	Participant string `gorm:"-"` // the participant's display name, filled by queries that join it
 }
+
+type SavedSong struct {
+	ID                uint
+	AudienceProfileID uint
+	Fingerprint       string
+	SongTitle         string
+	SongArtist        string
+	SongVersion       string
+	SongExternalID    string `gorm:"column:song_external_id"`
+	SourceCatalogID   *uint
+	RequestCount      int
+	LastRequestedAt   *time.Time
+	CreatedAt         time.Time
+	UpdatedAt         time.Time
+}
+
+var feedbackCategories = []choice{
+	{"bug", "Bug"},
+	{"feature_request", "Feature Request"},
+	{"confusing_ux", "Confusing UX"},
+	{"other", "Other"},
+}
+
+var feedbackStatuses = []choice{
+	{"new", "New"},
+	{"reviewed", "Reviewed"},
+	{"resolved", "Resolved"},
+	{"dismissed", "Dismissed"},
+}
+
+type Feedback struct {
+	ID         uint
+	UserID     *uint
+	Category   string
+	Message    string
+	PageURL    string `gorm:"column:page_url"`
+	Status     string `gorm:"default:new"`
+	AdminNotes string
+	CreatedAt  time.Time
+	UpdatedAt  time.Time
+}
+
+func (Feedback) TableName() string { return "feedback" }
+
+func (f Feedback) CategoryLabel() string { return choiceLabel(feedbackCategories, f.Category) }
+func (f Feedback) StatusLabel() string   { return choiceLabel(feedbackStatuses, f.Status) }
 
 type CatalogVersion struct {
 	ID             uint

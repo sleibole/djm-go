@@ -1,0 +1,60 @@
+{{/* heart: a save/unsave toggle for a heartView. Swaps itself after a post. */}}
+{{define "heart"}}
+<form method="post" class="heart-toggle inline" action="{{if .SavedID}}/me/saved/{{.SavedID}}/delete{{else}}/me/saved{{end}}"
+      hx-post="{{if .SavedID}}/me/saved/{{.SavedID}}/delete{{else}}/me/saved{{end}}" hx-include="closest tr" hx-target="this" hx-swap="outerHTML">
+  <input type="hidden" name="next" value="{{.Next}}">
+  {{with .ShowID}}<input type="hidden" name="show" value="{{.}}">{{end}}
+  {{with .Pick}}<input type="hidden" name="song" value="{{.}}">{{end}}
+  {{with .RequestID}}<input type="hidden" name="request" value="{{.}}">{{end}}
+  {{if .SavedID}}
+  <input type="hidden" name="heart" value="1">
+  <button type="submit" class="heart saved" aria-pressed="true" aria-label="Remove {{.Title}} from saved songs" title="Saved">{{icon "heart-filled"}}</button>
+  {{else}}
+  <button type="submit" class="heart" aria-pressed="false" aria-label="Save {{.Title}}" title="Save">{{icon "heart"}}</button>
+  {{end}}
+</form>
+{{end}}
+
+{{define "heart_block"}}{{template "heart" .Data}}{{end}}
+
+{{/* memory_links: links to the memory pages that come back to show id . */}}
+{{define "memory_links"}}<a href="/me/saved?show={{.}}">{{icon "heart"}} Saved Songs</a> · <a href="/me/performances?show={{.}}">{{icon "history"}} My Performances</a>{{end}}
+
+{{/* memory_show_note: which show the request buttons request at, if any. */}}
+{{define "memory_show_note"}}
+{{if and .Error (not .CanRequest)}}<p role="alert" class="error">{{.Error}}</p>{{end}}
+{{if .CanRequest}}
+<p role="note">{{icon "microphone"}} Requesting at <a href="{{.Show.Path}}">{{.Show.Show.DisplayName}}</a>.</p>
+{{else if .Show}}
+<p role="note"><a href="{{.Show.Path}}">{{.Show.Show.DisplayName}}</a> isn't taking requests right now.</p>
+{{else}}
+<p role="note"><small>To request one of these songs, open this page from a live show's request page.</small></p>
+{{end}}
+{{end}}
+
+{{/* memory_request: request a remembered song at the page's show (a memoryRequest). */}}
+{{define "memory_request"}}
+<details class="memory-request"{{if .Error}} open{{end}}>
+  <summary role="button" class="outline">Request</summary>
+  {{with .Error}}<p role="alert" class="error">{{.}}</p>{{end}}
+  <form method="post" action="{{.Action}}">
+    <input type="hidden" name="show" value="{{.ShowID}}">
+    <label>
+      {{icon "user"}} Your name
+      <input type="text" name="participant_name" value="{{.Name}}" placeholder="e.g. Mike S." required maxlength="50" autocomplete="off">
+    </label>
+    <button type="submit" aria-label="Request {{.Title}}">Submit Request</button>
+  </form>
+</details>
+{{end}}
+
+{{/* memory_signed_out: the call to sign up, on the memory pages. */}}
+{{define "memory_signed_out"}}
+<article>
+  <p>Save your song history and favorite songs by creating a free account.</p>
+  <p>
+    <a href="/signup?next={{urlquery .}}" role="button">Create an account</a>
+    <a href="/signin?next={{urlquery .}}" role="button" class="secondary outline">Sign in</a>
+  </p>
+</article>
+{{end}}

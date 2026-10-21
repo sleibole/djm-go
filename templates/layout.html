@@ -35,6 +35,16 @@
 </head>
 <body>
   {{block "body" .}}
+  {{if .Impersonating}}{{with .User}}
+  <div class="impersonation-banner" role="status">
+    <div class="container">
+      <span>{{icon "shield"}} Logged in as <strong>{{.Email}}</strong></span>
+      <form method="post" action="/admin/return" class="inline">
+        <button type="submit" class="contrast">Return to admin</button>
+      </form>
+    </div>
+  </div>
+  {{end}}{{end}}
   <header class="container">
     <nav>
       <ul>
@@ -50,6 +60,12 @@
         {{if .Hosts}}
         <li><a href="/shows">{{icon "microphone"}} Shows</a></li>
         <li><a href="/catalogs">{{icon "music"}} Catalogs</a></li>
+        {{else}}
+        <li><a href="/me/saved">{{icon "heart"}} Saved</a></li>
+        <li><a href="/me/performances">{{icon "history"}} Performances</a></li>
+        {{end}}
+        {{if eq .Role "admin"}}
+        <li><a href="/admin" aria-label="Admin" title="Admin">{{icon "shield"}}</a></li>
         {{end}}
         <li><a href="/account" aria-label="Account" title="Account">{{icon "user"}}</a></li>
         <li>
@@ -70,6 +86,7 @@
   <footer class="container site-footer">
     <small>
       DJMagic.io ·
+      <a href="/feedback">{{icon "message"}} Feedback</a> ·
       <a href="https://www.reddit.com/r/djmagicio/" target="_blank" rel="noopener noreferrer">{{icon "brand-reddit"}} r/djmagicio</a>
     </small>
     {{template "theme_switch" .}}

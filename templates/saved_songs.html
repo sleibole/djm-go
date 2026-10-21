@@ -1,0 +1,42 @@
+{{define "title"}}Saved Songs · DJMagic.io{{end}}
+{{define "content"}}
+{{with .Data}}{{$p := .}}
+<div class="narrow">
+<hgroup>
+  <h1>{{icon "heart"}} Saved Songs</h1>
+  <p>Songs you've saved, ready to request at any show.</p>
+</hgroup>
+{{if .SignedOut}}
+{{template "memory_signed_out" "/me/saved"}}
+{{else}}
+{{template "memory_show_note" .}}
+{{with .Notice}}<p role="status" class="saved">{{.}}</p>{{end}}
+{{if .Saved}}
+<ul class="memory-list">
+  {{range .Saved}}
+  <li>
+    <div class="memory-song">
+      <strong>{{.SongTitle}}</strong>{{with .SongArtist}} — {{.}}{{end}}
+      {{with .SongVersion}}<br><small>{{.}}</small>{{end}}{{with .SongExternalID}}<br><small>ID: {{.}}</small>{{end}}
+      {{if .RequestCount}}<br><small>Requested {{.RequestCount}} {{if eq .RequestCount 1}}time{{else}}times{{end}}</small>{{end}}
+    </div>
+    <div class="memory-actions">
+      {{if $p.CanRequest}}
+      {{template "memory_request" (memoryRequestView $p .ID (print "/me/saved/" .ID "/request") .SongTitle)}}
+      {{end}}
+      <form method="post" action="/me/saved/{{.ID}}/delete" class="inline" hx-post="/me/saved/{{.ID}}/delete" hx-confirm="Remove {{.SongTitle}} from your saved songs?">
+        {{with $p.Show}}<input type="hidden" name="show" value="{{.Show.ID}}">{{end}}
+        <button type="submit" class="outline danger" aria-label="Remove {{.SongTitle}}" title="Remove">{{icon "trash"}}</button>
+      </form>
+    </div>
+  </li>
+  {{end}}
+</ul>
+{{else}}
+<p>No saved songs yet. Tap {{icon "heart"}} next to a song when you search a show's catalog, or on <a href="/me/performances{{.ShowQuery}}">My Performances</a>.</p>
+{{end}}
+<p><a href="/me/performances{{.ShowQuery}}">{{icon "history"}} My Performances</a>{{with .Show}} · <a href="{{.Path}}">Back to {{.Show.DisplayName}}</a>{{end}}</p>
+{{end}}
+</div>
+{{end}}
+{{end}}

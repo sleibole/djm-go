@@ -595,6 +595,162 @@ article.queue-signup-cta p:last-child {
   color: var(--pico-muted-color);
 }
 
+/* --- Song memory: hearts, saved songs, performances --- */
+
+form.heart-toggle {
+  display: inline-block;
+  margin: 0;
+}
+
+button.heart {
+  margin: 0;
+  padding: 0.35rem 0.5rem;
+  background: none;
+  border: none;
+  color: var(--pico-muted-color);
+}
+
+button.heart.saved,
+button.heart:hover {
+  color: var(--pico-del-color);
+}
+
+.row-actions {
+  white-space: nowrap;
+  text-align: right;
+}
+
+.row-actions button {
+  margin: 0;
+}
+
+.memory-list {
+  padding: 0;
+}
+
+.memory-list li {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 0.75rem 0;
+  border-bottom: var(--pico-border-width) solid var(--pico-muted-border-color);
+}
+
+.memory-song {
+  flex: 1 1 14rem;
+}
+
+.memory-actions {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
+}
+
+.memory-actions form.inline,
+.memory-actions button {
+  margin: 0;
+}
+
+details.memory-request {
+  margin: 0;
+}
+
+details.memory-request summary[role="button"] {
+  margin: 0;
+  padding: 0.35rem 0.75rem;
+}
+
+details.memory-request[open] {
+  flex-basis: 100%;
+}
+
+details.memory-request form {
+  margin-top: 0.75rem;
+}
+
+.memory-actions:has(details[open]) {
+  flex-basis: 100%;
+  flex-direction: column;
+}
+
+/* --- Admin --- */
+
+.impersonation-banner {
+  background: var(--pico-primary-background);
+  color: var(--pico-primary-inverse);
+  padding: 0.5rem 0;
+}
+
+.impersonation-banner .container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.impersonation-banner form,
+.impersonation-banner button {
+  margin: 0;
+  padding: 0.3rem 0.75rem;
+}
+
+nav.admin-nav {
+  margin-bottom: var(--pico-spacing);
+  border-bottom: var(--pico-border-width) solid var(--pico-muted-border-color);
+}
+
+nav.admin-nav a[aria-current="page"],
+.filter-links a[aria-current="page"] {
+  font-weight: 600;
+  text-decoration: underline;
+}
+
+.admin-details {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 0.25rem 1rem;
+  margin: 0;
+}
+
+.admin-details dt {
+  color: var(--pico-muted-color);
+}
+
+.admin-details dd {
+  margin: 0;
+}
+
+.admin-role-form {
+  display: flex;
+  gap: 0.5rem;
+  max-width: 24rem;
+}
+
+.admin-role-form select,
+.admin-role-form button {
+  margin: 0;
+}
+
+.admin-stats article p {
+  margin-bottom: 0.25rem;
+}
+
+.feedback-excerpt {
+  max-width: 28rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.feedback-message {
+  white-space: pre-wrap;
+  margin-top: var(--pico-spacing);
+}
+
 /* --- Venue display (always dark) --- */
 
 .display-layout {

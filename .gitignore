@@ -1,5 +1,4 @@
 # Local builds. `make build` and a bare `go build` write ./djm; Air writes tmp/main.
-# bin/ holds tracked scripts.
 /tmp/
 /djm
 

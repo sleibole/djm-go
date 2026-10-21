@@ -11,7 +11,11 @@
   <a href="/catalogs" role="button" class="secondary">{{icon "music"}} My Catalogs</a>
 </p>
 {{else}}
-<p>Your performances and saved songs will show up here. Hosting a show? <a href="/account">Start hosting</a> from your account.</p>
+<p>Find a show's request page to request songs. Hosting a show? <a href="/account">Start hosting</a> from your account.</p>
 {{end}}
-<p><a href="/account" role="button" class="outline secondary">{{icon "user"}} Account</a></p>
+<p>
+  <a href="/me/saved" role="button" class="outline">{{icon "heart"}} Saved Songs</a>
+  <a href="/me/performances" role="button" class="outline">{{icon "history"}} My Performances</a>
+  <a href="/account" role="button" class="outline secondary">{{icon "user"}} Account</a>
+</p>
 {{end}}

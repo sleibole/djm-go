@@ -151,8 +151,9 @@ djm/
 ├── account.go           # Account page: password, profile, defaults, start hosting, delete
 ├── audience.go          # guest identity, /dj/{handle}, show page, request, cancel, queue, display
 ├── qr.go                # QR code as inline SVG
-├── handlers_memory.go   # my performances, saved songs, sing again
-├── handlers_admin.go    # users, log in as, feedback, cache status
+├── memory.go            # guest linking on sign-in, saved songs, my performances, sing again
+├── admin.go             # admin home, users, roles, log in as
+├── feedback.go          # feedback form and admin triage
 ├── cleanup.go           # expired sessions/tokens, stale guests, old local versions
 ├── static.go            # content hashes for /static URLs, cache headers
 ├── icons.go             # embedded Tabler SVGs + `icon` template func
@@ -186,7 +187,7 @@ djm/
 Ported from `core/db/schema.rb`, simplified. Timestamps are UTC.
 
 - **users** — `email` (unique, lowercased), `role` (`audience`/`dj`/`admin`), `slug` (unique, nullable until hosting), `display_name`, `password_hash`, `email_confirmed_at`, `failed_login_attempts`, `locked_at`, `default_show_type`, `default_rotation_style`, `default_max_songs_per_singer`. Deleting an account removes it right away, so there is no `deletion_requested_at`.
-- **sessions** — id is sha256 of the cookie token, `user_id`, `expires_at`.
+- **sessions** — id is sha256 of the cookie token, `user_id`, `expires_at`, `impersonator_id` (the admin, during "log in as").
 - **magic_tokens** — `user_id`, `token_hash` (unique), `expires_at`, `consumed_at`.
 - **catalogs** — `user_id`, `name` (unique per user), `variant_display`, `status` (`empty` until the first upload, then `pending`, `processing`, `ready`, `failed`), `active_version`, `building_version`, `song_count`, `row_count`, `errors_json`, `import_metadata_json` (source encoding, U+FFFD counts), `last_csv_sha256`. Deleting a catalog removes the row and its files right away.
 - **catalog_versions** — `catalog_id`, `version`, `status`, `csv_sha256`, `csv_bytes`, `source_encoding`, `row_count`, `song_count`, `db_bytes`, `created_at`. One row per upload; blob keys are derived from catalog and version. Lets cleanup find old files, and gives admin a history.
@@ -428,15 +429,16 @@ POST /dj/{handle}/shows/{slug}/requests/{rid}/cancel   cancel your own pending o
 GET  /dj/{handle}/shows/{slug}/queue      queue and "where am I"; HX-Target audience-live returns the polled part
 GET  /dj/{handle}/shows/{slug}/display    TV display; HX-Target display-live returns the polled part
 
-GET  /me/performances
+GET  /me/performances, POST /me/performances/{rid}/request   (?show= / show= is the live show to request at)
 GET  /me/saved, POST /me/saved, POST /me/saved/{id}/delete, POST /me/saved/{id}/request
 
-POST /feedback
-GET  /docs/{slug}
+GET  /feedback, POST /feedback
 
-GET  /admin, /admin/users, /admin/users/{id}, POST /admin/users/{id}/impersonate
-GET  /admin/feedback, POST /admin/feedback/{id}
-GET  /admin/catalogs                cache and Tigris status
+GET  /admin                         counts and catalog cache stats
+GET  /admin/users, /admin/users/{id}
+POST /admin/users/{id}/role, /admin/users/{id}/impersonate
+POST /admin/return                  end "log in as"
+GET  /admin/feedback (?status=), /admin/feedback/{id}, POST /admin/feedback/{id}
 
 GET  /healthz
 GET  /static/...
@@ -598,7 +600,7 @@ Standard library `testing` and `httptest`, as in track-anything. Each test gets 
 
 ## Phases
 
-Phases 0–5 build the whole app and run it locally (`bin/dev`). Deployment waits until phase 6. Each phase ends usable locally, with tests passing.
+Phases 0–5 build the whole app and run it locally (`make dev`). Deployment waits until phase 6. Each phase ends usable locally, with tests passing.
 
 ### Phase 0 — Skeleton
 
@@ -607,7 +609,7 @@ Phases 0–5 build the whole app and run it locally (`bin/dev`). Deployment wait
 - `main.go`, config, `.env`, middleware, render, `/healthz`.
 - Layout with Pico 2.1.1 and HTMX, the theme switch, brand mark, favicons, manifest (with the fixed icon sizes), Open Graph tags, Tabler icons, cache-busted static URLs.
 - App DB with GORM and pragmas. (Started on `AutoMigrate`; replaced by SQL migrations during phase 1.)
-- `bin/dev` (Air autoreload).
+- `make dev` (Air autoreload).
 - The Dockerfile, `entrypoint.sh`, `litestream.yml`, and `app.json` are written but untested; they are finished in phase 6.
 
 ### Phase 1 — Accounts
@@ -625,7 +627,7 @@ How it works (`auth.go`, `account.go`, `cleanup.go`; mail, Turnstile, and rate l
 - **Rate limits** (in memory): email links 5 per address and 10 per IP per hour (Rails' numbers; past the per-address limit the page looks the same but nothing is sent), password attempts 10 per IP per minute. Turnstile on both forms; development uses Cloudflare's always-pass keys.
 - **Sessions:** random cookie token, sha256 in the `sessions` table, 30 days, renewed past halfway.
 - **Cleanup goroutine** (hourly): expired sessions, used or expired links, and accounts whose email was never confirmed within 7 days (mistyped addresses).
-- **Not yet:** admin role assignment (phase 5 admin; for now `UPDATE users SET role='admin'`), linking a guest's audience history on sign-in (phase 5).
+- The first admin is still made by hand (`UPDATE users SET role='admin'`); after that, admins assign roles from `/admin/users` (phase 5).
 
 ### Phase 2 — Catalogs and search
 
@@ -642,7 +644,6 @@ How it works (`csv_read.go`, `csv_import.go`, `catalog_build.go`, `catalog_cache
 - **Measured** on a synthetic 1M-row CSV (`DJM_BIG=1 go test -run TestBigCatalog`; it repeats a small set of artist and title words, so queries match far more rows than a real catalog would): the build takes 36 s with about 7 MB peak heap, producing a 204 MB DB. Warm searches: "queen" 55 ms sorted by title and 120 ms best match; "l" 117–237 ms; "artist 42" 159–255 ms. A query matching every row ("key") is the worst case, about 1.4–1.7 s before bm25 was dropped (not re-measured since). Typical catalogs (tens of thousands of songs) should be far faster, but that hasn't been measured on real data yet. Search time grows with how many songs match, because sorting by title needs all of them.
 - **Not yet:**
   - The Tigris blob store (phase 6); dev and tests use `BLOB_DIR`.
-  - Admin cache status page (phase 5). `catalogCache.stats()` already reports files, bytes, hits, and misses.
 
 ### Phase 3 — Shows and the host queue
 
@@ -688,7 +689,7 @@ How it works (`shows.go`, `queue.go`, `migrations/003_shows.sql`, `templates/sho
 
 How it works (`audience.go`, `qr.go`, `templates/dj_profile.html`, `audience_show.html`, `audience_queue.html`, `display.html`, `partials/queue_banner.html`):
 
-- **Identity.** A guest gets a random token in an `HttpOnly` cookie (`guest`, 400 days) the first time they request a song, not when they only look; the database stores its sha256 in `audience_profiles`. An audience account uses a profile keyed by its user instead, with no cookie. Anyone else, including a DJ visiting a show, is a guest, as in Rails. An unknown cookie is cleared. `last_seen_at` is touched at most hourly.
+- **Identity.** A guest gets a random token in an `HttpOnly` cookie (`guest`, 400 days) the first time they request a song, not when they only look; the database stores its sha256 in `audience_profiles`. A signed-in account uses a profile keyed by its user instead, with no cookie (phase 5 extended this from audience accounts to every role). An unknown cookie is cleared. `last_seen_at` is touched at most hourly.
 - **DJ profile** (`/dj/{handle}`): Live Now with "Browse Songs & Request" (catalog) or "Make a Request", Upcoming, or an empty message. Unknown handle: "DJ Not Found". Unknown show: "Show Not Found" with a link back to the DJ.
 - **Request page.** With a catalog: Step 1 searches as you type (HTMX, 25 results with Load more), Select picks a song (and version or ID when the catalog shows them), Step 2 asks for the name. Without JavaScript, the search box and Select buttons are plain GET forms, so the same steps work. Freeform: "Can't find your song?" under the search when the show allows it, or "Request a Song" when the show has no catalog. The name field fills in the name from this show, else the last name used at any show. At the song limit the form is replaced by Rails' message.
 - **Search fragment** URLs carry the catalog version (`?v=`); a response for the current version is `Cache-Control: private, max-age=300`.
@@ -701,13 +702,35 @@ How it works (`audience.go`, `qr.go`, `templates/dj_profile.html`, `audience_sho
 - **Host page:** Share opens a dialog with the QR code, the public URL, Copy link, and Print (prints only the dialog); Display opens the TV page. A DJ without a handle sees "Set your handle" instead.
 - **QR codes** are SVG from `rsc.io/qr` (medium error correction, white background, 4-module quiet zone), inline in the page.
 - **Not yet:**
-  - Linking a guest's history to an account when they sign in, Saved Songs, Sing Again (phase 5). The sign-up tip says only what works today.
   - Live updates without polling (later: SSE).
 
 ### Phase 5 — Song memory and admin
 
 - Guest-to-account upgrade, My Performances, Sing Again, Saved Songs and request-from-saved. Feedback form. Admin users, log in as, feedback, catalog cache status. Cleanup goroutine.
 - **Done when:** feature parity with the Rails app (minus the dropped items above).
+- Decided before starting:
+  - **Song memory is for any signed-in account**, including a DJ who sings at someone else's show. (Rails: audience accounts only; a DJ was always an anonymous guest.) Signing in links the browser's guest history to the account, merging participants in the same show, in one transaction, as Rails' `LinkOrMerge`.
+  - **Sing Again:** My Performances has a Request button on each past song while a show is live, using the same flow as requesting a saved song. (Not in Rails.)
+  - **Hearts** (save a song) in audience search results and on My Performances. (Rails: search results only.)
+  - **Log in as** shows a banner with "Return to admin", which switches back to the admin's own session. (Rails: sign out to end it.) Locked accounts and other admins can't be impersonated, as in Rails.
+  - **Admin home** shows simple counts (users by role, live shows, requests today, new feedback) and the catalog cache stats, instead of Rails' signup charts and Fly fleet view.
+
+**Status:** done.
+
+How it works (`memory.go`, `fingerprint.go`, `admin.go`, `feedback.go`, `migrations/004_memory_admin.sql`, `templates/saved_songs.html`, `performances.html`, `feedback.html`, `admin*.html`, `partials/memory.html`, `partials/admin.html`):
+
+- **Identity.** Any signed-in account (any role) uses a profile keyed by its user; guests keep the cookie profile from phase 4.
+- **Linking on sign-in** (magic link or password): if the browser has a guest profile, it becomes the account's, or, when the account already has one, it's merged into it. In a show where both have a singer, the guest singer's requests move to the account's singer and the guest singer is deleted; saved songs move unless the account already saved the same song. One transaction; the guest cookie is cleared after it commits. A failure is logged and sign-in goes ahead, leaving the cookie to try next time.
+- **Saved songs** are keyed by a fingerprint, as Rails: `ext:{external id}`, else `norm:{title}|{artist}|{version}` lowercased with whitespace collapsed. Saving twice keeps one row.
+- **Hearts** (`partials/memory.html`) toggle in place with HTMX and work as plain forms without JavaScript. In audience search results a heart saves the catalog song with the version or ID chosen in the row, and shows as saved when any version of that title and artist is saved. Signed-in search results aren't cached, since hearts change. On My Performances a heart saves that exact past request.
+- **Saved Songs** (`/me/saved`) and **My Performances** (`/me/performances`, completed songs, newest first) are linked from the nav for audience accounts, from the dashboard for everyone, and from a show's request and queue pages with `?show=`. With a live show in `?show=`, each row has a Request button that opens a name field (filled in as on the request page) and requests at that show, through the same checks as the request page plus "That show is not accepting requests right now." Requests from either page have `request_source = 'saved'`; saved songs count their requests. A signed-out visitor gets "Save your song history and favorite songs by creating a free account."
+- **Catalog-only shows** only take remembered songs that are in their catalog, matching title and artist ignoring case ("That song isn't in this show's catalog."). Changed from Rails, which took any saved song.
+- **Feedback** (`/feedback`, in the footer for everyone): category and message (up to 5,000 characters), with the page it was opened from (the Referer, kept only if it's this site). Signed-in senders are recorded. 5 per IP per hour. "Thanks for your feedback!" links back to that page.
+- **Admin** (404 for everyone else): home counts and cache stats; users, newest first, searchable by email, handle, or name, 50 per page; a user page with details, role change, and Log in as; feedback filtered by status, with status and notes per item ("Feedback updated.").
+- **Roles** follow Rails: "You cannot change your own role.", "Cannot remove the last admin.", and a new DJ or admin gets a generated handle.
+- **Log in as** starts a session for the user that remembers the admin (`sessions.impersonator_id`), lasts at most an hour, and isn't renewed. A banner shows "Logged in as {email}" and "Return to admin", which starts a fresh admin session and goes back to that user's admin page. If the admin was demoted meanwhile, it signs out instead. Locked accounts and other admins are refused: "Cannot sign in as a locked account." / "Cannot sign in as another admin."
+- **Cleanup** (hourly) also deletes guest profiles not seen for 14 days; their singers keep their names in show history. Deleting an account deletes its profile and saved songs.
+- **Not yet:** nothing planned for this phase.
 
 ### Phase 6 — Deploy
 

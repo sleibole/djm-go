@@ -39,6 +39,7 @@ type app struct {
 	linkEmailLimiter *rateLimiter
 	uploadLimiter    *rateLimiter
 	audienceLimiter  *rateLimiter // song requests per IP and show
+	feedbackLimiter  *rateLimiter
 	turnstile        *turnstileVerifier
 
 	blobs     blobStore
@@ -83,6 +84,7 @@ func newApp(cfg config, db *gorm.DB, logger *slog.Logger, m mailer) (*app, error
 	a.linkEmailLimiter = newRateLimiter(5, time.Hour, clock)
 	a.uploadLimiter = newRateLimiter(5, time.Hour, clock)
 	a.audienceLimiter = newRateLimiter(audienceRequestLimit, audienceRequestWindow, clock)
+	a.feedbackLimiter = newRateLimiter(feedbackLimit, feedbackWindow, clock)
 	a.cache, err = newCatalogCache(cfg.CatalogCacheDir, cfg.CatalogCacheMax, a.blobs, logger, clock)
 	if err != nil {
 		return nil, fmt.Errorf("catalog cache: %w", err)
@@ -215,6 +217,26 @@ func (a *app) routes() http.Handler {
 	mux.HandleFunc("POST /dj/{handle}/shows/{slug}/requests/{rid}/cancel", a.handleAudienceCancel)
 	mux.HandleFunc("GET /dj/{handle}/shows/{slug}/queue", a.handleAudienceQueue)
 	mux.HandleFunc("GET /dj/{handle}/shows/{slug}/display", a.handleDisplay)
+
+	mux.HandleFunc("GET /me/saved", a.handleSavedSongs)
+	mux.HandleFunc("POST /me/saved", a.requireUser(a.handleSaveSong))
+	mux.HandleFunc("POST /me/saved/{id}/delete", a.requireUser(a.handleUnsaveSong))
+	mux.HandleFunc("POST /me/saved/{id}/request", a.requireUser(a.handleRequestSaved))
+	mux.HandleFunc("GET /me/performances", a.handlePerformances)
+	mux.HandleFunc("POST /me/performances/{rid}/request", a.requireUser(a.handleSingAgain))
+
+	mux.HandleFunc("GET /feedback", a.handleFeedbackForm)
+	mux.HandleFunc("POST /feedback", a.handleFeedback)
+
+	mux.HandleFunc("GET /admin", a.requireAdmin(a.handleAdmin))
+	mux.HandleFunc("GET /admin/users", a.requireAdmin(a.handleAdminUsers))
+	mux.HandleFunc("GET /admin/users/{id}", a.requireAdmin(a.handleAdminUser))
+	mux.HandleFunc("POST /admin/users/{id}/role", a.requireAdmin(a.handleAdminUserRole))
+	mux.HandleFunc("POST /admin/users/{id}/impersonate", a.requireAdmin(a.handleImpersonate))
+	mux.HandleFunc("POST /admin/return", a.requireUser(a.handleStopImpersonating))
+	mux.HandleFunc("GET /admin/feedback", a.requireAdmin(a.handleAdminFeedback))
+	mux.HandleFunc("GET /admin/feedback/{id}", a.requireAdmin(a.handleAdminFeedbackItem))
+	mux.HandleFunc("POST /admin/feedback/{id}", a.requireAdmin(a.handleAdminFeedbackUpdate))
 
 	mux.HandleFunc("GET /docs/csv-format", a.handleCSVFormatDoc)
 

@@ -1,0 +1,49 @@
+{{define "title"}}{{.Data.Target.Email}} · Admin · DJMagic.io{{end}}
+{{define "content"}}
+{{with .Data}}{{$u := .Target}}
+<h1>{{icon "shield"}} {{$u.Email}}</h1>
+{{template "admin_nav" "users"}}
+{{if eq .Saved "role"}}<p role="status" class="saved">Role updated.</p>{{else if eq .Saved "unchanged"}}<p role="status" class="saved">Role unchanged.</p>{{end}}
+{{with .Error}}<p role="alert" class="error">{{.}}</p>{{end}}
+
+<article>
+  <dl class="admin-details">
+    <dt>Name</dt><dd>{{or $u.DisplayName "—"}}</dd>
+    <dt>Handle</dt><dd>{{with $u.Slug}}<a href="/dj/{{.}}">{{.}}</a>{{else}}—{{end}}</dd>
+    <dt>Role</dt><dd>{{$u.RoleLabel}}</dd>
+    <dt>Joined</dt><dd>{{localTime $u.CreatedAt "datetime"}}</dd>
+    <dt>Email confirmed</dt><dd>{{if $u.EmailConfirmedAt}}{{localTime $u.EmailConfirmedAt "date"}}{{else}}No{{end}}</dd>
+    <dt>Password</dt><dd>{{if $u.HasPassword}}Set{{else}}Magic links only{{end}}</dd>
+    {{with $u.LockedAt}}<dt>Locked</dt><dd>{{icon "lock"}} {{localTime . "datetime"}}</dd>{{end}}
+    <dt>Shows</dt><dd>{{commas .Shows}}</dd>
+    <dt>Catalogs</dt><dd>{{commas .Catalogs}}</dd>
+  </dl>
+</article>
+
+<section>
+  <h2>Role</h2>
+  {{if eq $u.ID $.User.ID}}
+  <p><small>You cannot change your own role.</small></p>
+  {{else}}
+  <form method="post" action="/admin/users/{{$u.ID}}/role" class="admin-role-form">
+    <select name="role" aria-label="Role">
+      {{range .Roles}}<option value="{{.Value}}"{{if eq .Value $u.Role}} selected{{end}}>{{.Label}}</option>{{end}}
+    </select>
+    <button type="submit">Update role</button>
+  </form>
+  {{end}}
+</section>
+
+{{if and (ne $u.ID $.User.ID) (ne $u.Role "admin") (not $u.LockedAt)}}
+<section>
+  <h2>Log in as</h2>
+  <p><small>See the site as {{$u.Email}} for up to an hour. Use “Return to admin” in the banner to come back.</small></p>
+  <form method="post" action="/admin/users/{{$u.ID}}/impersonate">
+    <button type="submit" class="secondary">{{icon "user"}} Log in as {{$u.Email}}</button>
+  </form>
+</section>
+{{end}}
+
+<p><a href="/admin/users">&larr; All users</a></p>
+{{end}}
+{{end}}

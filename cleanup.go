@@ -12,6 +12,9 @@ const (
 	unconfirmedLifetime = 7 * 24 * time.Hour
 	// oldVersionLifetime is how long a replaced or failed upload's files are kept.
 	oldVersionLifetime = 48 * time.Hour
+	// staleGuestLifetime is how long an audience profile without an account is
+	// kept after its last visit. Their singers keep their names in show history.
+	staleGuestLifetime = 14 * 24 * time.Hour
 )
 
 // cleanup runs in this process and returns when ctx is cancelled.
@@ -40,8 +43,14 @@ func (a *app) cleanupOnce() {
 
 	a.cleanupCatalogVersions(now)
 
+	err := a.db.Where("user_id IS NULL AND COALESCE(last_seen_at, created_at) <= ?", now.Add(-staleGuestLifetime)).
+		Delete(&AudienceProfile{}).Error
+	if err != nil {
+		a.logger.Error("cleanup stale guests", "err", err)
+	}
+
 	var stale []uint
-	err := a.db.Model(&User{}).
+	err = a.db.Model(&User{}).
 		Where("email_confirmed_at IS NULL AND created_at <= ?", now.Add(-unconfirmedLifetime)).
 		Pluck("id", &stale).Error
 	if err != nil {

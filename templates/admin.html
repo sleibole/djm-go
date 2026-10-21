@@ -1,0 +1,26 @@
+{{define "title"}}Admin · DJMagic.io{{end}}
+{{define "content"}}
+{{with .Data}}
+<h1>{{icon "shield"}} Admin</h1>
+{{template "admin_nav" "home"}}
+
+<div class="grid admin-stats">
+  <article>
+    <header>Users</header>
+    {{range .Roles}}<p>{{.Label}}: <strong>{{commas .Count}}</strong></p>{{else}}<p>None yet.</p>{{end}}
+  </article>
+  <article>
+    <header>Activity</header>
+    <p>Live shows: <strong>{{commas .LiveShows}}</strong></p>
+    <p>Requests today (UTC): <strong>{{commas .RequestsToday}}</strong></p>
+    <p><a href="/admin/feedback?status=new">New feedback</a>: <strong>{{commas .NewFeedback}}</strong></p>
+  </article>
+  <article>
+    <header>Catalog cache</header>
+    <p>Files: <strong>{{commas .CacheFiles}}</strong></p>
+    <p>Size: <strong>{{humanBytes .CacheBytes}}</strong> of {{humanBytes .CacheMaxBytes}}</p>
+    <p>Hits / misses: <strong>{{commas .CacheHits}}</strong> / {{commas .CacheMisses}}</p>
+  </article>
+</div>
+{{end}}
+{{end}}

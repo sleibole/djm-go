@@ -1,0 +1,35 @@
+{{define "title"}}Feedback #{{.Data.Item.ID}} · Admin · DJMagic.io{{end}}
+{{define "content"}}
+{{with .Data}}{{$f := .Item}}
+<h1>{{icon "shield"}} Feedback #{{$f.ID}}</h1>
+{{template "admin_nav" "feedback"}}
+{{if .Saved}}<p role="status" class="saved">Feedback updated.</p>{{end}}
+{{with .Error}}<p role="alert" class="error">{{.}}</p>{{end}}
+
+<article>
+  <dl class="admin-details">
+    <dt>Received</dt><dd>{{localTime $f.CreatedAt "datetime"}}</dd>
+    <dt>Category</dt><dd>{{$f.CategoryLabel}}</dd>
+    <dt>From</dt><dd>{{with $f.UserID}}<a href="/admin/users/{{.}}">{{or $f.Email "Account"}}</a>{{else}}Guest{{end}}</dd>
+    <dt>Page</dt><dd>{{with $f.PageURL}}<a href="{{.}}">{{.}}</a>{{else}}—{{end}}</dd>
+  </dl>
+  <p class="feedback-message">{{$f.Message}}</p>
+</article>
+
+<form method="post" action="/admin/feedback/{{$f.ID}}">
+  <label>
+    Status
+    <select name="status">
+      {{range .Statuses}}<option value="{{.Value}}"{{if eq .Value $f.Status}} selected{{end}}>{{.Label}}</option>{{end}}
+    </select>
+  </label>
+  <label>
+    Admin notes
+    <textarea name="admin_notes" rows="4" maxlength="5000">{{$f.AdminNotes}}</textarea>
+  </label>
+  <button type="submit">Save</button>
+</form>
+
+<p><a href="/admin/feedback">&larr; All feedback</a></p>
+{{end}}
+{{end}}

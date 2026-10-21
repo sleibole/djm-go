@@ -1,0 +1,10 @@
+{{/* admin_nav: tabs across the admin pages; . is the current one. */}}
+{{define "admin_nav"}}
+<nav aria-label="Admin" class="admin-nav">
+  <ul>
+    <li><a href="/admin"{{if eq . "home"}} aria-current="page"{{end}}>Overview</a></li>
+    <li><a href="/admin/users"{{if eq . "users"}} aria-current="page"{{end}}>Users</a></li>
+    <li><a href="/admin/feedback"{{if eq . "feedback"}} aria-current="page"{{end}}>Feedback</a></li>
+  </ul>
+</nav>
+{{end}}

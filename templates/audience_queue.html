@@ -10,13 +10,14 @@
 {{if not .SignedIn}}
 <article class="queue-signup-cta" aria-label="Create an account">
   <p class="queue-signup-cta__label">Tip</p>
-  <p>Create a free account to keep your requests with you on any device.</p>
-  <p><a href="/signup?role=audience">Create a free account &rarr;</a></p>
+  <p>Save your song history and favorite songs by creating a free account. Your requests come with you.</p>
+  <p><a href="/signup?role=audience&amp;next={{urlquery (print .Path "/queue")}}">Create a free account &rarr;</a></p>
 </article>
 {{end}}
 
 <p>
   {{if .Show.Active}}<a href="{{.Path}}">Request another song</a> · {{end}}
+  {{if .SignedIn}}{{template "memory_links" .Show.ID}} · {{end}}
   <a href="/dj/{{.DJ.Handle}}">Back to {{.DJ.PublicName}}</a>
 </p>
 </div>

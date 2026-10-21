@@ -20,12 +20,14 @@ import (
 )
 
 const (
-	sessionCookie     = "session"
-	sessionLifetime   = 30 * 24 * time.Hour
-	magicLinkLifetime = 10 * time.Minute
-	maxFailedLogins   = 10
-	minPasswordLen    = 8
-	maxPasswordLen    = 72 // bcrypt ignores bytes past 72
+	sessionCookie   = "session"
+	sessionLifetime = 30 * 24 * time.Hour
+	// impersonationLifetime caps an admin's "log in as" session; it isn't renewed.
+	impersonationLifetime = time.Hour
+	magicLinkLifetime     = 10 * time.Minute
+	maxFailedLogins       = 10
+	minPasswordLen        = 8
+	maxPasswordLen        = 72 // bcrypt ignores bytes past 72
 )
 
 // randRead is the cryptographic random source for tokens. Tests replace it to
@@ -100,7 +102,14 @@ type ctxKey int
 const (
 	userKey ctxKey = iota
 	sessionKey
+	impersonatorKey
 )
+
+// impersonatorID is the admin behind a "log in as" session, or 0.
+func impersonatorID(r *http.Request) uint {
+	id, _ := r.Context().Value(impersonatorKey).(uint)
+	return id
+}
 
 func currentUser(r *http.Request) *User {
 	u, _ := r.Context().Value(userKey).(*User)
@@ -138,6 +147,11 @@ func (a *app) clearSessionCookie(w http.ResponseWriter) {
 
 // startSession replaces the request's session, if any, with a new one for userID.
 func (a *app) startSession(w http.ResponseWriter, r *http.Request, userID uint) error {
+	return a.startSessionAs(w, r, userID, nil)
+}
+
+// startSessionAs is startSession, recording the admin behind a "log in as".
+func (a *app) startSessionAs(w http.ResponseWriter, r *http.Request, userID uint, impersonator *uint) error {
 	if id := currentSessionID(r); id != "" {
 		if err := a.db.Delete(&Session{}, "id = ?", id).Error; err != nil {
 			return err
@@ -148,7 +162,10 @@ func (a *app) startSession(w http.ResponseWriter, r *http.Request, userID uint) 
 		return err
 	}
 	expires := a.now().Add(sessionLifetime)
-	s := Session{ID: hashToken(raw), UserID: userID, ExpiresAt: expires}
+	if impersonator != nil {
+		expires = a.now().Add(impersonationLifetime)
+	}
+	s := Session{ID: hashToken(raw), UserID: userID, ImpersonatorID: impersonator, ExpiresAt: expires}
 	if err := a.db.Create(&s).Error; err != nil {
 		return err
 	}
@@ -193,7 +210,7 @@ func (a *app) loadUser(next http.Handler) http.Handler {
 			return
 		}
 
-		if s.ExpiresAt.Sub(now) < sessionLifetime/2 {
+		if s.ImpersonatorID == nil && s.ExpiresAt.Sub(now) < sessionLifetime/2 {
 			s.ExpiresAt = now.Add(sessionLifetime)
 			if err := a.db.Model(&s).Update("expires_at", s.ExpiresAt).Error; err != nil {
 				a.serverError(w, r, err)
@@ -204,6 +221,9 @@ func (a *app) loadUser(next http.Handler) http.Handler {
 
 		ctx := context.WithValue(r.Context(), userKey, &u)
 		ctx = context.WithValue(ctx, sessionKey, s.ID)
+		if s.ImpersonatorID != nil {
+			ctx = context.WithValue(ctx, impersonatorKey, *s.ImpersonatorID)
+		}
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
@@ -463,6 +483,7 @@ func (a *app) handleLinkRedeem(w http.ResponseWriter, r *http.Request) {
 		a.serverError(w, r, err)
 		return
 	}
+	a.linkGuestOrLog(w, r, mt.UserID)
 	http.Redirect(w, r, safeNext(r.PostFormValue("next")), http.StatusSeeOther)
 }
 
@@ -538,6 +559,7 @@ func (a *app) handlePasswordLogin(w http.ResponseWriter, r *http.Request) {
 		a.serverError(w, r, err)
 		return
 	}
+	a.linkGuestOrLog(w, r, u.ID)
 	http.Redirect(w, r, safeNext(form.Next), http.StatusSeeOther)
 }
 

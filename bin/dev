@@ -1,5 +1,0 @@
-#!/bin/sh
-# Starts the dev server with autoreload. Air is run by version so it is not a module dependency.
-set -e
-cd "$(dirname "$0")/.."
-exec go run github.com/air-verse/air@v1.67.4 "$@"

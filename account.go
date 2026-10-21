@@ -42,6 +42,16 @@ type choice struct {
 	Label string
 }
 
+// choiceLabel is the label for value, or "" if value isn't one of the choices.
+func choiceLabel(choices []choice, value string) string {
+	for _, c := range choices {
+		if c.Value == value {
+			return c.Label
+		}
+	}
+	return ""
+}
+
 var showTypeChoices = []choice{{showTypeKaraoke, "Karaoke"}, {showTypeDJ, "DJ"}}
 
 func (a *app) accountPageFor(r *http.Request) accountPage {
@@ -260,6 +270,10 @@ func (a *app) handleAccountDelete(w http.ResponseWriter, r *http.Request) {
 func (a *app) deleteUser(id uint) error {
 	var catalogs []uint
 	if err := a.db.Model(&Catalog{}).Where("user_id = ?", id).Pluck("id", &catalogs).Error; err != nil {
+		return err
+	}
+	// Their saved songs go with the profile; their singers keep their names in show history.
+	if err := a.db.Where("user_id = ?", id).Delete(&AudienceProfile{}).Error; err != nil {
 		return err
 	}
 	res := a.db.Delete(&User{}, id)
