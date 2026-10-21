@@ -354,14 +354,14 @@ catalogs/{catalog_id}/v{version}.db    # built artifact
 3. The work queue is the catalogs table: the builder takes the oldest `pending` catalog and sets it `processing`. It downloads the CSV to a temp file and builds `v{n}.db` directly in the cache directory (per "Catalog CSV rules" above), then stores the DB as `v{n}.db`.
 4. In one transaction, only if `building_version` is still `n`: `active_version = n`, `status = ready`, `song_count`, `row_count`, `import_metadata_json`, `errors_json` cleared. Searches switch on the next request. The old version stays until cleanup. If a newer upload or a delete happened during the build, this build's result is dropped.
 5. On failure: `status = failed`, `errors_json` set, `active_version` unchanged, so search keeps serving the previous version.
-6. On startup, any catalog left `processing` goes back to `pending`.
+6. Only one process builds at a time: the builder holds an exclusive `flock` on `.builder.lock` in the cache directory, waiting for it during a zero-downtime deploy until the old container exits. Once it has the lock, any catalog left `processing` goes back to `pending`. Besides being woken by uploads, the builder looks for pending work every 30 seconds, so a catalog left pending by another process doesn't wait for the next upload.
 
 **Cache**
 
 - Directory `CATALOG_CACHE_DIR` (default `data/catalogs/`), files named `{catalog_id}_v{version}.db`.
 - On search: if the file is missing, download from Tigris (one download per file at a time; other searches for it wait), then open it read-only (`mode=ro`, `immutable=1`).
 - One open read-only handle per cached file, closed when evicted.
-- Track last use in memory, and touch the file mtime (at most once a minute) so it survives restarts. On startup the directory is scanned and leftover `.tmp` files are deleted.
+- Track last use in memory, and touch the file mtime (at most once a minute) so it survives restarts. On startup the directory is scanned. Leftover `.tmp` files are deleted by the builder once nothing has written them for 10 minutes; startup can't delete them all, because during a deploy the other container may still be writing them.
 - When total bytes exceed `CATALOG_CACHE_MAX_BYTES` (default 10 GB), delete least-recently-used files. Catalogs of live shows are pinned and never evicted (any version, so a host's search results from just before a rebuild still resolve). Pins are refreshed at startup and whenever a show starts or ends.
 - Admin page shows: cached files and bytes, budget, hits/misses since boot, catalogs whose active version is missing from Tigris.
 

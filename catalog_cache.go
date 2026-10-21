@@ -52,11 +52,6 @@ func newCatalogCache(dir string, maxBytes int64, blobs blobStore, logger *slog.L
 	}
 	for _, e := range entries {
 		name := e.Name()
-		if strings.HasSuffix(name, ".tmp") {
-			// Left by a build or download that didn't finish.
-			os.Remove(filepath.Join(dir, name))
-			continue
-		}
 		if !strings.HasSuffix(name, ".db") {
 			continue
 		}
@@ -71,6 +66,27 @@ func newCatalogCache(dir string, maxBytes int64, blobs blobStore, logger *slog.L
 	c.evictLocked("")
 	c.mu.Unlock()
 	return c, nil
+}
+
+// removeStaleTemps deletes temp files left by a build, download, or upload
+// that didn't finish. During a deploy two processes share this directory, so
+// startup can't simply clear it: a file another process is still writing has
+// a recent modification time, and only files untouched for olderThan go.
+func (c *catalogCache) removeStaleTemps(olderThan time.Duration) {
+	entries, err := os.ReadDir(c.dir)
+	if err != nil {
+		c.logger.Error("catalog cache temp sweep", "err", err)
+		return
+	}
+	cutoff := time.Now().Add(-olderThan)
+	for _, e := range entries {
+		if !strings.HasSuffix(e.Name(), ".tmp") {
+			continue
+		}
+		if info, err := e.Info(); err == nil && info.ModTime().Before(cutoff) {
+			os.Remove(filepath.Join(c.dir, e.Name()))
+		}
+	}
 }
 
 func catalogFileName(catalogID uint, version int) string {

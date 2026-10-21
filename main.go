@@ -45,6 +45,7 @@ type app struct {
 	blobs     blobStore
 	cache     *catalogCache
 	buildWake chan struct{}
+	buildPoll time.Duration // how often the builder looks for pending work without a wake
 }
 
 func main() {
@@ -76,6 +77,7 @@ func newApp(cfg config, db *gorm.DB, logger *slog.Logger, m mailer) (*app, error
 		turnstile: newTurnstileVerifier(cfg.TurnstileSecretKey),
 		blobs:     dirBlobStore{dir: cfg.BlobDir},
 		buildWake: make(chan struct{}, 1),
+		buildPoll: 30 * time.Second,
 	}
 	clock := func() time.Time { return a.now() }
 	// The email limits are the Rails ones: 5 per address and 10 per IP each hour.

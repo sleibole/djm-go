@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -459,8 +460,10 @@ func TestCatalogCacheEvictsLeastRecentlyUsed(t *testing.T) {
 		t.Errorf("bytes = %d", s.Bytes)
 	}
 
-	// A restart remembers what is on disk and clears unfinished downloads.
-	os.WriteFile(filepath.Join(dir, "9_v1.db.123.tmp"), []byte("x"), 0o644)
+	// A restart remembers what is on disk and ignores temp files.
+	stale, fresh := filepath.Join(dir, "9_v1.db.123.tmp"), filepath.Join(dir, "upload-456.tmp")
+	os.WriteFile(stale, []byte("x"), 0o644)
+	os.WriteFile(fresh, []byte("x"), 0o644)
 	cache, err = newCatalogCache(dir, 250, blobs, slog.New(slog.NewTextHandler(io.Discard, nil)), now)
 	if err != nil {
 		t.Fatal(err)
@@ -468,11 +471,20 @@ func TestCatalogCacheEvictsLeastRecentlyUsed(t *testing.T) {
 	if s := cache.stats(); s.Files != 2 || s.Bytes != 200 {
 		t.Errorf("after restart %+v", s)
 	}
-	if left, _ := filepath.Glob(filepath.Join(dir, "*.tmp")); len(left) > 0 {
-		t.Errorf("temp files left: %v", left)
-	}
 	if _, err := cache.open(ctx, 4, 1); err == nil {
 		t.Error("opened a catalog the blob store doesn't have")
+	}
+
+	// Temp files go once nothing has written them for a while; one that may
+	// still be in use by another process stays.
+	old := time.Now().Add(-staleTempAge - time.Minute)
+	os.Chtimes(stale, old, old)
+	cache.removeStaleTemps(staleTempAge)
+	if _, err := os.Stat(stale); err == nil {
+		t.Error("stale temp file left")
+	}
+	if _, err := os.Stat(fresh); err != nil {
+		t.Error("recent temp file removed")
 	}
 }
 
@@ -508,6 +520,57 @@ func TestBuilderRequeuesInterruptedBuilds(t *testing.T) {
 	build(t, a)
 	if c = reload(t, a, c); c.Status != catalogReady {
 		t.Fatalf("%+v", c)
+	}
+}
+
+func TestBuilderLockIsExclusive(t *testing.T) {
+	a := newTestApp(t)
+	unlock, err := a.lockBuilder(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// A second process (here, a second open file) waits for the lock.
+	ctx, cancel := context.WithTimeout(context.Background(), 1500*time.Millisecond)
+	defer cancel()
+	if _, err := a.lockBuilder(ctx); !errors.Is(err, context.DeadlineExceeded) {
+		t.Fatalf("second lock: %v", err)
+	}
+
+	unlock()
+	unlock2, err := a.lockBuilder(context.Background())
+	if err != nil {
+		t.Fatalf("lock after release: %v", err)
+	}
+	unlock2()
+}
+
+func TestBuilderFindsPendingWorkWithoutWake(t *testing.T) {
+	a := newTestApp(t)
+	a.buildPoll = 20 * time.Millisecond
+	b, _ := signInHost(t, a, "dj@example.com")
+	c := createCatalog(t, a, b, "Main")
+	uploadCSV(t, b, c, fixture(t, "valid_full.csv"))
+	build(t, a)
+
+	// Another process hands version 1 back as pending, without waking this one.
+	select {
+	case <-a.buildWake:
+	default:
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	var done sync.WaitGroup
+	done.Go(func() { a.runBuilder(ctx) })
+	defer func() { cancel(); done.Wait() }()
+	time.Sleep(50 * time.Millisecond)
+	a.db.Model(&Catalog{}).Where("id = ?", c.ID).Updates(map[string]any{"status": catalogPending, "building_version": 1})
+
+	deadline := time.Now().Add(5 * time.Second)
+	for reload(t, a, c).Status != catalogReady {
+		if time.Now().After(deadline) {
+			t.Fatalf("pending catalog never built: %+v", reload(t, a, c))
+		}
+		time.Sleep(10 * time.Millisecond)
 	}
 }
 

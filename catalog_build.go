@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
+	"syscall"
 	"time"
 
 	"gorm.io/gorm"
@@ -15,25 +17,77 @@ import (
 const (
 	maxRowsPerAccount = 10_000_000
 	buildErrorMessage = "Something went wrong while processing this file. Please try uploading it again."
+	builderLockFile   = ".builder.lock"
+	staleTempAge      = 10 * time.Minute
 )
 
 // runBuilder builds uploaded catalogs one at a time until ctx is done. The
 // queue is the catalogs table itself (status pending), so nothing is lost on
-// a restart.
+// a restart. Besides wakeBuilder, it looks for pending work every buildPoll,
+// which picks up catalogs another process left pending.
 func (a *app) runBuilder(ctx context.Context) {
+	unlock, err := a.lockBuilder(ctx)
+	if err != nil {
+		if ctx.Err() == nil {
+			a.logger.Error("catalog builder lock", "err", err)
+		}
+		return
+	}
+	defer unlock()
 	a.requeueBuilds()
+	tick := time.NewTicker(a.buildPoll)
+	defer tick.Stop()
 	for {
+		a.cache.removeStaleTemps(staleTempAge)
 		for ctx.Err() == nil && a.buildNext(ctx) {
 		}
 		select {
 		case <-ctx.Done():
 			return
 		case <-a.buildWake:
+		case <-tick.C:
 		}
 	}
 }
 
-// requeueBuilds restarts builds that a shutdown or crash cut off.
+// lockBuilder waits for an exclusive lock on a file in the cache directory, so
+// only one process builds at a time. During a zero-downtime deploy the old
+// container holds it until it exits; the kernel releases it however the
+// process ends. Holding it means no other builder is alive, so builds marked
+// processing were cut off and can be requeued.
+func (a *app) lockBuilder(ctx context.Context) (unlock func(), err error) {
+	f, err := os.OpenFile(filepath.Join(a.cfg.CatalogCacheDir, builderLockFile), os.O_RDWR|os.O_CREATE, 0o644)
+	if err != nil {
+		return nil, err
+	}
+	waiting := false
+	for {
+		err := syscall.Flock(int(f.Fd()), syscall.LOCK_EX|syscall.LOCK_NB)
+		if err == nil {
+			if waiting {
+				a.logger.Info("catalog builder lock acquired")
+			}
+			return func() { f.Close() }, nil
+		}
+		if !errors.Is(err, syscall.EWOULDBLOCK) {
+			f.Close()
+			return nil, err
+		}
+		if !waiting {
+			a.logger.Info("waiting for another process to finish building catalogs")
+			waiting = true
+		}
+		select {
+		case <-ctx.Done():
+			f.Close()
+			return nil, ctx.Err()
+		case <-time.After(time.Second):
+		}
+	}
+}
+
+// requeueBuilds restarts builds that a shutdown or crash cut off. Only call it
+// while holding the builder lock.
 func (a *app) requeueBuilds() {
 	err := a.db.Model(&Catalog{}).Where("status = ?", catalogProcessing).Update("status", catalogPending).Error
 	if err != nil {
