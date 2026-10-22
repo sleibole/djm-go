@@ -87,10 +87,34 @@ And in this repo: `git remote add dokku dokku@box:djm`.
 ssh -t administrator@box sudo sh /tmp/djm-setup-1.sh
 ```
 
-**Step 2, after the first push has created `djm.db`.** Adds djm to `/etc/litestream.yml` (same Tigris bucket and keys as track-anything, its own path), restarts the service, and checks both databases sync. The exact entry gets written here once step 1 has shown the config's shape.
+Done Oct 21.
+
+**Step 2, after the first push has created `djm.db`.** Backs up `/etc/litestream.yml`, appends djm's entry (keeping the file's comments), checks the YAML lists both databases (restoring the backup if not), restarts the service, and shows the recent log lines:
 
 ```sh
 ssh -t administrator@box sudo sh /tmp/djm-setup-2.sh
+```
+
+Done Oct 21: the first snapshot was uploaded, both databases sync every 2 seconds, and Litestream's files (`.djm.db-litestream/`) are owned by 65532 like the rest. The previous config is `/etc/litestream.yml.bak-20261021-232550`.
+
+`/etc/litestream.yml` has the Tigris keys at the top level, shared by every entry. djm uses track-anything's bucket under its own path:
+
+```yaml
+dbs:
+  - path: /var/lib/dokku/data/storage/trackanything-data/trackanything.db
+    replica:
+      type: s3
+      bucket: trackanything-backups
+      path: trackanything
+      endpoint: fly.storage.tigris.dev
+      region: auto
+  - path: /var/lib/dokku/data/storage/djm-data/djm.db
+    replica:
+      type: s3
+      bucket: trackanything-backups
+      path: djm
+      endpoint: fly.storage.tigris.dev
+      region: auto
 ```
 
 ## 4. Secrets
@@ -109,6 +133,8 @@ Production refuses to start without the Turnstile keys, so set at least those be
 - SES: `djmagic.io` is already verified, so `noreply@djmagic.io` sends as-is. Use the SES SMTP region the Rails app uses.
 
 ## 5. First push
+
+Done Oct 21 (`7760da2`): built in about 50 seconds, both health checks passed, `/healthz` returns 200 on `djm.box` and over WireGuard as `next.djmagic.io`, and `djm.db` is owned by 65532. The Turnstile keys are set; `SMTP_HOST` is not yet, so sign-in links go to `dokku logs djm`.
 
 From this repo:
 
@@ -131,6 +157,8 @@ journalctl -u litestream -f      # "replica sync" lines for both trackanything.d
 ```
 
 ## 6. Fly ingress (`../homelab-ingress`)
+
+Done Oct 21 (`homelab-ingress` commit `9e6696d`, Fly release deployed the same day). A 5 MB POST with `Host: next.djmagic.io` to `https://trackanything.fly.dev` reaches the djm app, and track-anything's health checks still pass. The certificate and DNS below are still to do.
 
 Two changes, both harmless for track-anything:
 
@@ -158,8 +186,12 @@ fly certs show next.djmagic.io -a trackanything   # shows the DNS records to cre
 
 Where `djmagic.io`'s DNS lives (Cloudflare per the ingress README):
 
-- `next` CNAME `trackanything.fly.dev`, **DNS only (grey cloud)**. With the orange cloud on, `Fly-Client-IP` would be a Cloudflare address, so rate limits would lump every visitor together. Switching to proxied later means `TRUSTED_IP_HEADER=CF-Connecting-IP` and stripping that header at Fly.
-- Any `_acme-challenge` record `fly certs show` asks for.
+The Fly certificate was added Oct 21 (`fly certs add next.djmagic.io -a trackanything`) and waits for these records. They match `trackanything.io`, which resolves to the same two addresses:
+
+- `A next 66.241.125.120` and `AAAA next 2a09:8280:1::19f:8a98:0`, both **DNS only (grey cloud)**. With the orange cloud on, Fly can't validate the certificate, and `Fly-Client-IP` would be a Cloudflare address, so rate limits would lump every visitor together. Switching to proxied later means `TRUSTED_IP_HEADER=CF-Connecting-IP` and stripping that header at Fly.
+- No `_acme-challenge` or `_fly-ownership` record is needed: the app has a dedicated IPv6 address and traffic points straight at Fly.
+
+Check with `fly certs check next.djmagic.io -a trackanything`.
 
 Leave the apex `djmagic.io` pointing at the Rails apps until cutover.
 
