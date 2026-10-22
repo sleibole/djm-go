@@ -27,7 +27,8 @@
 {{define "audience_live_block"}}{{template "audience_live" .Data}}{{end}}
 
 {{define "audience_live"}}{{$s := .Show}}{{$l := .}}
-<div id="audience-live"{{if $s.Active}} hx-get="{{.Path}}/queue" hx-trigger="every 5s [djmShouldPoll()]" hx-target="this" hx-swap="outerHTML"{{end}}>
+<div id="audience-live"{{if $s.Active}} hx-get="{{.Path}}/queue{{if .PendingNotice}}?requested=pending{{end}}" hx-trigger="every 5s [djmShouldPoll()]" hx-target="this" hx-swap="outerHTML"{{end}}>
+  {{with .PendingNotice}}<p role="status" class="saved">{{.}}</p>{{end}}
   <hgroup>
     <h1>{{$s.DisplayName}}</h1>
     <p>{{if $s.Active}}<mark>Live</mark> — {{template "show_type" $s}}{{else if $s.Scheduled}}This show hasn't started yet.{{else}}This show has ended.{{end}}</p>

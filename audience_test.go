@@ -152,6 +152,46 @@ func TestAudienceRequestNotOpen(t *testing.T) {
 	}
 }
 
+func TestAudiencePendingNoticeClearsWhenReviewed(t *testing.T) {
+	a := newTestApp(t)
+	host, s, path := audienceShow(t, a, url.Values{})
+	g := guest(t, a, "192.0.2.10")
+	request(g, path, "Alice", "Hello")
+
+	body := g.get(path + "/queue?requested=pending").Body.String()
+	mustContain(t, "pending queue", body, "The host will review it shortly.", `hx-get="`+path+`/queue?requested=pending"`)
+
+	poll := hxGet(g, path+"/queue?requested=pending", "audience-live")
+	mustContain(t, "still pending", poll.Body.String(), "The host will review it shortly.", `hx-get="`+path+`/queue?requested=pending"`)
+
+	// A second request still waiting keeps the flash after the first is accepted.
+	request(g, path, "Alice", "Encore")
+	act(host, requestByTitle(t, a, s, "Hello"), "approve", nil, false)
+	poll = hxGet(g, path+"/queue?requested=pending", "audience-live")
+	mustContain(t, "one still pending", poll.Body.String(), "The host will review it shortly.", "You're up next!")
+
+	act(host, requestByTitle(t, a, s, "Encore"), "approve", nil, false)
+	poll = hxGet(g, path+"/queue?requested=pending", "audience-live")
+	if strings.Contains(poll.Body.String(), "The host will review it shortly.") || strings.Contains(poll.Body.String(), "requested=pending") {
+		t.Fatalf("accepted requests should drop the submitted notice:\n%s", poll.Body)
+	}
+	mustContain(t, "both accepted", poll.Body.String(), "You're up next!")
+
+	body = g.get(path + "/queue?requested=pending").Body.String()
+	if strings.Contains(body, "The host will review it shortly.") {
+		t.Fatal("reloading the submitted URL should not bring the notice back")
+	}
+
+	// A rejection reviews the request too.
+	request(g, path, "Alice", "Nope")
+	act(host, requestByTitle(t, a, s, "Nope"), "reject", url.Values{"rejection_reason": {"Not tonight"}}, false)
+	poll = hxGet(g, path+"/queue?requested=pending", "audience-live")
+	if strings.Contains(poll.Body.String(), "The host will review it shortly.") {
+		t.Fatal("a rejected request should drop the submitted notice")
+	}
+	mustContain(t, "rejected", poll.Body.String(), "Reason: Not tonight")
+}
+
 func TestAudienceNotFound(t *testing.T) {
 	a := newTestApp(t)
 	_, _, path := audienceShow(t, a, url.Values{})

@@ -594,16 +594,17 @@ func (a *app) placeAudienceRequest(w http.ResponseWriter, r *http.Request, s Sho
 
 // audienceLive is the polled part of the queue page.
 type audienceLive struct {
-	Show       Show
-	Path       string
-	NowPlaying *queueRow
-	Queue      []queueRow
-	MeID       uint // the visitor's participant in this show, 0 if none
-	Up         bool // the visitor is on stage
-	Positions  []int
-	Wait       time.Duration // until the visitor's first spot
-	Pending    []queueRow    // the visitor's requests waiting for approval
-	Rejected   []queueRow
+	Show          Show
+	Path          string
+	NowPlaying    *queueRow
+	Queue         []queueRow
+	MeID          uint // the visitor's participant in this show, 0 if none
+	Up            bool // the visitor is on stage
+	Positions     []int
+	Wait          time.Duration // until the visitor's first spot
+	Pending       []queueRow    // the visitor's requests waiting for approval
+	Rejected      []queueRow
+	PendingNotice string // "host will review" flash; empty once nothing is awaiting approval
 }
 
 // PositionText is Rails' wording for where the visitor is.
@@ -713,6 +714,12 @@ func (a *app) renderAudienceQueue(w http.ResponseWriter, r *http.Request, status
 		a.serverError(w, r, err)
 		return
 	}
+	// The submitted flash stays only while a request is still awaiting approval.
+	// Polls keep ?requested=pending so the flash leaves with the next update
+	// once the host accepts, rejects, or the singer cancels.
+	if r.URL.Query().Get("canceled") == "" && r.URL.Query().Get("requested") == requestPending && len(live.Pending) > 0 {
+		live.PendingNotice = requestedNotices[requestPending]
+	}
 	if r.Header.Get("HX-Target") == "audience-live" {
 		a.renderBlock(w, r, status, "audience_queue.html", "audience_live_block", live)
 		return
@@ -720,6 +727,9 @@ func (a *app) renderAudienceQueue(w http.ResponseWriter, r *http.Request, status
 	page := audienceQueuePage{
 		DJ: dj, Show: s, Path: live.Path, Live: live, Error: errMsg,
 		Notice: requestedNotices[r.URL.Query().Get("requested")], SignedIn: currentUser(r) != nil,
+	}
+	if page.Notice == requestedNotices[requestPending] {
+		page.Notice = ""
 	}
 	if r.URL.Query().Get("canceled") != "" {
 		page.Notice = "Your request was canceled."
