@@ -186,9 +186,10 @@ fly certs show next.djmagic.io -a trackanything   # shows the DNS records to cre
 
 Where `djmagic.io`'s DNS lives (Cloudflare per the ingress README):
 
-The Fly certificate was added Oct 21 (`fly certs add next.djmagic.io -a trackanything`) and waits for these records. They match `trackanything.io`, which resolves to the same two addresses:
+**Done Oct 21.** `next` is a CNAME to `2plmnoj.trackanything.fly.dev` (the custom-domain target `fly certs setup next.djmagic.io -a trackanything` gives), **DNS only (grey cloud)**. Let's Encrypt issued the certificate within a minute. `https://next.djmagic.io/healthz` returns 200, and plain HTTP redirects to HTTPS.
 
-- `A next 66.241.125.120` and `AAAA next 2a09:8280:1::19f:8a98:0`, both **DNS only (grey cloud)**. With the orange cloud on, Fly can't validate the certificate, and `Fly-Client-IP` would be a Cloudflare address, so rate limits would lump every visitor together. Switching to proxied later means `TRUSTED_IP_HEADER=CF-Connecting-IP` and stripping that header at Fly.
+- A CNAME follows Fly if the app's addresses change. The alternative is `A 66.241.125.120` plus `AAAA 2a09:8280:1::19f:8a98:0`, as `trackanything.io` uses. The apex `djmagic.io` will need those (or Cloudflare's CNAME flattening) at cutover, since an apex can't be a plain CNAME.
+- Keep it grey. With the orange cloud on, Fly can't validate the certificate, and `Fly-Client-IP` would be a Cloudflare address, so rate limits would lump every visitor together. Switching to proxied later means `TRUSTED_IP_HEADER=CF-Connecting-IP` and stripping that header at Fly.
 - No `_acme-challenge` or `_fly-ownership` record is needed: the app has a dedicated IPv6 address and traffic points straight at Fly.
 
 Check with `fly certs check next.djmagic.io -a trackanything`.
@@ -197,8 +198,8 @@ Leave the apex `djmagic.io` pointing at the Rails apps until cutover.
 
 ## 8. Verify
 
-- [ ] `curl https://next.djmagic.io/healthz` returns `ok`.
-- [ ] Sign in by email (real SES mail, Turnstile passes), open the dashboard.
+- [x] `curl https://next.djmagic.io/healthz` returns `ok`.
+- [x] Sign in by email (real SES mail, Turnstile passes), open the dashboard.
 - [ ] Upload a large catalog (~50 MB) to prove the body size and timeouts on both nginx hops. Search it.
 - [ ] Start a show and request from a phone over cellular, via the QR code.
 - [ ] Rate limits see the phone's IP: temporarily log the client IP, or check that two devices don't share a limit.
