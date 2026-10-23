@@ -52,9 +52,9 @@
 {{define "memory_signed_out"}}
 <article>
   <p>Save your song history and favorite songs by creating a free account.</p>
-  <p>
+  <div class="action-row">
     <a href="/signup?next={{urlquery .}}" role="button">Create an account</a>
     <a href="/signin?next={{urlquery .}}" role="button" class="secondary outline">Sign in</a>
-  </p>
+  </div>
 </article>
 {{end}}

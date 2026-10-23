@@ -5,17 +5,17 @@
   <p>Signed in as {{.User.Email}}.</p>
 </hgroup>
 {{if .User.Hosts}}
-<p>Your public page will be <strong>{{.BaseURL}}/dj/{{.User.Handle}}</strong>.</p>
-<p>
+<p>Your public page will be <a class="public-url" href="{{.BaseURL}}/dj/{{.User.Handle}}">{{.BaseURL}}/dj/{{.User.Handle}}</a> · <a href="/account#handle">Change</a></p>
+<div class="action-row">
   <a href="/shows" role="button">{{icon "microphone"}} My Shows</a>
   <a href="/catalogs" role="button" class="secondary">{{icon "music"}} My Catalogs</a>
-</p>
+</div>
 {{else}}
 <p>Find a show's request page to request songs. Hosting a show? <a href="/account">Start hosting</a> from your account.</p>
 {{end}}
-<p>
+<div class="action-row">
   <a href="/me/saved" role="button" class="outline">{{icon "heart"}} Saved Songs</a>
   <a href="/me/performances" role="button" class="outline">{{icon "history"}} My Performances</a>
   <a href="/account" role="button" class="outline secondary">{{icon "user"}} Account</a>
-</p>
+</div>
 {{end}}

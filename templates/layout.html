@@ -14,6 +14,10 @@
   <link rel="icon" href="{{asset "favicon.ico"}}" sizes="16x16">
   <link rel="icon" href="{{asset "icon.png"}}" type="image/png" sizes="32x32">
   <link rel="apple-touch-icon" href="{{asset "apple-touch-icon.png"}}" sizes="180x180">
+  <script>
+    // Small screens collapse the header links. Set this before paint so they don't flash.
+    document.documentElement.classList.add("js");
+  </script>
   {{block "theme_script" .}}<script>
     try {
       var t = localStorage.getItem("theme");
@@ -46,7 +50,7 @@
   </div>
   {{end}}{{end}}
   <header class="container">
-    <nav>
+    <nav class="site-nav">
       <ul>
         <li>
           <a href="/" class="brand">
@@ -55,7 +59,13 @@
           </a>
         </li>
       </ul>
-      <ul>
+      <button type="button" class="nav-toggle" aria-expanded="false" aria-controls="site-menu">
+        <span class="nav-toggle-icon nav-toggle-icon-open">{{icon "menu-2"}}</span>
+        <span class="nav-toggle-icon nav-toggle-icon-close">{{icon "x"}}</span>
+        <span class="nav-text nav-text-open">Open menu</span>
+        <span class="nav-text nav-text-close">Close menu</span>
+      </button>
+      <ul id="site-menu" class="nav-links">
         {{with .User}}
         {{if .Hosts}}
         <li><a href="/shows">{{icon "microphone"}} Shows</a></li>
@@ -65,12 +75,12 @@
         <li><a href="/me/performances">{{icon "history"}} Performances</a></li>
         {{end}}
         {{if eq .Role "admin"}}
-        <li><a href="/admin" aria-label="Admin" title="Admin">{{icon "shield"}}</a></li>
+        <li><a href="/admin" aria-label="Admin" title="Admin">{{icon "shield"}}<span class="nav-text">Admin</span></a></li>
         {{end}}
-        <li><a href="/account" aria-label="Account" title="Account">{{icon "user"}}</a></li>
+        <li><a href="/account" aria-label="Account" title="Account">{{icon "user"}}<span class="nav-text">Account</span></a></li>
         <li>
           <form method="post" action="/logout" class="inline">
-            <button type="submit" class="outline secondary" aria-label="Log out" title="Log out">{{icon "logout"}}</button>
+            <button type="submit" class="outline secondary" aria-label="Log out" title="Log out">{{icon "logout"}}<span class="nav-text">Log out</span></button>
           </form>
         </li>
         {{else}}

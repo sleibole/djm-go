@@ -6,6 +6,14 @@
   vertical-align: -0.25em;
 }
 
+.public-url {
+  overflow-wrap: anywhere;
+}
+
+#handle {
+  scroll-margin-top: 6rem;
+}
+
 .brand {
   display: inline-flex;
   align-items: center;
@@ -22,6 +30,31 @@
 
 .narrow {
   max-width: 42rem;
+}
+
+/* Separate actions. Pico's role=group joins buttons into one control and does not wrap. */
+.action-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: var(--pico-spacing);
+}
+
+.action-row > :where(a, button) {
+  width: auto;
+  margin: 0;
+}
+
+@media (max-width: 767px) {
+  .action-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .action-row > :where(a, button) {
+    width: 100%;
+  }
 }
 
 main > section {
@@ -63,6 +96,162 @@ nav form.inline {
 nav form.inline button {
   margin: 0;
   padding: 0.4rem 0.6rem;
+}
+
+/* Names for icon-only header items. Visible in the small-screen menu. */
+.nav-text {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+.nav-toggle-icon-close,
+.nav-text-close {
+  display: none;
+}
+
+/* Below 768px the container is 510px wide and the right-hand links overflow. */
+.nav-toggle {
+  display: none;
+}
+
+@media (max-width: 767px) {
+  html.js header:has(> nav.site-nav) {
+    position: relative;
+    z-index: 30;
+  }
+
+  html.js nav.site-nav {
+    position: relative;
+    align-items: center;
+  }
+
+  html.js button.nav-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+    width: 2.75rem;
+    height: 2.75rem;
+    margin: 0 0 0 auto;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+    color: var(--pico-primary);
+    --pico-background-color: transparent;
+    --pico-border-color: transparent;
+    --pico-color: var(--pico-primary);
+    --pico-box-shadow: none;
+  }
+
+  html.js button.nav-toggle:is(:hover, :active, :focus) {
+    border-color: transparent;
+    background-color: var(--pico-secondary-focus);
+    box-shadow: none;
+    color: var(--pico-primary);
+    --pico-background-color: var(--pico-secondary-focus);
+    --pico-border-color: transparent;
+    --pico-color: var(--pico-primary);
+    --pico-box-shadow: none;
+  }
+
+  html.js button.nav-toggle:focus-visible {
+    outline: var(--pico-outline-width) solid var(--pico-primary-focus);
+    outline-offset: 2px;
+  }
+
+  html.js button.nav-toggle[aria-expanded="true"] .nav-toggle-icon-open,
+  html.js button.nav-toggle[aria-expanded="true"] .nav-text-open {
+    display: none;
+  }
+
+  html.js button.nav-toggle[aria-expanded="true"] .nav-toggle-icon-close {
+    display: inline-flex;
+  }
+
+  html.js button.nav-toggle[aria-expanded="true"] .nav-text-close {
+    display: inline;
+  }
+
+  html.js nav.site-nav .nav-links {
+    display: none;
+  }
+
+  html.js nav.site-nav .nav-links.is-open {
+    display: flex;
+    position: absolute;
+    z-index: 30;
+    top: calc(100% - 0.25rem);
+    right: 0;
+    left: 0;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.15rem;
+    margin: 0;
+    padding: 0.4rem;
+    background: var(--pico-card-background-color);
+    border: var(--pico-border-width) solid var(--pico-muted-border-color);
+    border-radius: var(--pico-border-radius);
+    box-shadow: var(--pico-card-box-shadow);
+  }
+
+  html.js nav.site-nav .nav-links li {
+    display: block;
+    padding: 0;
+  }
+
+  html.js nav.site-nav .nav-links li :where(a, button) {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 0.65rem;
+    width: 100%;
+    margin: 0;
+    padding: 0.7rem 0.75rem;
+    text-align: left;
+  }
+
+  html.js nav.site-nav .nav-links .nav-text {
+    position: static;
+    width: auto;
+    height: auto;
+    margin: 0;
+    overflow: visible;
+    clip: auto;
+    clip-path: none;
+    white-space: normal;
+  }
+
+  html.js nav.site-nav .nav-links form.inline {
+    display: block;
+  }
+}
+
+@media print {
+  html.js .nav-toggle {
+    display: none;
+  }
+
+  html.js nav.site-nav .nav-links,
+  html.js nav.site-nav .nav-links.is-open {
+    display: flex;
+    position: static;
+    flex-direction: row;
+    align-items: center;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    box-shadow: none;
+    background: none;
+  }
 }
 
 .error {

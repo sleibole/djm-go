@@ -22,7 +22,7 @@
     </label>
     <label>
       {{icon "link"}} Handle
-      <input type="text" name="handle" value="{{.Handle}}" required minlength="3" maxlength="30"
+      <input type="text" id="handle" name="handle" value="{{.Handle}}" required minlength="3" maxlength="30"
              pattern="[a-z0-9]([a-z0-9\-]*[a-z0-9])?" autocapitalize="none" spellcheck="false" aria-describedby="handle-help">
       <small id="handle-help">Lowercase letters, numbers, and hyphens. 3&ndash;30 characters.</small>
     </label>

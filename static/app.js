@@ -180,3 +180,48 @@ document.addEventListener("htmx:afterSettle", (event) => {
   renderTurnstile(event.detail?.target || document);
   localizeTimes(document);
 });
+
+// Header links collapse into this button below 768px. Desktop never shows it.
+(function () {
+  const toggle = document.querySelector("nav.site-nav .nav-toggle");
+  const menu = document.getElementById("site-menu");
+  if (!toggle || !menu) return;
+  const nav = toggle.closest("nav");
+
+  const setOpen = (open) => {
+    toggle.setAttribute("aria-expanded", open ? "true" : "false");
+    menu.classList.toggle("is-open", open);
+  };
+
+  toggle.addEventListener("click", () => {
+    setOpen(toggle.getAttribute("aria-expanded") !== "true");
+  });
+
+  // Hide after the click, not during it. Hiding the link in the click handler
+  // cancels navigation, including the log-out submit.
+  menu.addEventListener("click", (e) => {
+    if (!e.target.closest("a, button")) return;
+    setTimeout(() => setOpen(false), 0);
+  });
+
+  document.addEventListener("click", (e) => {
+    if (toggle.getAttribute("aria-expanded") !== "true") return;
+    if (!nav.contains(e.target)) setOpen(false);
+  });
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && toggle.getAttribute("aria-expanded") === "true") {
+      setOpen(false);
+      toggle.focus();
+    }
+  });
+
+  document.addEventListener("focusin", (e) => {
+    if (toggle.getAttribute("aria-expanded") !== "true") return;
+    if (!nav.contains(e.target)) setOpen(false);
+  });
+
+  window.matchMedia("(min-width: 768px)").addEventListener("change", (e) => {
+    if (e.matches) setOpen(false);
+  });
+})();

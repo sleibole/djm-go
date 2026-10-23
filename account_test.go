@@ -12,9 +12,19 @@ func TestAccountPageForDJAndAudience(t *testing.T) {
 	dj := newBrowser(t, a)
 	u := signIn(t, a, dj, "dj@example.com", "dj")
 	body := dj.get("/account").Body.String()
-	for _, want := range []string{"Public profile", "http://example.test/dj/" + u.Handle(), "Show defaults", "Set password", `data-theme-choice="dark"`} {
+	for _, want := range []string{"Public profile", "http://example.test/dj/" + u.Handle(), "Show defaults", "Set password", `data-theme-choice="dark"`, `id="handle"`} {
 		if !strings.Contains(body, want) {
 			t.Errorf("DJ account page is missing %q", want)
+		}
+	}
+	home := dj.get("/").Body.String()
+	publicURL := "http://example.test/dj/" + u.Handle()
+	for _, want := range []string{
+		`<a class="public-url" href="` + publicURL + `">` + publicURL + `</a>`,
+		`<a href="/account#handle">Change</a>`,
+	} {
+		if !strings.Contains(home, want) {
+			t.Errorf("dashboard is missing %q", want)
 		}
 	}
 
