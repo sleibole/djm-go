@@ -32,12 +32,13 @@
   </style>
   <link rel="stylesheet" href="{{asset "pico.min.css"}}">
   <link rel="stylesheet" href="{{asset "app.css"}}">
-  <meta name="htmx-config" content='{"responseHandling":[{"code":"204","swap":false},{"code":"[234]..","swap":true},{"code":"...","swap":false,"error":true}]}'>
+  <meta name="htmx-config" content='{"historyRestoreAsHxRequest":false,"responseHandling":[{"code":"204","swap":false},{"code":"[234]..","swap":true},{"code":"...","swap":false,"error":true}]}'>
   <script src="{{asset "htmx.min.js"}}" defer></script>
   <script src="{{asset "app.js"}}" defer></script>
+  <script src="{{asset "reorder.js"}}" defer></script>
   {{block "scripts" .}}{{end}}
 </head>
-<body>
+<body id="body" hx-boost="true" hx-target="body" hx-swap="innerHTML">
   {{block "body" .}}
   {{if .Impersonating}}{{with .User}}
   <div class="impersonation-banner" role="status">
@@ -90,7 +91,7 @@
       </ul>
     </nav>
   </header>
-  <main class="container" id="content" hx-target="#content" hx-swap="innerHTML show:none">
+  <main class="container" id="content">
     {{template "content" .}}
   </main>
   <footer class="container site-footer">

@@ -329,7 +329,7 @@ func uploadErr(err error) error {
 }
 
 // handleCatalogStatus is polled while a build runs: 204 until it is done,
-// then a full reload so the song count, search and messages all update.
+// then the catalog page replaces main so the song count, search, and messages update.
 func (a *app) handleCatalogStatus(w http.ResponseWriter, r *http.Request) {
 	c, ok := a.ownCatalog(w, r)
 	if !ok {
@@ -339,8 +339,12 @@ func (a *app) handleCatalogStatus(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNoContent)
 		return
 	}
-	w.Header().Set("HX-Redirect", fmt.Sprintf("/catalogs/%d?built=1", c.ID))
-	w.WriteHeader(http.StatusNoContent)
+	w.Header().Set("HX-Retarget", "#content")
+	w.Header().Set("HX-Reswap", "innerHTML show:top")
+	w.Header().Set("HX-Push-Url", fmt.Sprintf("/catalogs/%d?built=1", c.ID))
+	page := a.catalogPageFor(r, c)
+	page.Built = true
+	a.renderBlock(w, r, http.StatusOK, "catalog.html", "content", page)
 }
 
 func (a *app) handleCatalogSearch(w http.ResponseWriter, r *http.Request) {

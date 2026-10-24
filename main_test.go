@@ -131,6 +131,33 @@ func TestHomeHTMXRendersContentOnly(t *testing.T) {
 	}
 }
 
+func TestHomeBoostedRendersLayout(t *testing.T) {
+	a := newTestApp(t)
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.Header.Set("HX-Request", "true")
+	req.Header.Set("HX-Boosted", "true")
+	req.Header.Set("HX-Target", "body")
+	rec := httptest.NewRecorder()
+	a.routes().ServeHTTP(rec, req)
+	body := rec.Body.String()
+	if !strings.Contains(body, "<header") || !strings.Contains(body, "<title>") || !strings.Contains(body, "Make the queue visible") {
+		t.Fatalf("boosted response should be a full document:\n%s", body)
+	}
+}
+
+func TestHomeHistoryRestoreRendersLayout(t *testing.T) {
+	a := newTestApp(t)
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.Header.Set("HX-Request", "true")
+	req.Header.Set("HX-History-Restore-Request", "true")
+	rec := httptest.NewRecorder()
+	a.routes().ServeHTTP(rec, req)
+	body := rec.Body.String()
+	if !strings.Contains(body, "<header") || !strings.Contains(body, "<title>") || strings.Contains(body, "<html") == false {
+		t.Fatalf("history restore should be a full document:\n%s", body)
+	}
+}
+
 func TestNotFound(t *testing.T) {
 	a := newTestApp(t)
 	rec := get(t, a.routes(), "/nope")

@@ -1,7 +1,7 @@
 {{define "title"}}Account · DJMagic.io{{end}}
 {{define "content"}}
 {{with .Data}}
-<div class="form-stack">
+<div class="form-stack" hx-history="false">
 <hgroup>
   <h1>Account</h1>
   <p>Signed in as {{$.User.Email}}.</p>

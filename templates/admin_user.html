@@ -1,7 +1,7 @@
 {{define "title"}}{{.Data.Target.Email}} · Admin · DJMagic.io{{end}}
 {{define "content"}}
 {{with .Data}}{{$u := .Target}}
-<h1>{{icon "shield"}} {{$u.Email}}</h1>
+<h1 hx-history="false">{{icon "shield"}} {{$u.Email}}</h1>
 {{template "admin_nav" "users"}}
 {{if eq .Saved "role"}}<p role="status" class="saved">Role updated.</p>{{else if eq .Saved "unchanged"}}<p role="status" class="saved">Role unchanged.</p>{{end}}
 {{with .Error}}<p role="alert" class="error">{{.}}</p>{{end}}

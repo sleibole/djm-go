@@ -7,6 +7,7 @@ import (
 	"io/fs"
 	"net/http"
 	"path"
+	"strings"
 	"time"
 )
 
@@ -65,13 +66,25 @@ type view struct {
 	Data             any
 }
 
-// render writes a full page, or only the page's "content" block for HTMX requests.
+// render writes a full page, or only the page's "content" block for a fragment request.
+// Boosted navigations and history restores swap the body, so they get the layout.
+// HX-History-Restore-Request wins even when HX-Request is also set.
 func (a *app) render(w http.ResponseWriter, r *http.Request, status int, page string, data any) {
 	block := "layout"
-	if r.Header.Get("HX-Request") == "true" {
+	if fragmentRequest(r) {
 		block = "content"
 	}
 	a.renderBlock(w, r, status, page, block, data)
+}
+
+// fragmentRequest is an HTMX request that swaps a piece of the current document.
+// A boosted navigation, a history restore, and a request aimed at the body swap
+// the whole document, so they stay full pages.
+func fragmentRequest(r *http.Request) bool {
+	if r.Header.Get("HX-Boosted") == "true" || r.Header.Get("HX-History-Restore-Request") == "true" || r.Header.Get("HX-Target") == "body" {
+		return false
+	}
+	return r.Header.Get("HX-Request") == "true"
 }
 
 // renderBlock writes one named template from a page's set, e.g. a partial for an HTMX swap.
@@ -92,8 +105,30 @@ func (a *app) renderBlock(w http.ResponseWriter, r *http.Request, status int, pa
 	}
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	// A handler may have set a more specific policy first, such as the
+	// signed-out catalog search cache. Don't replace that.
+	if w.Header().Get("Cache-Control") == "" && noStoreHTML(r) {
+		w.Header().Set("Cache-Control", "no-store")
+	}
 	w.WriteHeader(status)
 	buf.WriteTo(w)
+}
+
+// noStoreHTML is true for pages that are personalized or that carry a secret
+// in the URL. Public pages and static files are left alone.
+//
+// Audience catalog search sets its own policy: private caching when the
+// results have no hearts, and no header when they do. That choice stays
+// with the handler.
+func noStoreHTML(r *http.Request) bool {
+	p := r.URL.Path
+	if strings.Contains(p, "/dj/") && strings.HasSuffix(p, "/search") {
+		return false
+	}
+	if currentUser(r) != nil {
+		return true
+	}
+	return strings.HasPrefix(p, "/auth/") || strings.HasSuffix(p, "/queue")
 }
 
 // localTime writes a <time> element that app.js rewrites in the viewer's time

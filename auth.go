@@ -121,26 +121,44 @@ func currentSessionID(r *http.Request) string {
 	return id
 }
 
+// secureCookies is true outside development. Production is reached over HTTPS
+// at the browser even though this process sees plain HTTP behind the proxy.
+func (a *app) secureCookies() bool { return a.cfg.Env != "dev" }
+
+// cookieName is name in development and __Host-name when the cookie is Secure.
+// Browsers reject the __Host- prefix without Secure, so HTTP development keeps
+// the plain name. Production does not read the plain name.
+func (a *app) cookieName(name string) string {
+	if a.secureCookies() {
+		return "__Host-" + name
+	}
+	return name
+}
+
 func (a *app) setSessionCookie(w http.ResponseWriter, raw string, expires time.Time) {
-	http.SetCookie(w, &http.Cookie{
-		Name:     sessionCookie,
+	http.SetCookie(w, a.sessionCookie(raw, expires))
+}
+
+func (a *app) sessionCookie(raw string, expires time.Time) *http.Cookie {
+	return &http.Cookie{
+		Name:     a.cookieName(sessionCookie),
 		Value:    raw,
 		Path:     "/",
 		Expires:  expires,
 		HttpOnly: true,
-		Secure:   a.cfg.Env != "dev",
+		Secure:   a.secureCookies(),
 		SameSite: http.SameSiteLaxMode,
-	})
+	}
 }
 
 func (a *app) clearSessionCookie(w http.ResponseWriter) {
 	http.SetCookie(w, &http.Cookie{
-		Name:     sessionCookie,
+		Name:     a.cookieName(sessionCookie),
 		Value:    "",
 		Path:     "/",
 		MaxAge:   -1,
 		HttpOnly: true,
-		Secure:   a.cfg.Env != "dev",
+		Secure:   a.secureCookies(),
 		SameSite: http.SameSiteLaxMode,
 	})
 }
@@ -178,7 +196,7 @@ func (a *app) startSessionAs(w http.ResponseWriter, r *http.Request, userID uint
 // /static and /healthz skip the lookup, so the health check answers from its own query.
 func (a *app) loadUser(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		c, err := r.Cookie(sessionCookie)
+		c, err := r.Cookie(a.cookieName(sessionCookie))
 		if err != nil || strings.HasPrefix(r.URL.Path, "/static/") || r.URL.Path == "/healthz" {
 			next.ServeHTTP(w, r)
 			return
@@ -279,7 +297,7 @@ func (a *app) handleSignupForm(w http.ResponseWriter, r *http.Request) {
 
 type linkSentPage struct {
 	Email string
-	Dev   bool
+	Link  string // set only for a local dev request that opted in; never in production
 }
 
 func (a *app) handleLinkRequest(w http.ResponseWriter, r *http.Request) {
@@ -324,15 +342,26 @@ func (a *app) handleLinkRequest(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Past the per-address limit the page still says the email is on its way, as Rails did.
+	var devLink string
 	if a.linkEmailLimiter.allow(u.Email) {
-		if err := a.sendMagicLink(u, safeNext(form.Next)); err != nil {
+		link, err := a.sendMagicLink(u, safeNext(form.Next))
+		if err != nil {
 			a.logger.Error("server error", "method", r.Method, "path", logPath(r.URL.Path), "err", err)
 			a.message(w, r, http.StatusInternalServerError, "We couldn't send your sign-in link",
 				"Something went wrong while sending the email. Please try again in a moment.")
 			return
 		}
+		if a.showMagicLink() {
+			devLink = link
+		}
 	}
-	a.render(w, r, http.StatusOK, "signin_sent.html", linkSentPage{Email: u.Email, Dev: a.cfg.SMTPHost == ""})
+	a.render(w, r, http.StatusOK, "signin_sent.html", linkSentPage{Email: u.Email, Link: devLink})
+}
+
+// showMagicLink is the explicit local-dev opt-in for putting a sign-in URL on
+// the check-your-email page. Production never qualifies, even if the flag is set.
+func (a *app) showMagicLink() bool {
+	return a.cfg.Env == "dev" && a.cfg.SMTPHost == "" && a.cfg.DevShowMagicLink
 }
 
 // findOrCreateUser returns the account for email. A new account gets role, and a
@@ -386,10 +415,10 @@ func (a *app) newHandle() (string, error) {
 }
 
 // sendMagicLink replaces any earlier link for the user, so only the newest one works.
-func (a *app) sendMagicLink(u User, next string) error {
+func (a *app) sendMagicLink(u User, next string) (string, error) {
 	token, err := newToken()
 	if err != nil {
-		return err
+		return "", err
 	}
 	now := a.now()
 	err = a.db.Transaction(func(tx *gorm.DB) error {
@@ -399,7 +428,7 @@ func (a *app) sendMagicLink(u User, next string) error {
 		return tx.Create(&MagicToken{UserID: u.ID, TokenHash: hashToken(token), ExpiresAt: now.Add(magicLinkLifetime)}).Error
 	})
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	link := a.cfg.BaseURL + "/auth/" + token
@@ -414,7 +443,10 @@ func (a *app) sendMagicLink(u User, next string) error {
 		"This link expires in 10 minutes and can only be used once.\n\n" +
 		"This link was requested on " + now.UTC().Format("January 2, 2006 at 3:04 PM") + " UTC. " +
 		"If you didn't ask for it, you can ignore this email.\n"
-	return a.mailer.Send(u.Email, "Your DJMagic.io login link", body)
+	if err := a.mailer.Send(u.Email, "Your DJMagic.io login link", body); err != nil {
+		return "", err
+	}
+	return link, nil
 }
 
 type linkConfirmPage struct {

@@ -126,8 +126,8 @@ func TestCatalogUploadBuildAndSearch(t *testing.T) {
 	if m := c.ImportMetadata(); m.SourceEncoding != "UTF-8" || m.NormalizedEncoding != "UTF-8" || m.HasReplacementCharacters {
 		t.Errorf("metadata: %+v", m)
 	}
-	if rec := b.get(fmt.Sprintf("/catalogs/%d/status", c.ID)); rec.Header().Get("HX-Redirect") != fmt.Sprintf("/catalogs/%d?built=1", c.ID) {
-		t.Fatalf("status when done: %v", rec.Header())
+	if rec := b.get(fmt.Sprintf("/catalogs/%d/status", c.ID)); rec.Code != http.StatusOK || rec.Header().Get("HX-Redirect") != "" || rec.Header().Get("HX-Retarget") != "#content" || rec.Header().Get("HX-Push-Url") != fmt.Sprintf("/catalogs/%d?built=1", c.ID) || !strings.Contains(rec.Body.String(), "Catalog is ready!") {
+		t.Fatalf("status when done: %d %v\n%s", rec.Code, rec.Header(), rec.Body)
 	}
 	if body := b.get(fmt.Sprintf("/catalogs/%d?built=1", c.ID)).Body.String(); !strings.Contains(body, "Catalog is ready!") || !strings.Contains(body, "5 songs") {
 		t.Fatalf("ready page:\n%s", body)

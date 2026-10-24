@@ -127,14 +127,16 @@ ssh dokku@box config:set --no-restart djm \
   TURNSTILE_SITE_KEY=<site-key> TURNSTILE_SECRET_KEY=<secret>
 ```
 
-Production refuses to start without the Turnstile keys, so set at least those before the first push. No `S3_BUCKET` (see "Backups").
+Production refuses to start without the Turnstile keys and without `SMTP_HOST`. `SMTP_USER` and `SMTP_PASS` may be empty. Set the mail and Turnstile values before deploying the image that enforces them. No `S3_BUCKET` (see "Backups").
+
+Do not set `DEV_SHOW_MAGIC_LINK` here. Production rejects that variable even when SMTP is configured, and `ENV=dev` must not be used on a host that anyone else can reach.
 
 - Turnstile: add `next.djmagic.io` to the djmagic.io widget's hostnames in Cloudflare (or create a new widget).
 - SES: `djmagic.io` is already verified, so `noreply@djmagic.io` sends as-is. Use the SES SMTP region the Rails app uses.
 
 ## 5. First push
 
-Done Oct 21 (`7760da2`): built in about 50 seconds, both health checks passed, `/healthz` returns 200 on `djm.box` and over WireGuard as `next.djmagic.io`, and `djm.db` is owned by 65532. The Turnstile keys are set; `SMTP_HOST` is not yet, so sign-in links go to `dokku logs djm`.
+Done Oct 21 (`7760da2`): built in about 50 seconds, both health checks passed, `/healthz` returns 200 on `djm.box` and over WireGuard as `next.djmagic.io`, and `djm.db` is owned by 65532. The Turnstile keys were set for that push. `SMTP_HOST` was not, and that build logged sign-in links. The current app will not boot in production without `SMTP_HOST`, and it does not log message bodies. Set SMTP before the next push (section 4).
 
 From this repo:
 
@@ -200,6 +202,7 @@ Leave the apex `djmagic.io` pointing at the Rails apps until cutover.
 
 - [x] `curl https://next.djmagic.io/healthz` returns `ok`.
 - [x] Sign in by email (real SES mail, Turnstile passes), open the dashboard.
+- [ ] After the `__Host-` cookie deploy, repeat the browser check in `docs/development/SECURITY_AUDIT.md`: sign in, refresh, log out, send a guest request, refresh the audience queue. Existing browsers are signed out by that deploy.
 - [ ] Upload a large catalog (~50 MB) to prove the body size and timeouts on both nginx hops. Search it.
 - [ ] Start a show and request from a phone over cellular, via the QR code.
 - [ ] Rate limits see the phone's IP: temporarily log the client IP, or check that two devices don't share a limit.
@@ -226,6 +229,29 @@ For a rehearsal that doesn't touch production, restore to a scratch path instead
 ## About the changing LAN address
 
 Nothing here depends on box's `192.168.1.x` address. The git remote uses the name `box`, and public traffic goes over WireGuard to box's fixed Fly private address. If `box` ever stops resolving on the LAN, a DHCP reservation for box on the router fixes it for good, and `ssh dokku@<ip>` works in the meantime.
+
+## Cookie names
+
+Outside development the session and guest cookies are `__Host-session` and `__Host-guest` (Secure, Path=/, no Domain). Development on plain HTTP keeps `session` and `guest`. Production does not accept the old names.
+
+The first deploy of this change signs everyone out and detaches in-progress guest browsers from their queue identity. They sign in again, or send a new request, and continue. No data migration.
+
+## Security follow-ups
+
+These are documented, not changed, in this pass. Detail and the manual browser check are in `SECURITY_AUDIT.md`.
+
+**Client IP, separate infrastructure pass.** The app trusts `Fly-Client-IP` on every connection because `TRUSTED_IP_HEADER=Fly-Client-IP`. WireGuard does not authenticate the Fly ingress app. The home server's only peer is the Fly 6PN gateway (`sjc2.gateway.6pn.dev`), with `AllowedIPs = fdaa:6:5dee::/48`. Any Fly machine in the organization can reach Dokku on box's `fdaa:` address. Limiting port 8080 to the WireGuard interface would drop the LAN and would not stop another Fly app from connecting and sending its own `Fly-Client-IP`. Do not blank that header in Go: every visitor would then share Dokku's address. Do not switch the app to `X-Forwarded-For`. The Fly nginx config appends that header (`$proxy_add_x_forwarded_for`), so a caller can still supply the first address.
+
+**HSTS.** `homelab-ingress` `fly.toml` has `force_https = true` and no `[http_service.http_options.response.headers]` entry. That redirect is not HSTS. `next.djmagic.io` is grey-cloud DNS, so Cloudflare does not add the header either. Add it at the Fly TLS edge, for example:
+
+```toml
+[http_service.http_options.response.headers]
+  Strict-Transport-Security = "max-age=604800"
+```
+
+No `includeSubDomains` and no `preload`: the Rails app is still on the apex. One week is long enough to notice a mistake. Do not emit HSTS from this Go process unless Fly cannot.
+
+**Magic-link URLs in proxy logs.** The app redacts `/auth/{token}` in its own request log. A GET does not consume the token, so a logged URL stays valid for up to 10 minutes. Fly nginx and Dokku's default combined log record the raw request URI. Redact `/auth/` in the nginx `log_format` with a `map` before relying on email sign-in. Fly edge logs may still contain the path. This pass does not change nginx.
 
 ## Open questions
 

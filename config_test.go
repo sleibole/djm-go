@@ -8,7 +8,7 @@ import (
 )
 
 func TestConfigValidate(t *testing.T) {
-	prod := config{Env: "prod", BaseURL: "https://next.djmagic.io", baseURLSet: true, TurnstileSiteKey: "site", TurnstileSecretKey: "secret"}
+	prod := config{Env: "prod", BaseURL: "https://next.djmagic.io", baseURLSet: true, TurnstileSiteKey: "site", TurnstileSecretKey: "secret", SMTPHost: "smtp.example.com"}
 	tests := []struct {
 		name    string
 		cfg     config
@@ -22,6 +22,9 @@ func TestConfigValidate(t *testing.T) {
 		{"trusted Fly header", func() config { c := prod; c.TrustedIPHeader = "Fly-Client-IP"; return c }(), ""},
 		{"unknown trusted header", func() config { c := prod; c.TrustedIPHeader = "X-Real-IP"; return c }(), "TRUSTED_IP_HEADER"},
 		{"prod without Turnstile", func() config { c := prod; c.TurnstileSiteKey, c.TurnstileSecretKey = "", ""; return c }(), "requires TURNSTILE"},
+		{"prod without SMTP", func() config { c := prod; c.SMTPHost = ""; return c }(), "requires SMTP_HOST"},
+		{"prod with dev magic link", func() config { c := prod; c.DevShowMagicLink = true; return c }(), "DEV_SHOW_MAGIC_LINK"},
+		{"dev with magic link flag", config{Env: "dev", BaseURL: "http://localhost:8080", DevShowMagicLink: true}, ""},
 		{"half a Turnstile pair", config{Env: "dev", TurnstileSiteKey: "site"}, "must both be set"},
 	}
 	for _, tt := range tests {
@@ -49,6 +52,19 @@ func TestLoadConfigUsesPortWhenAddrUnset(t *testing.T) {
 		t.Errorf("Addr = %q", cfg.Addr)
 	}
 	if cfg.BaseURL != "https://next.djmagic.io" || !cfg.baseURLSet {
+		t.Errorf("BaseURL = %q set=%v", cfg.BaseURL, cfg.baseURLSet)
+	}
+}
+
+func TestLoadConfigAddrWinsOverPort(t *testing.T) {
+	t.Setenv("ADDR", ":8200")
+	t.Setenv("PORT", "8080")
+	t.Setenv("BASE_URL", "http://localhost:8200")
+	cfg := loadConfig()
+	if cfg.Addr != ":8200" {
+		t.Errorf("Addr = %q, want :8200", cfg.Addr)
+	}
+	if cfg.BaseURL != "http://localhost:8200" || !cfg.baseURLSet {
 		t.Errorf("BaseURL = %q set=%v", cfg.BaseURL, cfg.baseURLSet)
 	}
 }

@@ -109,7 +109,15 @@ func (a *app) handleAccountPassword(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *app) handleAccountPasswordRemove(w http.ResponseWriter, r *http.Request) {
-	if err := a.db.Model(currentUser(r)).Update("password_hash", "").Error; err != nil {
+	u := currentUser(r)
+	// Same as a password change: every other session is logged out.
+	err := a.db.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Model(u).Update("password_hash", "").Error; err != nil {
+			return err
+		}
+		return tx.Where("user_id = ? AND id <> ?", u.ID, currentSessionID(r)).Delete(&Session{}).Error
+	})
+	if err != nil {
 		a.serverError(w, r, err)
 		return
 	}

@@ -16,7 +16,7 @@ type config struct {
 	DBPath             string
 	Env                string // "dev" or "prod"
 	BaseURL            string // public origin for emailed links, QR codes, and Open Graph URLs
-	SMTPHost           string // empty = log emails to the console instead of sending
+	SMTPHost           string // empty = do not send; the message body is never logged
 	SMTPPort           string
 	SMTPUser           string
 	SMTPPass           string
@@ -27,6 +27,7 @@ type config struct {
 	CatalogCacheDir    string // built catalog databases; safe to delete, refilled from the blob store
 	CatalogCacheMax    int64  // bytes; least recently used catalogs are removed past this
 	BlobDir            string // local blob store: uploaded CSVs and built catalogs
+	DevShowMagicLink   bool   // dev only: put the sign-in link on the check-your-email page
 	baseURLSet         bool   // true when BASE_URL was set in the environment
 	cacheMaxErr        error
 }
@@ -54,6 +55,7 @@ func loadConfig() config {
 		CatalogCacheDir:    getenv("CATALOG_CACHE_DIR", "data/catalogs"),
 		CatalogCacheMax:    defaultCatalogCacheMax,
 		BlobDir:            getenv("BLOB_DIR", "data/blobs"),
+		DevShowMagicLink:   os.Getenv("DEV_SHOW_MAGIC_LINK") == "true",
 	}
 	if v := os.Getenv("CATALOG_CACHE_MAX_BYTES"); v != "" {
 		n, err := strconv.ParseInt(v, 10, 64)
@@ -110,6 +112,12 @@ func (c config) validate() error {
 	}
 	if c.TurnstileSiteKey == "" {
 		return errors.New("production requires TURNSTILE_SITE_KEY and TURNSTILE_SECRET_KEY")
+	}
+	if c.SMTPHost == "" {
+		return errors.New("production requires SMTP_HOST")
+	}
+	if c.DevShowMagicLink {
+		return errors.New("production rejects DEV_SHOW_MAGIC_LINK")
 	}
 	return nil
 }

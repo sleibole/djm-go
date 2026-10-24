@@ -109,9 +109,6 @@ func run(cfg config, logger *slog.Logger) error {
 	if err != nil {
 		return err
 	}
-	if cfg.Env == "prod" && cfg.SMTPHost == "" {
-		logger.Warn("SMTP_HOST is not set; magic-link emails will only be logged")
-	}
 
 	a, err := newApp(cfg, db, logger, m)
 	if err != nil {

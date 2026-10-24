@@ -29,12 +29,13 @@
   {{if $s.Catalog.ActiveVersion}}
   <section id="step-search">
     <h3>Step 1: Find your song</h3>
-    <form role="search" method="get" action="{{.Path}}">
+    <form role="search" method="get" action="{{.Path}}"
+          hx-get="{{.Path}}/search"
+          hx-trigger="input changed delay:300ms from:input[name=q], search from:input[name=q], submit"
+          hx-target="#audience-results" hx-swap="innerHTML" hx-sync="this:replace">
       <input type="hidden" name="v" value="{{.Search.Version}}">
       <input type="search" name="q" value="{{.Search.Query}}" placeholder="Search by title or artist…"
-             autocomplete="off" aria-label="Search songs"
-             hx-get="{{.Path}}/search" hx-trigger="input changed delay:300ms, search" hx-include="closest form"
-             hx-target="#audience-results" hx-swap="innerHTML" hx-sync="this:replace">
+             autocomplete="off" aria-label="Search songs">
     </form>
     <form id="pick-form" method="get" action="{{.Path}}"></form>
     <div id="audience-results" aria-live="polite">{{template "audience_results" $}}</div>

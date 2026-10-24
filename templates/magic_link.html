@@ -1,7 +1,7 @@
 {{define "title"}}Sign in · DJMagic.io{{end}}
 {{define "content"}}
 {{with .Data}}
-<article class="auth-card">
+<article class="auth-card" hx-history="false">
   {{if .Valid}}
   <h1>Signing you in…</h1>
   <form method="post" class="auth-form" data-autosubmit>

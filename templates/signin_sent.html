@@ -1,10 +1,13 @@
 {{define "title"}}Check your email · DJMagic.io{{end}}
 {{define "content"}}
 {{with .Data}}
-<article class="auth-card">
+<article class="auth-card" hx-history="false">
   <h1>Check your email</h1>
   <p>We sent a sign-in link to <strong>{{.Email}}</strong>. It works once and expires in 10 minutes.</p>
-  {{if .Dev}}<p class="auth-note">Development: the link is in the server log.</p>{{end}}
+  {{with .Link}}
+  <p class="auth-note">Development only. This link was not emailed. It is shown because DEV_SHOW_MAGIC_LINK is set.</p>
+  <p><a href="{{.}}">{{.}}</a></p>
+  {{end}}
   <p class="auth-foot"><a href="/signin">Back to sign in</a></p>
 </article>
 {{end}}

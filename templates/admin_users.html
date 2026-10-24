@@ -1,7 +1,7 @@
 {{define "title"}}Users · Admin · DJMagic.io{{end}}
 {{define "content"}}
 {{with .Data}}
-<h1>{{icon "shield"}} Users</h1>
+<h1 hx-history="false">{{icon "shield"}} Users</h1>
 {{template "admin_nav" "users"}}
 
 <form role="search" method="get" action="/admin/users">

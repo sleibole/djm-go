@@ -27,22 +27,26 @@ This is the Go rewrite of the Rails apps. Product and implementation notes are i
 make dev
 ```
 
-That starts [Air](https://github.com/air-verse/air), which rebuilds the server when you save a Go file, an HTML template, CSS or JavaScript under `static/`, or an SVG icon. Open http://localhost:8080 and refresh after a restart.
+That starts [Air](https://github.com/air-verse/air), which rebuilds the server when you save a Go file, an HTML template, CSS or JavaScript under `static/`, or an SVG icon. Open http://localhost:8200 and refresh after a restart.
 
-`make run` starts the server once, without reload.
+`make dev` and `make run` set `ADDR=:8200`, `PORT=8200`, and `BASE_URL=http://localhost:8200` before the process starts. `ADDR` is the address the server binds. `PORT` is the same number so the two cannot disagree. The app loads `.env` after that and leaves variables that are already set alone, so a file that still says port 8080 does not move this server. `make run` starts the server once, without reload.
 
-With `SMTP_HOST` unset, login and verification links are written to the server log. To send mail locally, copy `.env.example` to `.env` and run [MailHog](https://github.com/mailhog/MailHog) (SMTP on port 1025, inbox at http://localhost:8025). A missing `.env` is fine. Variables already set in the environment are left alone.
+Port 8200 is the personal server. Named agent servers use `make dev-agent NAME=<unique-name>` and take a port from 8300 through 8399, with their own database, blobs, and catalog cache under `tmp/dev-agents/<name>/`. `make dev-list` shows them. `make dev-stop NAME=<name>` stops one. Those commands do not start or stop the personal server. track-anything keeps port 8080 and ports 8100–8199.
 
-The SQLite file is created at `data/djm.db`. Uploaded CSVs go in `data/blobs`, and built catalogs are cached in `data/catalogs`.
+With `SMTP_HOST` unset, login and verification links are written to the server log. To send mail locally, copy `.env.example` to `.env` and run [MailHog](https://github.com/mailhog/MailHog) (SMTP on port 1025, inbox at http://localhost:8025). A missing `.env` is fine. MailHog is shared by every local server.
+
+The personal SQLite file is created at `data/djm.db`. Uploaded CSVs go in `data/blobs`, and built catalogs are cached in `data/catalogs`. An agent server does not use those directories.
+
+When `ADDR` and `PORT` are both unset, the binary listens on `:8080`. That is what the container uses. Production does not read this Makefile.
 
 ## Configuration
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
-| `ADDR` | `:8080` | Listen address. If `ADDR` is unset, `PORT` is used as `:$PORT`. |
+| `ADDR` | `:8080` | Listen address. If `ADDR` is unset, `PORT` is used as `:$PORT`. `make dev` and `make run` set `ADDR` and `PORT` to 8200, which wins over `.env`. |
 | `DB_PATH` | `data/djm.db` | SQLite file. |
 | `ENV` | `dev` | `dev` or `prod`. `dev` turns off the `Secure` cookie flag so `http://localhost` works. |
-| `BASE_URL` | `http://localhost:8080` | Public origin used in emailed links, QR codes, and Open Graph URLs. Required in production, and it must be `https`. |
+| `BASE_URL` | `http://localhost:8080` | Public origin used in emailed links, QR codes, and Open Graph URLs. Required in production, and it must be `https`. `make dev` and `make run` set `http://localhost:8200`. |
 | `BLOB_DIR` | `data/blobs` | Local blob store for uploaded CSVs and built catalogs. |
 | `CATALOG_CACHE_DIR` | `data/catalogs` | Local cache of built catalogs. Safe to delete; a search refills it. |
 | `CATALOG_CACHE_MAX_BYTES` | `10737418240` | Cache budget in bytes (10 GiB). Least recently used catalogs are removed past this. |
@@ -79,4 +83,4 @@ make docker-build
 make docker-run
 ```
 
-`make docker-run` builds the image and runs it on port 8080 with a volume at `/data`. With `S3_BUCKET` unset, the entrypoint runs the app directly. Set `S3_BUCKET` and the AWS credentials to restore from Litestream and replicate while the container runs.
+`make docker-run` builds the image and publishes host port 8200 to the container's port 8080, with a volume at `/data`. The container is not given `ADDR` or `PORT`, so the process still listens on 8080. With `S3_BUCKET` unset, the entrypoint runs the app directly. Set `S3_BUCKET` and the AWS credentials to restore from Litestream and replicate while the container runs.

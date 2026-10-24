@@ -39,20 +39,20 @@ func showPath(handle, slug string) string {
 
 func (a *app) setGuestCookie(w http.ResponseWriter, raw string) {
 	http.SetCookie(w, &http.Cookie{
-		Name:     guestCookie,
+		Name:     a.cookieName(guestCookie),
 		Value:    raw,
 		Path:     "/",
 		Expires:  a.now().Add(guestCookieLifetime),
 		HttpOnly: true,
-		Secure:   a.cfg.Env != "dev",
+		Secure:   a.secureCookies(),
 		SameSite: http.SameSiteLaxMode,
 	})
 }
 
 func (a *app) clearGuestCookie(w http.ResponseWriter) {
 	http.SetCookie(w, &http.Cookie{
-		Name: guestCookie, Value: "", Path: "/", MaxAge: -1,
-		HttpOnly: true, Secure: a.cfg.Env != "dev", SameSite: http.SameSiteLaxMode,
+		Name: a.cookieName(guestCookie), Value: "", Path: "/", MaxAge: -1,
+		HttpOnly: true, Secure: a.secureCookies(), SameSite: http.SameSiteLaxMode,
 	})
 }
 
@@ -65,7 +65,7 @@ func (a *app) audienceProfile(w http.ResponseWriter, r *http.Request) (*Audience
 		if err := a.db.Where("user_id = ?", u.ID).Limit(1).Find(&found).Error; err != nil {
 			return nil, err
 		}
-	} else if c, err := r.Cookie(guestCookie); err == nil && c.Value != "" {
+	} else if c, err := r.Cookie(a.cookieName(guestCookie)); err == nil && c.Value != "" {
 		if err := a.db.Where("guest_token_hash = ?", hashToken(c.Value)).Limit(1).Find(&found).Error; err != nil {
 			return nil, err
 		}

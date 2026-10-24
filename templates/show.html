@@ -1,5 +1,4 @@
 {{define "title"}}{{.Data.Show.DisplayName}} · DJMagic.io{{end}}
-{{define "scripts"}}<script src="{{asset "reorder.js"}}" defer></script>{{end}}
 {{define "content"}}
 {{with .Data}}{{$s := .Show}}
 <hgroup>
@@ -74,11 +73,12 @@
 
   {{if $s.Catalog}}
   {{if $s.Catalog.ActiveVersion}}
-  <form role="search" method="get" action="/shows/{{$s.ID}}#add-to-queue">
+  <form role="search" method="get" action="/shows/{{$s.ID}}#add-to-queue"
+        hx-get="/shows/{{$s.ID}}/search"
+        hx-trigger="input changed delay:300ms from:input[name=q], search from:input[name=q], submit"
+        hx-target="#add-results" hx-swap="innerHTML" hx-sync="this:replace">
     <input type="search" name="q" value="{{.Search.Query}}" placeholder="Search by title, artist, or version…"
-           autocomplete="off" aria-label="Search songs"
-           hx-get="/shows/{{$s.ID}}/search" hx-trigger="input changed delay:300ms, search"
-           hx-target="#add-results" hx-swap="innerHTML" hx-sync="this:replace">
+           autocomplete="off" aria-label="Search songs">
   </form>
   <div id="add-results" aria-live="polite">{{template "add_results" $}}</div>
   {{else}}

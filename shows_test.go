@@ -347,8 +347,8 @@ func TestHostQueue(t *testing.T) {
 	if sr := requestByTitle(t, a, s, "Song E"); sr.Status != requestCanceled || sr.CanceledAt == nil || sr.QueuePosition != nil {
 		t.Errorf("queued at end: %+v", sr)
 	}
-	if rec := b.get(fmt.Sprintf("/shows/%d/live", s.ID)); rec.Code != http.StatusNoContent || rec.Header().Get("HX-Redirect") != fmt.Sprintf("/shows/%d", s.ID) {
-		t.Errorf("live after end: %d %v", rec.Code, rec.Header())
+	if rec := b.get(fmt.Sprintf("/shows/%d/live", s.ID)); rec.Code != http.StatusOK || rec.Header().Get("HX-Redirect") != "" || rec.Header().Get("HX-Retarget") != "#content" || rec.Header().Get("HX-Push-Url") != fmt.Sprintf("/shows/%d", s.ID) || !strings.Contains(rec.Body.String(), "Songs Performed") {
+		t.Errorf("live after end: %d %v\n%s", rec.Code, rec.Header(), rec.Body)
 	}
 	if rec := act(b, songA, "skip", nil, true); rec.Code != http.StatusConflict || !strings.Contains(rec.Body.String(), "This show has ended.") {
 		t.Errorf("action after end: %d", rec.Code)

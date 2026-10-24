@@ -13,11 +13,12 @@
 {{if $c.ActiveVersion}}
 <section>
   <h2>Search Songs</h2>
-  <form role="search" method="get" action="/catalogs/{{$c.ID}}">
+  <form role="search" method="get" action="/catalogs/{{$c.ID}}"
+        hx-get="/catalogs/{{$c.ID}}/search"
+        hx-trigger="input changed delay:300ms from:input[name=q], search from:input[name=q], submit"
+        hx-target="#search-results" hx-swap="innerHTML" hx-sync="this:replace">
     <input type="search" name="q" value="{{.Search.Query}}" placeholder="Search by title, artist, or version…"
-           autocomplete="off" autofocus aria-label="Search songs"
-           hx-get="/catalogs/{{$c.ID}}/search" hx-trigger="input changed delay:300ms, search"
-           hx-target="#search-results" hx-swap="innerHTML" hx-sync="this:replace">
+           autocomplete="off" autofocus aria-label="Search songs">
   </form>
   <div id="search-results" aria-live="polite">{{template "search_results" $}}</div>
 </section>
@@ -26,7 +27,7 @@
 <details class="section-panel"{{if or (not $c.ActiveVersion) (eq $c.Status "failed") .UploadError}} open{{end}}>
   <summary>{{icon "file-upload"}} Upload CSV</summary>
   <p>Upload a CSV file to replace this catalog's songs. The file must include <code>title</code> and <code>artist</code> columns. See the <a href="/docs/csv-format">CSV format guide</a> for details.</p>
-  <form method="post" action="/catalogs/{{$c.ID}}/upload" enctype="multipart/form-data" data-busy="Uploading…">
+  <form method="post" action="/catalogs/{{$c.ID}}/upload" enctype="multipart/form-data" hx-encoding="multipart/form-data" data-busy="Uploading…">
     <label>
       CSV File
       <input type="file" name="file" accept=".csv" required>
@@ -75,7 +76,7 @@
 {{define "catalog_status"}}{{$c := .Catalog}}
 {{if .UploadError}}<p role="alert" class="error">{{.UploadError}}</p>{{end}}
 {{if $c.Building}}
-<p role="status" aria-busy="true" hx-get="/catalogs/{{$c.ID}}/status" hx-trigger="every 2s" hx-swap="none">Processing…</p>
+<p role="status" aria-busy="true" hx-get="/catalogs/{{$c.ID}}/status" hx-trigger="every 2s" hx-target="this" hx-swap="none">Processing…</p>
 {{else if eq $c.Status "failed"}}
 <div role="alert" class="error">
   <p>{{if $c.ActiveVersion}}Latest upload failed.{{else}}Processing failed.{{end}}</p>

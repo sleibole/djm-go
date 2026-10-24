@@ -34,44 +34,59 @@
     if (b) choose(b.dataset.themeChoice);
   });
 
-  document.addEventListener("DOMContentLoaded", () => {
+  function reveal() {
     document.querySelectorAll(".theme-switch").forEach((el) => (el.hidden = false));
     sync();
-  });
+  }
+
+  document.addEventListener("DOMContentLoaded", reveal);
+  document.addEventListener("htmx:afterSettle", reveal);
+  document.addEventListener("htmx:historyRestore", reveal);
 })();
 
 // The magic-link page posts itself. GET does not use the token, so a mail
 // scanner that only opens the link cannot sign in. The button stays for
-// browsers without JavaScript.
-document.querySelectorAll("form[data-autosubmit]").forEach((form) => {
-  const button = form.querySelector("[type=submit]");
-  if (button) button.setAttribute("aria-busy", "true");
-  form.requestSubmit();
-});
+// browsers without JavaScript. A body swap can bring the form in later.
+function autosubmitForms(root) {
+  (root || document).querySelectorAll("form[data-autosubmit]:not([data-autosubmit-started])").forEach((form) => {
+    form.dataset.autosubmitStarted = "1";
+    const button = form.querySelector("[type=submit]");
+    if (button) button.setAttribute("aria-busy", "true");
+    form.requestSubmit();
+  });
+}
 
 // A closed password field must not be submitted with the email-link form.
-document.querySelectorAll(".auth-password-toggle").forEach((toggle) => {
+// Listeners stay on document so a swapped sign-in form still toggles.
+function syncPasswordToggle(toggle) {
   const form = toggle.form;
   const input = form?.querySelector("[data-auth-password]");
   if (!form || !input) return;
   const linkButton = form.querySelector(".auth-link-submit");
   const passwordButton = form.querySelector(".auth-password-submit");
-  const sync = () => {
-    const passwordMode = toggle.checked;
-    input.disabled = !passwordMode;
-    // Enter and the mobile keyboard submit the first submit button.
-    // Password mode has to be that button, or the press sends an email link.
-    if (linkButton && passwordButton) {
-      form.action = passwordMode ? "/signin" : "/signin/link";
-      if (passwordMode) linkButton.before(passwordButton);
-      else passwordButton.before(linkButton);
-    }
-  };
-  toggle.addEventListener("change", () => {
-    if (!toggle.checked) input.value = "";
-    sync();
-  });
-  sync();
+  const passwordMode = toggle.checked;
+  input.disabled = !passwordMode;
+  // Enter and the mobile keyboard submit the first submit button.
+  // Password mode has to be that button, or the press sends an email link.
+  if (linkButton && passwordButton) {
+    form.action = passwordMode ? "/signin" : "/signin/link";
+    if (passwordMode) linkButton.before(passwordButton);
+    else passwordButton.before(linkButton);
+  }
+}
+
+function syncPasswordToggles(root) {
+  (root || document).querySelectorAll(".auth-password-toggle").forEach(syncPasswordToggle);
+}
+
+document.addEventListener("change", (e) => {
+  const toggle = e.target.closest?.(".auth-password-toggle");
+  if (!toggle) return;
+  if (!toggle.checked) {
+    const input = toggle.form?.querySelector("[data-auth-password]");
+    if (input) input.value = "";
+  }
+  syncPasswordToggle(toggle);
 });
 
 // A plain form post of a large file gives no feedback until it finishes.
@@ -176,48 +191,85 @@ window.onTurnstileLoad = function () {
   renderTurnstile(document);
 };
 
-document.addEventListener("htmx:afterSettle", (event) => {
-  renderTurnstile(event.detail?.target || document);
+// The Turnstile API script lives in the sign-in page's head. A boosted visit
+// swaps the body and does not load that script, so add it when a widget arrives.
+function ensureTurnstile(root) {
+  const scope = root && root.querySelector ? root : document;
+  if (!scope.querySelector(".cf-turnstile")) return;
+  if (window.turnstile) {
+    renderTurnstile(scope);
+    return;
+  }
+  if (document.querySelector("script[data-turnstile-api], script[src*='challenges.cloudflare.com/turnstile']")) return;
+  const script = document.createElement("script");
+  script.src = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit&onload=onTurnstileLoad";
+  script.defer = true;
+  script.dataset.turnstileApi = "1";
+  document.head.appendChild(script);
+}
+
+function settlePage(root) {
+  const scope = root && root.querySelectorAll ? root : document;
+  ensureTurnstile(scope);
   localizeTimes(document);
+  syncPasswordToggles(scope);
+  autosubmitForms(scope);
+}
+
+document.addEventListener("htmx:afterSettle", (event) => {
+  settlePage(event.detail?.target || document);
+});
+document.addEventListener("htmx:historyRestore", () => {
+  settlePage(document);
 });
 
+autosubmitForms(document);
+syncPasswordToggles(document);
+
 // Header links collapse into this button below 768px. Desktop never shows it.
+// Look the nodes up on each event: a body swap replaces the header.
 (function () {
-  const toggle = document.querySelector("nav.site-nav .nav-toggle");
-  const menu = document.getElementById("site-menu");
-  if (!toggle || !menu) return;
-  const nav = toggle.closest("nav");
+  const toggleEl = () => document.querySelector("nav.site-nav .nav-toggle");
+  const menuEl = () => document.getElementById("site-menu");
+  const navEl = () => toggleEl()?.closest("nav");
 
   const setOpen = (open) => {
+    const toggle = toggleEl();
+    const menu = menuEl();
+    if (!toggle || !menu) return;
     toggle.setAttribute("aria-expanded", open ? "true" : "false");
     menu.classList.toggle("is-open", open);
   };
 
-  toggle.addEventListener("click", () => {
-    setOpen(toggle.getAttribute("aria-expanded") !== "true");
-  });
-
-  // Hide after the click, not during it. Hiding the link in the click handler
-  // cancels navigation, including the log-out submit.
-  menu.addEventListener("click", (e) => {
-    if (!e.target.closest("a, button")) return;
-    setTimeout(() => setOpen(false), 0);
-  });
-
   document.addEventListener("click", (e) => {
-    if (toggle.getAttribute("aria-expanded") !== "true") return;
-    if (!nav.contains(e.target)) setOpen(false);
+    const toggle = toggleEl();
+    const menu = menuEl();
+    const nav = navEl();
+    if (!toggle || !menu || !nav) return;
+    if (toggle.contains(e.target)) {
+      setOpen(toggle.getAttribute("aria-expanded") !== "true");
+      return;
+    }
+    // Hide after the click, not during it. Hiding the link in the click handler
+    // cancels navigation, including the log-out submit.
+    if (menu.contains(e.target) && e.target.closest("a, button")) {
+      setTimeout(() => setOpen(false), 0);
+      return;
+    }
+    if (toggle.getAttribute("aria-expanded") === "true" && !nav.contains(e.target)) setOpen(false);
   });
 
   document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape" && toggle.getAttribute("aria-expanded") === "true") {
-      setOpen(false);
-      toggle.focus();
-    }
+    const toggle = toggleEl();
+    if (!toggle || e.key !== "Escape" || toggle.getAttribute("aria-expanded") !== "true") return;
+    setOpen(false);
+    toggle.focus();
   });
 
   document.addEventListener("focusin", (e) => {
-    if (toggle.getAttribute("aria-expanded") !== "true") return;
+    const toggle = toggleEl();
+    const nav = navEl();
+    if (!toggle || !nav || toggle.getAttribute("aria-expanded") !== "true") return;
     if (!nav.contains(e.target)) setOpen(false);
   });
 

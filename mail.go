@@ -30,8 +30,9 @@ type consoleMailer struct {
 	logger *slog.Logger
 }
 
-func (m consoleMailer) Send(to, subject, body string) error {
-	m.logger.Info("email not sent (no SMTP_HOST configured)", "to", to, "subject", subject, "body", body)
+func (m consoleMailer) Send(to, subject, _ string) error {
+	// The body can contain a magic-link token. Never log it.
+	m.logger.Info("email not sent (no SMTP_HOST configured)", "to", to, "subject", subject)
 	return nil
 }
 

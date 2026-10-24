@@ -367,8 +367,15 @@ func (a *app) handleShowLive(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if !s.Active() {
-		w.Header().Set("HX-Redirect", fmt.Sprintf("/shows/%d", s.ID))
-		w.WriteHeader(http.StatusNoContent)
+		w.Header().Set("HX-Retarget", "#content")
+		w.Header().Set("HX-Reswap", "innerHTML show:top")
+		w.Header().Set("HX-Push-Url", fmt.Sprintf("/shows/%d", s.ID))
+		page, err := a.showPageFor(r, s)
+		if err != nil {
+			a.serverError(w, r, err)
+			return
+		}
+		a.renderBlock(w, r, http.StatusOK, "show.html", "content", page)
 		return
 	}
 	a.renderLive(w, r, http.StatusOK, s, "")

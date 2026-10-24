@@ -1,6 +1,6 @@
 module djm
 
-go 1.27.0
+go 1.27.3
 
 require (
 	github.com/glebarez/sqlite v1.11.0

@@ -1,7 +1,7 @@
 {{define "title"}}Feedback #{{.Data.Item.ID}} · Admin · DJMagic.io{{end}}
 {{define "content"}}
 {{with .Data}}{{$f := .Item}}
-<h1>{{icon "shield"}} Feedback #{{$f.ID}}</h1>
+<h1 hx-history="false">{{icon "shield"}} Feedback #{{$f.ID}}</h1>
 {{template "admin_nav" "feedback"}}
 {{if .Saved}}<p role="status" class="saved">Feedback updated.</p>{{end}}
 {{with .Error}}<p role="alert" class="error">{{.}}</p>{{end}}

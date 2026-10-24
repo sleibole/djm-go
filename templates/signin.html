@@ -2,7 +2,7 @@
 {{define "scripts"}}{{template "turnstile-script" .}}{{end}}
 {{define "content"}}
 {{with .Data}}
-<article class="auth-card">
+<article class="auth-card" hx-history="false">
   {{if .Signup}}
   <h1>Sign up</h1>
   <p class="auth-note">{{icon "flask"}} <strong>We're in beta!</strong> Sign up now and get <strong>3 months free</strong> when we launch.</p>

@@ -21,7 +21,7 @@ import (
 // is attached to the account, or merged into the account's own profile. All in
 // one transaction; the guest cookie is cleared after it commits.
 func (a *app) linkGuest(w http.ResponseWriter, r *http.Request, userID uint) error {
-	c, err := r.Cookie(guestCookie)
+	c, err := r.Cookie(a.cookieName(guestCookie))
 	if err != nil || c.Value == "" {
 		return nil
 	}
