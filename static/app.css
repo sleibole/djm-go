@@ -1602,10 +1602,18 @@ html.djm-install-hide .install-app-entry {
   padding: 0.3rem 0.65rem;
 }
 
-.install-platforms button[aria-pressed="true"] {
+/* Pico's .outline.secondary rules outrank a plain pressed override, and
+   their hover state is more specific still. In dark mode the secondary
+   label and the secondary fill are the same color, so the selected
+   platform name disappears into a solid light purple block. */
+.install-platforms button.outline.secondary[aria-pressed="true"],
+.install-platforms button.outline.secondary[aria-pressed="true"]:is(:hover, :active, :focus) {
   --pico-background-color: var(--pico-secondary-background);
   --pico-border-color: var(--pico-secondary-background);
   --pico-color: var(--pico-secondary-inverse);
+  background-color: var(--pico-secondary-background);
+  border-color: var(--pico-secondary-background);
+  color: var(--pico-secondary-inverse);
 }
 
 .install-dialog details {
