@@ -19,6 +19,35 @@
     });
   }
 
+  const themeSurfaces = { light: "#FAF9FC", dark: "#14111C" };
+
+  function syncThemeColor() {
+    const explicit = root.getAttribute("data-theme");
+    const metas = Array.from(document.querySelectorAll('meta[name="theme-color"]'));
+    if (explicit === "light" || explicit === "dark") {
+      const color = themeSurfaces[explicit];
+      const meta = metas[0] || document.head.appendChild(document.createElement("meta"));
+      meta.setAttribute("name", "theme-color");
+      meta.setAttribute("content", color);
+      meta.removeAttribute("media");
+      metas.slice(1).forEach((extra) => extra.remove());
+      return;
+    }
+    const light = metas[0] || document.head.appendChild(document.createElement("meta"));
+    light.setAttribute("name", "theme-color");
+    light.setAttribute("content", themeSurfaces.light);
+    light.setAttribute("media", "(prefers-color-scheme: light)");
+    let dark = metas[1];
+    if (!dark) {
+      dark = document.createElement("meta");
+      light.after(dark);
+    }
+    dark.setAttribute("name", "theme-color");
+    dark.setAttribute("content", themeSurfaces.dark);
+    dark.setAttribute("media", "(prefers-color-scheme: dark)");
+    metas.slice(2).forEach((extra) => extra.remove());
+  }
+
   function choose(choice) {
     try {
       if (choice === "system") localStorage.removeItem("theme");
@@ -27,6 +56,7 @@
     if (choice === "light" || choice === "dark") root.setAttribute("data-theme", choice);
     else root.removeAttribute("data-theme");
     sync();
+    syncThemeColor();
   }
 
   document.addEventListener("click", (e) => {
@@ -37,11 +67,15 @@
   function reveal() {
     document.querySelectorAll(".theme-switch").forEach((el) => (el.hidden = false));
     sync();
+    syncThemeColor();
   }
 
   document.addEventListener("DOMContentLoaded", reveal);
   document.addEventListener("htmx:afterSettle", reveal);
   document.addEventListener("htmx:historyRestore", reveal);
+  window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => {
+    if (!root.getAttribute("data-theme")) syncThemeColor();
+  });
 })();
 
 // The magic-link page posts itself. GET does not use the token, so a mail

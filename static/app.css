@@ -1,4 +1,279 @@
-/* Overrides on top of Pico. Keep this small. */
+/* Theme on top of Pico 2.1.1. Pico's theme selectors stay in charge:
+   light by default, dark when the system prefers it, and an explicit
+   data-theme choice wins over the system. Tokens are application
+   variables; the block below maps them onto Pico's custom properties.
+   --djm-border outlines controls. --djm-line is the softer card and divider color. */
+
+:root:not([data-theme=dark]),
+[data-theme=light] {
+  --djm-bg: #faf9fc;
+  --djm-surface: #ffffff;
+  --djm-text: #241c32;
+  --djm-muted: #6b6178;
+  --djm-border: #8e869c;
+  --djm-line: #ddd6e7;
+  --djm-primary: #7e29d8;
+  --djm-primary-hover: #6f23c0;
+  --djm-on-primary: #ffffff;
+  --djm-secondary: #5c516c;
+  --djm-secondary-hover: #463e58;
+  --djm-secondary-bg: #4e4562;
+  --djm-secondary-bg-hover: #3f3750;
+  --djm-on-secondary: #ffffff;
+  --djm-secondary-focus: rgba(126, 41, 216, 0.16);
+  --djm-contrast: #241c32;
+  --djm-contrast-hover: #100c18;
+  --djm-contrast-bg: #241c32;
+  --djm-contrast-bg-hover: #100c18;
+  --djm-on-contrast: #ffffff;
+  --djm-contrast-focus: rgba(36, 28, 50, 0.28);
+  --djm-warning-text: #916108;
+  --djm-warning-border: #a97109;
+  --djm-danger: #883835;
+  --djm-danger-hover: #74302d;
+  --djm-on-danger: #ffffff;
+  --djm-on-success: #ffffff;
+  --djm-mark-bg: #e8d8f8;
+  --djm-mark-color: #241c32;
+  --djm-selection: rgba(126, 41, 216, 0.28);
+  --djm-shadow: 0 0.0625rem 0.25rem rgba(36, 28, 50, 0.05), 0 0.5rem 1.25rem rgba(36, 28, 50, 0.06);
+  --djm-code-bg: #f4f1f8;
+  --djm-form-bg: #ffffff;
+  --djm-form-active-bg: #ffffff;
+  --djm-selected-bg: #e8d8f8;
+  --djm-section-bg: #f6f3fa;
+  --djm-dropdown-hover: #f4f0fa;
+  --djm-modal: rgba(36, 28, 50, 0.45);
+  --djm-stripe: rgba(36, 28, 50, 0.045);
+  --djm-switch-thumb: #ffffff;
+  --djm-switch-shadow: 0 0.0625rem 0.125rem rgba(36, 28, 50, 0.35);
+}
+
+@media only screen and (prefers-color-scheme: dark) {
+  :root:not([data-theme]) {
+    --djm-bg: #14111c;
+    --djm-surface: #201a2b;
+    --djm-text: #f5f2fa;
+    --djm-muted: #b8aec7;
+    --djm-border: #7a7086;
+    --djm-line: #443850;
+    --djm-primary: #a78bfa;
+    --djm-primary-hover: #c4b5fd;
+    --djm-on-primary: #241c32;
+    --djm-secondary: #b8aec7;
+    --djm-secondary-hover: #d4cce0;
+    --djm-secondary-bg: #b8aec7;
+    --djm-secondary-bg-hover: #d4cce0;
+    --djm-on-secondary: #241c32;
+    --djm-secondary-focus: rgba(167, 139, 250, 0.22);
+    --djm-contrast: #f5f2fa;
+    --djm-contrast-hover: #ffffff;
+    --djm-contrast-bg: #f5f2fa;
+    --djm-contrast-bg-hover: #ffffff;
+    --djm-on-contrast: #14111c;
+    --djm-contrast-focus: rgba(245, 242, 250, 0.3);
+    --djm-warning-text: #f2a20d;
+    --djm-warning-border: #f2a20d;
+    --djm-danger: #c2413b;
+    --djm-danger-hover: #ab3934;
+    --djm-on-danger: #ffffff;
+    --djm-on-success: #241c32;
+    --djm-mark-bg: #ddd6fe;
+    --djm-mark-color: #241c32;
+    --djm-selection: rgba(167, 139, 250, 0.35);
+    --djm-shadow: 0 0.25rem 0.75rem rgba(0, 0, 0, 0.35);
+    --djm-code-bg: #2a2438;
+    --djm-form-bg: #18141f;
+    --djm-form-active-bg: #201a2b;
+    --djm-selected-bg: #4e4274;
+    --djm-section-bg: #2a2438;
+    --djm-dropdown-hover: #2c2540;
+    --djm-modal: rgba(8, 6, 14, 0.75);
+    --djm-stripe: rgba(245, 242, 250, 0.06);
+    --djm-switch-thumb: #241c32;
+    --djm-switch-shadow: 0 0 0 1px rgba(245, 242, 250, 0.45);
+  }
+}
+
+[data-theme=dark] {
+  --djm-bg: #14111c;
+  --djm-surface: #201a2b;
+  --djm-text: #f5f2fa;
+  --djm-muted: #b8aec7;
+  --djm-border: #7a7086;
+  --djm-line: #443850;
+  --djm-primary: #a78bfa;
+  --djm-primary-hover: #c4b5fd;
+  --djm-on-primary: #241c32;
+  --djm-secondary: #b8aec7;
+  --djm-secondary-hover: #d4cce0;
+  --djm-secondary-bg: #b8aec7;
+  --djm-secondary-bg-hover: #d4cce0;
+  --djm-on-secondary: #241c32;
+  --djm-secondary-focus: rgba(167, 139, 250, 0.22);
+  --djm-contrast: #f5f2fa;
+  --djm-contrast-hover: #ffffff;
+  --djm-contrast-bg: #f5f2fa;
+  --djm-contrast-bg-hover: #ffffff;
+  --djm-on-contrast: #14111c;
+  --djm-contrast-focus: rgba(245, 242, 250, 0.3);
+  --djm-warning-text: #f2a20d;
+  --djm-warning-border: #f2a20d;
+  --djm-danger: #c2413b;
+  --djm-danger-hover: #ab3934;
+  --djm-on-danger: #ffffff;
+  --djm-on-success: #241c32;
+  --djm-mark-bg: #ddd6fe;
+  --djm-mark-color: #241c32;
+  --djm-selection: rgba(167, 139, 250, 0.35);
+  --djm-shadow: 0 0.25rem 0.75rem rgba(0, 0, 0, 0.35);
+  --djm-code-bg: #2a2438;
+  --djm-form-bg: #18141f;
+  --djm-form-active-bg: #201a2b;
+  --djm-selected-bg: #4e4274;
+  --djm-section-bg: #2a2438;
+  --djm-dropdown-hover: #2c2540;
+  --djm-modal: rgba(8, 6, 14, 0.75);
+  --djm-stripe: rgba(245, 242, 250, 0.06);
+  --djm-switch-thumb: #241c32;
+  --djm-switch-shadow: 0 0 0 1px rgba(245, 242, 250, 0.45);
+}
+
+:root:not([data-theme=dark]),
+[data-theme=light],
+:root:not([data-theme]),
+[data-theme=dark] {
+  --pico-background-color: var(--djm-bg);
+  --pico-color: var(--djm-text);
+  --pico-text-selection-color: var(--djm-selection);
+  --pico-muted-color: var(--djm-muted);
+  --pico-muted-border-color: var(--djm-line);
+  --pico-primary: var(--djm-primary);
+  --pico-primary-background: var(--djm-primary);
+  --pico-primary-border: var(--djm-primary);
+  --pico-primary-underline: var(--djm-primary);
+  --pico-primary-hover: var(--djm-primary-hover);
+  --pico-primary-hover-background: var(--djm-primary-hover);
+  --pico-primary-hover-border: var(--djm-primary-hover);
+  --pico-primary-hover-underline: var(--djm-primary-hover);
+  --pico-primary-focus: var(--djm-primary);
+  --pico-primary-inverse: var(--djm-on-primary);
+  --pico-secondary: var(--djm-secondary);
+  --pico-secondary-background: var(--djm-secondary-bg);
+  --pico-secondary-border: var(--djm-secondary-bg);
+  --pico-secondary-underline: var(--djm-secondary);
+  --pico-secondary-hover: var(--djm-secondary-hover);
+  --pico-secondary-hover-background: var(--djm-secondary-bg-hover);
+  --pico-secondary-hover-border: var(--djm-secondary-bg-hover);
+  --pico-secondary-hover-underline: var(--djm-secondary-hover);
+  --pico-secondary-focus: var(--djm-secondary-focus);
+  --pico-secondary-inverse: var(--djm-on-secondary);
+  --pico-contrast: var(--djm-contrast);
+  --pico-contrast-background: var(--djm-contrast-bg);
+  --pico-contrast-border: var(--djm-contrast-bg);
+  --pico-contrast-underline: var(--djm-contrast);
+  --pico-contrast-hover: var(--djm-contrast-hover);
+  --pico-contrast-hover-background: var(--djm-contrast-bg-hover);
+  --pico-contrast-hover-border: var(--djm-contrast-bg-hover);
+  --pico-contrast-hover-underline: var(--djm-contrast-hover);
+  --pico-contrast-focus: var(--djm-contrast-focus);
+  --pico-contrast-inverse: var(--djm-on-contrast);
+  --pico-box-shadow: var(--djm-shadow);
+  --pico-h1-color: var(--djm-text);
+  --pico-h2-color: var(--djm-text);
+  --pico-h3-color: var(--djm-text);
+  --pico-h4-color: var(--djm-text);
+  --pico-h5-color: var(--djm-text);
+  --pico-h6-color: var(--djm-text);
+  --pico-mark-background-color: var(--djm-mark-bg);
+  --pico-mark-color: var(--djm-mark-color);
+  --pico-table-border-color: var(--djm-line);
+  --pico-table-row-stripped-background-color: var(--djm-stripe);
+  --pico-code-background-color: var(--djm-code-bg);
+  --pico-code-color: var(--djm-muted);
+  --pico-form-element-background-color: var(--djm-form-bg);
+  --pico-form-element-selected-background-color: var(--djm-selected-bg);
+  --pico-form-element-border-color: var(--djm-border);
+  --pico-form-element-color: var(--djm-text);
+  --pico-form-element-placeholder-color: var(--djm-muted);
+  --pico-form-element-active-background-color: var(--djm-form-active-bg);
+  --pico-form-element-active-border-color: var(--djm-primary);
+  --pico-form-element-focus-color: var(--djm-primary);
+  --pico-form-element-invalid-border-color: var(--pico-del-color);
+  --pico-form-element-invalid-active-border-color: var(--pico-del-color);
+  --pico-form-element-invalid-focus-color: var(--pico-del-color);
+  --pico-form-element-valid-border-color: var(--pico-ins-color);
+  --pico-form-element-valid-active-border-color: var(--pico-ins-color);
+  --pico-form-element-valid-focus-color: var(--pico-ins-color);
+  --pico-switch-background-color: var(--djm-border);
+  --pico-switch-color: var(--djm-switch-thumb);
+  --pico-switch-thumb-box-shadow: var(--djm-switch-shadow);
+  --pico-range-border-color: var(--djm-border);
+  --pico-range-active-border-color: var(--djm-primary);
+  --pico-range-thumb-border-color: var(--djm-surface);
+  --pico-range-thumb-color: var(--djm-secondary-bg);
+  --pico-range-thumb-active-color: var(--djm-primary);
+  --pico-card-background-color: var(--djm-surface);
+  --pico-card-border-color: var(--djm-line);
+  --pico-card-sectioning-background-color: var(--djm-section-bg);
+  --pico-dropdown-background-color: var(--djm-surface);
+  --pico-dropdown-border-color: var(--djm-border);
+  --pico-dropdown-hover-background-color: var(--djm-dropdown-hover);
+  --pico-modal-overlay-background-color: var(--djm-modal);
+  --pico-progress-background-color: var(--djm-border);
+}
+
+/* Icon strokes are baked into the SVG. A data-URI image cannot see custom properties. */
+:root:not([data-theme=dark]),
+[data-theme=light] {
+  --pico-icon-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='rgb(107, 97, 120)' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  --pico-icon-date: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='rgb(107, 97, 120)' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='4' width='18' height='18' rx='2' ry='2'%3E%3C/rect%3E%3Cline x1='16' y1='2' x2='16' y2='6'%3E%3C/line%3E%3Cline x1='8' y1='2' x2='8' y2='6'%3E%3C/line%3E%3Cline x1='3' y1='10' x2='21' y2='10'%3E%3C/line%3E%3C/svg%3E");
+  --pico-icon-time: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='rgb(107, 97, 120)' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='10'%3E%3C/circle%3E%3Cpolyline points='12 6 12 12 16 14'%3E%3C/polyline%3E%3C/svg%3E");
+  --pico-icon-search: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='rgb(107, 97, 120)' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='11' cy='11' r='8'%3E%3C/circle%3E%3Cline x1='21' y1='21' x2='16.65' y2='16.65'%3E%3C/line%3E%3C/svg%3E");
+  --pico-icon-close: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='rgb(107, 97, 120)' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cline x1='18' y1='6' x2='6' y2='18'%3E%3C/line%3E%3Cline x1='6' y1='6' x2='18' y2='18'%3E%3C/line%3E%3C/svg%3E");
+  --pico-icon-checkbox: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='rgb(255, 255, 255)' stroke-width='4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='20 6 9 17 4 12'%3E%3C/polyline%3E%3C/svg%3E");
+  --pico-icon-minus: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='rgb(255, 255, 255)' stroke-width='4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cline x1='5' y1='12' x2='19' y2='12'%3E%3C/line%3E%3C/svg%3E");
+}
+
+@media only screen and (prefers-color-scheme: dark) {
+  :root:not([data-theme]) {
+    --pico-icon-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='rgb(184, 174, 199)' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+    --pico-icon-date: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='rgb(184, 174, 199)' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='4' width='18' height='18' rx='2' ry='2'%3E%3C/rect%3E%3Cline x1='16' y1='2' x2='16' y2='6'%3E%3C/line%3E%3Cline x1='8' y1='2' x2='8' y2='6'%3E%3C/line%3E%3Cline x1='3' y1='10' x2='21' y2='10'%3E%3C/line%3E%3C/svg%3E");
+    --pico-icon-time: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='rgb(184, 174, 199)' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='10'%3E%3C/circle%3E%3Cpolyline points='12 6 12 12 16 14'%3E%3C/polyline%3E%3C/svg%3E");
+    --pico-icon-search: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='rgb(184, 174, 199)' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='11' cy='11' r='8'%3E%3C/circle%3E%3Cline x1='21' y1='21' x2='16.65' y2='16.65'%3E%3C/line%3E%3C/svg%3E");
+    --pico-icon-close: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='rgb(184, 174, 199)' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cline x1='18' y1='6' x2='6' y2='18'%3E%3C/line%3E%3Cline x1='6' y1='6' x2='18' y2='18'%3E%3C/line%3E%3C/svg%3E");
+    --pico-icon-checkbox: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='rgb(36, 28, 50)' stroke-width='4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='20 6 9 17 4 12'%3E%3C/polyline%3E%3C/svg%3E");
+    --pico-icon-minus: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='rgb(36, 28, 50)' stroke-width='4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cline x1='5' y1='12' x2='19' y2='12'%3E%3C/line%3E%3C/svg%3E");
+  }
+}
+
+[data-theme=dark] {
+  --pico-icon-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='rgb(184, 174, 199)' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  --pico-icon-date: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='rgb(184, 174, 199)' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='4' width='18' height='18' rx='2' ry='2'%3E%3C/rect%3E%3Cline x1='16' y1='2' x2='16' y2='6'%3E%3C/line%3E%3Cline x1='8' y1='2' x2='8' y2='6'%3E%3C/line%3E%3Cline x1='3' y1='10' x2='21' y2='10'%3E%3C/line%3E%3C/svg%3E");
+  --pico-icon-time: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='rgb(184, 174, 199)' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='10'%3E%3C/circle%3E%3Cpolyline points='12 6 12 12 16 14'%3E%3C/polyline%3E%3C/svg%3E");
+  --pico-icon-search: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='rgb(184, 174, 199)' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='11' cy='11' r='8'%3E%3C/circle%3E%3Cline x1='21' y1='21' x2='16.65' y2='16.65'%3E%3C/line%3E%3C/svg%3E");
+  --pico-icon-close: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='rgb(184, 174, 199)' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cline x1='18' y1='6' x2='6' y2='18'%3E%3C/line%3E%3Cline x1='6' y1='6' x2='18' y2='18'%3E%3C/line%3E%3C/svg%3E");
+  --pico-icon-checkbox: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='rgb(36, 28, 50)' stroke-width='4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='20 6 9 17 4 12'%3E%3C/polyline%3E%3C/svg%3E");
+  --pico-icon-minus: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='rgb(36, 28, 50)' stroke-width='4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cline x1='5' y1='12' x2='19' y2='12'%3E%3C/line%3E%3C/svg%3E");
+}
+
+/* Pico draws focus as a same-color shadow, which disappears on a filled
+   primary button. An offset ring stays visible against the page. */
+:where(a, button, input, select, textarea, summary, [role="button"], [role="link"]):focus-visible:not([aria-invalid]) {
+  outline: var(--pico-outline-width) solid var(--pico-primary);
+  outline-offset: 2px;
+}
+
+td,
+th {
+  background-color: transparent;
+}
+
+article {
+  border: var(--pico-border-width) solid var(--djm-line);
+}
+
+/* Component overrides. */
 
 .icon {
   width: 1.25em;
@@ -21,11 +296,32 @@
   text-decoration: none;
 }
 
+a.brand {
+  --pico-color: var(--djm-text);
+  --pico-underline: transparent;
+}
+
+a.brand:is(:hover, :focus-visible) {
+  --pico-color: var(--djm-primary);
+}
+
 .brand-icon {
   display: block;
   height: 2rem;
   width: auto;
   border-radius: 8px;
+}
+
+/* The purple tile is #7E29D8. On the dark page that edge is under 3:1,
+   so a muted ring keeps the existing artwork readable. */
+@media only screen and (prefers-color-scheme: dark) {
+  :root:not([data-theme]) .brand-icon {
+    box-shadow: 0 0 0 1px var(--djm-muted);
+  }
+}
+
+[data-theme=dark] .brand-icon {
+  box-shadow: 0 0 0 1px var(--djm-muted);
 }
 
 .narrow {
@@ -198,7 +494,7 @@ nav form.inline button {
     margin: 0;
     padding: 0.4rem;
     background: var(--pico-card-background-color);
-    border: var(--pico-border-width) solid var(--pico-muted-border-color);
+    border: var(--pico-border-width) solid var(--djm-border);
     border-radius: var(--pico-border-radius);
     box-shadow: var(--pico-card-box-shadow);
   }
@@ -466,7 +762,8 @@ main:has(.auth-card) {
 }
 
 .warning {
-  border-left: 4px solid #f2a20d;
+  border-left: 4px solid var(--djm-warning-border);
+  color: var(--djm-warning-text);
   padding-left: 1rem;
   margin-bottom: var(--pico-spacing);
 }
@@ -488,15 +785,15 @@ td select {
 
 /* Destructive actions, as Rails' .btn-danger. */
 button.danger {
-  --pico-background-color: var(--pico-del-color);
-  --pico-border-color: var(--pico-del-color);
-  --pico-color: #fff;
+  --pico-background-color: var(--djm-danger);
+  --pico-border-color: var(--djm-danger);
+  --pico-color: var(--djm-on-danger);
 }
 
-button.danger:hover,
-button.danger:focus {
-  --pico-background-color: color-mix(in srgb, var(--pico-del-color) 85%, #000);
-  --pico-border-color: color-mix(in srgb, var(--pico-del-color) 85%, #000);
+button.danger:is(:hover, :focus, :active) {
+  --pico-background-color: var(--djm-danger-hover);
+  --pico-border-color: var(--djm-danger-hover);
+  --pico-color: var(--djm-on-danger);
 }
 
 button.danger.outline {
@@ -505,11 +802,12 @@ button.danger.outline {
   --pico-background-color: transparent;
 }
 
-button.danger.outline:hover,
-button.danger.outline:focus {
-  --pico-color: #fff;
-  --pico-border-color: var(--pico-del-color);
-  --pico-background-color: var(--pico-del-color);
+/* Pico's outline hover uses :is() with an aria-current argument, so its
+   specificity beats a plain button.danger.outline:hover. Match that shape. */
+:is(button, [type="submit"], [type="button"], [role="button"]).outline.danger:is([aria-current]:not([aria-current="false"]), :hover, :active, :focus) {
+  --pico-color: var(--djm-on-danger);
+  --pico-border-color: var(--djm-danger);
+  --pico-background-color: var(--djm-danger);
 }
 
 /* Shows */
@@ -558,6 +856,7 @@ button.danger.outline:focus {
 .row-actions .approve {
   --pico-background-color: var(--pico-ins-color);
   --pico-border-color: var(--pico-ins-color);
+  --pico-color: var(--djm-on-success);
 }
 
 .queue-table td {
@@ -888,10 +1187,17 @@ details.memory-request form {
   justify-content: space-between;
 }
 
-.impersonation-banner form,
-.impersonation-banner button {
+.impersonation-banner form {
+  margin: 0;
+}
+
+.impersonation-banner button,
+.impersonation-banner button:is(:hover, :focus, :active) {
   margin: 0;
   padding: 0.3rem 0.75rem;
+  --pico-background-color: var(--djm-surface);
+  --pico-border-color: var(--djm-surface);
+  --pico-color: var(--djm-text);
 }
 
 nav.admin-nav {

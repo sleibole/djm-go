@@ -1,6 +1,7 @@
 {{define "title"}}{{.Data.Show.DisplayName}} · {{.Data.DJ.PublicName}} · DJMagic.io{{end}}
 {{define "html_attrs"}} data-theme="dark"{{end}}
-{{define "theme_script"}}<meta name="color-scheme" content="dark">{{end}}
+{{define "theme_script"}}<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#14111C">{{end}}
 {{define "body"}}<main class="display-layout">{{template "display_live" .Data}}</main>{{end}}
 {{define "content"}}{{template "display_live" .Data}}{{end}}
 {{define "display_live_block"}}{{template "display_live" .Data}}{{end}}
