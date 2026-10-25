@@ -138,11 +138,15 @@ type agent struct {
 
 func startAgent(t *testing.T, env []string, name string, setpgid bool) *agent {
 	t.Helper()
+	script := scriptFromEnv(env)
+	if script == "" {
+		script = scriptPath(t)
+	}
 	a := &agent{
 		name:   name,
 		out:    &safeBuf{},
 		exited: make(chan struct{}),
-		cmd:    exec.Command(scriptPath(t), "start", name),
+		cmd:    exec.Command(script, "start", name),
 	}
 	a.cmd.Env = env
 	a.cmd.Stdout = a.out
@@ -222,12 +226,17 @@ func baseExtra(t *testing.T, state string, min, max int, command string) map[str
 		"DEV_SERVER_READY_TIMEOUT": "10",
 		"DEV_SERVER_COMMAND":       command,
 		"DEV_SERVER_SCRIPT":        scriptPath(t),
+		"DEV_SERVER_PORT_REGISTRY": filepath.Join(state, ".port-registry"),
 	}
 }
 
 func runScript(t *testing.T, env []string, args ...string) (string, error) {
 	t.Helper()
-	cmd := exec.Command(scriptPath(t), args...)
+	script := scriptFromEnv(env)
+	if script == "" {
+		script = scriptPath(t)
+	}
+	cmd := exec.Command(script, args...)
 	cmd.Env = env
 	out, err := cmd.CombinedOutput()
 	return string(out), err
@@ -951,5 +960,334 @@ func TestReservedPortsAreNotLaunched(t *testing.T) {
 				t.Fatalf("reserved range %d-%d launched the child\n%s", tc.min, tc.max, out)
 			}
 		})
+	}
+}
+
+func ownerField(t *testing.T, registry, port, key string) string {
+	t.Helper()
+	body, err := os.ReadFile(filepath.Join(registry, port, "owner"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	prefix := key + "="
+	for _, line := range strings.Split(string(body), "\n") {
+		if strings.HasPrefix(line, prefix) {
+			return strings.TrimPrefix(line, prefix)
+		}
+	}
+	t.Fatalf("owner %s has no %s\n%s", port, key, body)
+	return ""
+}
+
+func registryPortDirs(t *testing.T, registry string) []string {
+	t.Helper()
+	entries, err := os.ReadDir(registry)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		t.Fatal(err)
+	}
+	var ports []string
+	for _, entry := range entries {
+		if entry.IsDir() && !strings.HasPrefix(entry.Name(), ".") {
+			ports = append(ports, entry.Name())
+		}
+	}
+	return ports
+}
+
+func gitCommonDir(t *testing.T) string {
+	t.Helper()
+	cmd := exec.Command("git", "rev-parse", "--path-format=absolute", "--git-common-dir")
+	cmd.Dir = repoRoot(t)
+	out, err := cmd.Output()
+	if err != nil {
+		t.Fatal(err)
+	}
+	return strings.TrimSpace(string(out))
+}
+
+func assertPortNotInGitRegistry(t *testing.T, port string) {
+	t.Helper()
+	path := filepath.Join(gitCommonDir(t), "djm-dev-ports", port)
+	if _, err := os.Stat(path); !os.IsNotExist(err) {
+		t.Fatalf("port %s is in the repository registry %s (%v)", port, path, err)
+	}
+}
+
+func writeClaim(t *testing.T, registry, port string, fields map[string]string) {
+	t.Helper()
+	dir := filepath.Join(registry, port)
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	var b strings.Builder
+	for key, value := range fields {
+		fmt.Fprintf(&b, "%s=%s\n", key, value)
+	}
+	writeFile(t, filepath.Join(dir, "owner"), b.String(), 0o644)
+}
+
+func TestSharedRegistryGivesDistinctPorts(t *testing.T) {
+	parent := t.TempDir()
+	registry := filepath.Join(parent, "registry")
+	server := httpServer(t, parent)
+	const n = 4
+	envs := make([][]string, n)
+	agents := make([]*agent, n)
+	for i := 0; i < n; i++ {
+		state := filepath.Join(parent, fmt.Sprintf("state%d", i))
+		extra := baseExtra(t, state, 39500, 39519, server)
+		extra["DEV_SERVER_PORT_REGISTRY"] = registry
+		envs[i] = testEnv(t, extra)
+		agents[i] = startAgent(t, envs[i], fmt.Sprintf("p%d", i), false)
+	}
+	seen := map[string]string{}
+	for i, a := range agents {
+		a.ready(t)
+		name := fmt.Sprintf("p%d", i)
+		state := filepath.Join(parent, fmt.Sprintf("state%d", i))
+		port := instanceField(t, state, name, "port")
+		if other, ok := seen[port]; ok {
+			t.Fatalf("port %s used by %s and %s", port, other, name)
+		}
+		seen[port] = name
+		if ownerField(t, registry, port, "instance_id") != instanceField(t, state, name, "instance_id") {
+			t.Fatalf("claim for %s does not match its instance", name)
+		}
+		db := filepath.Join(state, name, "data", "djm.db")
+		assertNotPersonal(t, db, filepath.Join(state, name, "blobs"), filepath.Join(state, name, "catalogs"))
+		assertPortNotInGitRegistry(t, port)
+	}
+
+	port0 := instanceField(t, filepath.Join(parent, "state0"), "p0", "port")
+	if _, err := runScript(t, envs[0], "stop", "p0"); err != nil {
+		t.Fatal(err)
+	}
+	agents[0].waitExit(t)
+	if _, err := os.Stat(filepath.Join(registry, port0)); !os.IsNotExist(err) {
+		t.Fatalf("stopped server left claim %s: %v", port0, err)
+	}
+	for i := 1; i < n; i++ {
+		name := fmt.Sprintf("p%d", i)
+		port := instanceField(t, filepath.Join(parent, fmt.Sprintf("state%d", i)), name, "port")
+		if _, err := os.Stat(filepath.Join(registry, port, "owner")); err != nil {
+			t.Fatalf("%s claim missing after stopping p0: %v", name, err)
+		}
+		dialOK(t, "127.0.0.1:"+port)
+	}
+
+	outsider := baseExtra(t, filepath.Join(parent, "outsider"), 39500, 39519, server)
+	outsider["DEV_SERVER_PORT_REGISTRY"] = registry
+	out, err := runScript(t, testEnv(t, outsider), "stop", "p1")
+	if err == nil {
+		t.Fatalf("stop from another state directory succeeded\n%s", out)
+	}
+	if !strings.Contains(out, "not running") {
+		t.Fatalf("stop output = %q", out)
+	}
+	port1 := instanceField(t, filepath.Join(parent, "state1"), "p1", "port")
+	dialOK(t, "127.0.0.1:"+port1)
+	if _, err := os.Stat(filepath.Join(registry, port1, "owner")); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestFailedStartReleasesPortClaim(t *testing.T) {
+	dir := t.TempDir()
+	state := filepath.Join(dir, "state")
+	cmdPath := shellCommand(t, dir, "echo boom-claim\nexit 7\n")
+	env := testEnv(t, baseExtra(t, state, 39530, 39532, cmdPath))
+	out, err := runScript(t, env, "start", "alpha")
+	if err == nil {
+		t.Fatalf("start succeeded\n%s", out)
+	}
+	if !strings.Contains(out, "exited before it was ready") {
+		t.Fatalf("output = %q", out)
+	}
+	if ports := registryPortDirs(t, filepath.Join(state, ".port-registry")); len(ports) != 0 {
+		t.Fatalf("failed start left claims %v", ports)
+	}
+	if _, statErr := os.Stat(filepath.Join(state, "alpha", "instance.env")); !os.IsNotExist(statErr) {
+		t.Fatal("failed start left an instance record")
+	}
+}
+
+func TestStalePortClaimIsReclaimed(t *testing.T) {
+	dir := t.TempDir()
+	state := filepath.Join(dir, "state")
+	registry := filepath.Join(state, ".port-registry")
+	sleepCmd := exec.Command("sleep", "30")
+	if err := sleepCmd.Start(); err != nil {
+		t.Fatal(err)
+	}
+	dead := sleepCmd.Process.Pid
+	_ = sleepCmd.Process.Kill()
+	_, _ = sleepCmd.Process.Wait()
+	writeClaim(t, registry, "39540", map[string]string{
+		"worktree":       "/tmp/dev-server-other-worktree",
+		"worktree_id":    "wt-staleclaim1",
+		"name":           "ghost",
+		"instance_id":    "stale-id",
+		"supervisor_pid": strconv.Itoa(dead),
+		"created_at":     "1",
+		"status":         "running",
+		"url":            "http://localhost:39540",
+	})
+	env := testEnv(t, baseExtra(t, state, 39540, 39541, httpServer(t, dir)))
+	agent := startAgent(t, env, "alpha", false)
+	agent.ready(t)
+	if got := instanceField(t, state, "alpha", "port"); got != "39540" {
+		t.Fatalf("port = %s, want the reclaimed port 39540", got)
+	}
+	if ownerField(t, registry, "39540", "instance_id") == "stale-id" {
+		t.Fatal("stale claim was kept")
+	}
+	if pidAlive(dead) {
+		t.Fatal("reclaim signaled the old pid")
+	}
+}
+
+func TestFreshPortClaimIsKept(t *testing.T) {
+	dir := t.TempDir()
+	state := filepath.Join(dir, "state")
+	registry := filepath.Join(state, ".port-registry")
+	fresh := filepath.Join(registry, "39550")
+	if err := os.MkdirAll(fresh, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	env := testEnv(t, baseExtra(t, state, 39550, 39551, httpServer(t, dir)))
+	agent := startAgent(t, env, "alpha", false)
+	agent.ready(t)
+	if got := instanceField(t, state, "alpha", "port"); got != "39551" {
+		t.Fatalf("port = %s, want 39551", got)
+	}
+	if _, err := os.Stat(fresh); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(filepath.Join(fresh, "owner")); !os.IsNotExist(err) {
+		t.Fatalf("fresh claim gained an owner: %v", err)
+	}
+}
+
+func TestReusedPidClaimIsReclaimed(t *testing.T) {
+	dir := t.TempDir()
+	state := filepath.Join(dir, "state")
+	registry := filepath.Join(state, ".port-registry")
+	sleepCmd := exec.Command("sleep", "30")
+	if err := sleepCmd.Start(); err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		_ = sleepCmd.Process.Kill()
+		_, _ = sleepCmd.Process.Wait()
+	}()
+	writeClaim(t, registry, "39560", map[string]string{
+		"worktree":       "/tmp/dev-server-other-worktree",
+		"worktree_id":    "wt-reusedpid01",
+		"name":           "ghost",
+		"instance_id":    "reused-id",
+		"supervisor_pid": strconv.Itoa(sleepCmd.Process.Pid),
+		"created_at":     strconv.FormatInt(time.Now().Unix(), 10),
+		"status":         "starting",
+		"url":            "http://localhost:39560",
+	})
+	env := testEnv(t, baseExtra(t, state, 39560, 39561, httpServer(t, dir)))
+	agent := startAgent(t, env, "alpha", false)
+	agent.ready(t)
+	if got := instanceField(t, state, "alpha", "port"); got != "39560" {
+		t.Fatalf("port = %s, want reclaimed 39560", got)
+	}
+	if !pidAlive(sleepCmd.Process.Pid) {
+		t.Fatal("reclaim killed the unrelated process")
+	}
+}
+
+func TestRecentDeadClaimIsKept(t *testing.T) {
+	dir := t.TempDir()
+	state := filepath.Join(dir, "state")
+	registry := filepath.Join(state, ".port-registry")
+	sleepCmd := exec.Command("sleep", "30")
+	if err := sleepCmd.Start(); err != nil {
+		t.Fatal(err)
+	}
+	dead := sleepCmd.Process.Pid
+	_ = sleepCmd.Process.Kill()
+	_, _ = sleepCmd.Process.Wait()
+	writeClaim(t, registry, "39580", map[string]string{
+		"worktree":       "/tmp/dev-server-other-worktree",
+		"worktree_id":    "wt-recentdead1",
+		"name":           "ghost",
+		"instance_id":    "recent-id",
+		"supervisor_pid": strconv.Itoa(dead),
+		"created_at":     strconv.FormatInt(time.Now().Unix(), 10),
+		"status":         "starting",
+		"url":            "http://localhost:39580",
+	})
+	env := testEnv(t, baseExtra(t, state, 39580, 39581, httpServer(t, dir)))
+	agent := startAgent(t, env, "alpha", false)
+	agent.ready(t)
+	if got := instanceField(t, state, "alpha", "port"); got != "39581" {
+		t.Fatalf("port = %s, want 39581", got)
+	}
+	if ownerField(t, registry, "39580", "instance_id") != "recent-id" {
+		t.Fatal("recent dead claim was removed")
+	}
+	if _, err := os.Stat(filepath.Join(state, "alpha", "instance.env")); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestRefusesRegistryInsidePersonalData(t *testing.T) {
+	root := repoRoot(t)
+	registry := filepath.Join(root, "data", "port-registry-refusal-test")
+	t.Cleanup(func() { _ = os.RemoveAll(registry) })
+	dir := t.TempDir()
+	extra := baseExtra(t, filepath.Join(dir, "state"), 39590, 39595, "true")
+	extra["DEV_SERVER_PORT_REGISTRY"] = registry
+	out, err := runScript(t, testEnv(t, extra), "start", "alpha")
+	if err == nil {
+		t.Fatalf("start succeeded\n%s", out)
+	}
+	if !strings.Contains(out, "port registry must not be inside the personal data directory") {
+		t.Fatalf("output = %q", out)
+	}
+	if _, statErr := os.Stat(registry); !os.IsNotExist(statErr) {
+		t.Fatalf("created %s: %v", registry, statErr)
+	}
+}
+
+func TestLiveClaimIsNotStolen(t *testing.T) {
+	parent := t.TempDir()
+	registry := filepath.Join(parent, "registry")
+	server := httpServer(t, parent)
+	held := filepath.Join(parent, "held")
+	other := filepath.Join(parent, "other")
+	extra := baseExtra(t, held, 39640, 39640, server)
+	extra["DEV_SERVER_PORT_REGISTRY"] = registry
+	env := testEnv(t, extra)
+	agent := startAgent(t, env, "alpha", false)
+	agent.ready(t)
+	id := instanceField(t, held, "alpha", "instance_id")
+	if ownerField(t, registry, "39640", "instance_id") != id {
+		t.Fatal("claim does not belong to the running server")
+	}
+
+	extra = baseExtra(t, other, 39640, 39640, server)
+	extra["DEV_SERVER_PORT_REGISTRY"] = registry
+	out, err := runScript(t, testEnv(t, extra), "start", "alpha")
+	if err == nil {
+		t.Fatalf("second start took the only port\n%s", out)
+	}
+	if !strings.Contains(out, "no free port") {
+		t.Fatalf("output = %q", out)
+	}
+	dialOK(t, "127.0.0.1:39640")
+	if ownerField(t, registry, "39640", "instance_id") != id {
+		t.Fatal("live claim was replaced")
+	}
+	if _, err := os.Stat(filepath.Join(held, "alpha", "instance.env")); err != nil {
+		t.Fatal(err)
 	}
 }

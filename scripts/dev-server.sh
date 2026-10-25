@@ -7,6 +7,14 @@
 # directory, and catalog cache. Shutdown only signals processes whose
 # command line still matches this instance. A reused pid or an unrelated
 # listener is left alone. Ports 8080, 8100-8199, and 8200 are never used.
+#
+# The port registry is shared by every worktree of this repository. It lives
+# under the Git common directory unless DEV_SERVER_PORT_REGISTRY is set.
+# A port is claimed with mkdir, which is atomic. A claim whose owner is still
+# starting, or whose supervisor is still this script, is left alone. A claim
+# with no live owner is reusable only after DEV_SERVER_PORT_CLAIM_GRACE
+# seconds (default 30). A normal exit removes the claim immediately. SIGKILL
+# can leave it until the grace period passes.
 
 set -euo pipefail
 
@@ -21,9 +29,14 @@ STATE_DIR=${DEV_SERVER_STATE_DIR:-$ROOT/tmp/dev-agents}
 PORT_MIN=${DEV_SERVER_PORT_MIN:-8300}
 PORT_MAX=${DEV_SERVER_PORT_MAX:-8399}
 READY_TIMEOUT=${DEV_SERVER_READY_TIMEOUT:-60}
+CLAIM_GRACE=${DEV_SERVER_PORT_CLAIM_GRACE:-30}
 AIR_PKG=github.com/air-verse/air@v1.67.4
 LOCK_DIR=""
 LOCK_HELD=0
+REGISTRY=""
+WORKTREE_ID=""
+INSTANCE_ID=""
+CLAIM_PORT=""
 
 NAME=""
 APP_PORT=""
@@ -91,6 +104,7 @@ prepare_state() {
   require_number PORT_MIN "$PORT_MIN"
   require_number PORT_MAX "$PORT_MAX"
   require_number READY_TIMEOUT "$READY_TIMEOUT"
+  require_number CLAIM_GRACE "$CLAIM_GRACE"
   if [ "$PORT_MIN" -gt "$PORT_MAX" ]; then
     echo "dev-server: PORT_MIN ($PORT_MIN) is greater than PORT_MAX ($PORT_MAX)" >&2
     exit 1
@@ -116,6 +130,8 @@ prepare_state() {
       ;;
   esac
   LOCK_DIR=$STATE_DIR/.lock
+  compute_worktree_id
+  resolve_registry
 }
 
 field() {
@@ -152,6 +168,9 @@ server_pid=${SERVER_PID:-}
 config=$INSTANCE_CONFIG
 binary=$INSTANCE_BINARY
 log=$LOG_FILE
+instance_id=$INSTANCE_ID
+worktree=$ROOT
+worktree_id=$WORKTREE_ID
 EOF
 }
 
@@ -251,8 +270,270 @@ reserved_host_port() {
   return 1
 }
 
-port_available() {
+compute_worktree_id() {
+  local sum
+  if command -v shasum >/dev/null 2>&1; then
+    sum=$(printf '%s' "$ROOT" | shasum -a 256 | awk '{print $1}')
+  elif command -v sha256sum >/dev/null 2>&1; then
+    sum=$(printf '%s' "$ROOT" | sha256sum | awk '{print $1}')
+  else
+    echo "dev-server: shasum or sha256sum is required" >&2
+    exit 1
+  fi
+  WORKTREE_ID="wt-${sum:0:12}"
+}
+
+new_instance_id() {
+  od -An -N16 -tx1 /dev/urandom | tr -d '[:space:]'
+}
+
+dir_mtime() {
+  stat -f %m "$1" 2>/dev/null || stat -c %Y "$1" 2>/dev/null || echo 0
+}
+
+resolve_registry() {
+  local common
+  if [ -n "${DEV_SERVER_PORT_REGISTRY:-}" ]; then
+    REGISTRY=$DEV_SERVER_PORT_REGISTRY
+  else
+    if ! git -C "$ROOT" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+      echo "dev-server: $ROOT is not a git checkout; set DEV_SERVER_PORT_REGISTRY" >&2
+      exit 1
+    fi
+    if ! common=$(git -C "$ROOT" rev-parse --path-format=absolute --git-common-dir 2>/dev/null); then
+      common=$(git -C "$ROOT" rev-parse --git-common-dir)
+      case "$common" in
+        /*) ;;
+        *) common=$ROOT/$common ;;
+      esac
+      common=$(cd "$common" && pwd)
+    fi
+    REGISTRY=$common/djm-dev-ports
+  fi
+  case "$REGISTRY" in
+    "$ROOT/data"|"$ROOT/data"/*|data|data/*)
+      echo "dev-server: port registry must not be inside the personal data directory ($REGISTRY)" >&2
+      exit 1
+      ;;
+  esac
+  mkdir -p "$REGISTRY"
+  REGISTRY=$(cd "$REGISTRY" && pwd)
+  case "$REGISTRY" in
+    "$ROOT/data"|"$ROOT/data"/*)
+      echo "dev-server: port registry must not be inside the personal data directory ($REGISTRY)" >&2
+      exit 1
+      ;;
+  esac
+}
+
+# A claim is live while its owner is still writing it, while its supervisor
+# is still this script, or while a dead owner's grace period has not elapsed.
+# A live pid whose command line is something else has been reused.
+# An unreadable command line is treated as live.
+claim_is_live() {
+  local dir=$1
+  local owner now age sup name cmd created
+  owner=$dir/owner
+  [ -d "$dir" ] || return 1
+  now=$(date +%s)
+  if [ ! -f "$owner" ]; then
+    age=$((now - $(dir_mtime "$dir")))
+    if [ "$age" -lt "$CLAIM_GRACE" ]; then
+      return 0
+    fi
+    return 1
+  fi
+  sup=$(field "$owner" supervisor_pid || true)
+  name=$(field "$owner" name || true)
+  created=$(field "$owner" created_at || true)
+  if [ -z "$sup" ]; then
+    if [ -n "$created" ]; then
+      age=$((now - created))
+    else
+      age=$((now - $(dir_mtime "$dir")))
+    fi
+    if [ "$age" -lt "$CLAIM_GRACE" ]; then
+      return 0
+    fi
+    return 1
+  fi
+  if kill -0 "$sup" 2>/dev/null; then
+    cmd=$(command_of "$sup")
+    if [ -z "$cmd" ]; then
+      return 0
+    fi
+    if owns_supervisor "$sup" "$name"; then
+      return 0
+    fi
+    return 1
+  fi
+  if [ -n "$created" ]; then
+    age=$((now - created))
+  else
+    age=999999
+  fi
+  if [ "$age" -lt "$CLAIM_GRACE" ]; then
+    return 0
+  fi
+  return 1
+}
+
+write_owner() {
+  local dir=$1 port=$2 tmp now
+  now=$(date +%s)
+  tmp=$(mktemp "$dir/owner.tmp.XXXXXX")
+  cat > "$tmp" <<EOF
+worktree=$ROOT
+worktree_id=$WORKTREE_ID
+name=$NAME
+instance_id=$INSTANCE_ID
+supervisor_pid=$$
+created_at=$now
+status=starting
+url=http://localhost:$port
+EOF
+  mv "$tmp" "$dir/owner"
+}
+
+mark_claim_status() {
+  local status=$1 dir owner id created tmp
+  [ -n "${CLAIM_PORT:-}" ] || return 0
+  dir=$REGISTRY/$CLAIM_PORT
+  owner=$dir/owner
+  [ -f "$owner" ] || return 0
+  id=$(field "$owner" instance_id || true)
+  [ "$id" = "$INSTANCE_ID" ] || return 0
+  created=$(field "$owner" created_at || true)
+  tmp=$(mktemp "$dir/owner.tmp.XXXXXX")
+  cat > "$tmp" <<EOF
+worktree=$ROOT
+worktree_id=$WORKTREE_ID
+name=$NAME
+instance_id=$INSTANCE_ID
+supervisor_pid=$$
+created_at=$created
+status=$status
+url=$URL
+EOF
+  mv "$tmp" "$owner"
+}
+
+claim_dir_ok() {
   local port=$1
+  local dir
+  case "$port" in
+    ''|*[!0-9]*) return 1 ;;
+  esac
+  [ -n "$REGISTRY" ] || return 1
+  dir=$REGISTRY/$port
+  if [ "$(dirname "$dir")" = "$REGISTRY" ]; then
+    return 0
+  fi
+  return 1
+}
+
+# Remove a claim this process wrote. The supervisor pid must still be us.
+release_matching_claim() {
+  local port=$1 want_id=$2 want_pid=$3 dir owner id pid
+  claim_dir_ok "$port" || return 0
+  [ -n "$want_id" ] && [ -n "$want_pid" ] || return 0
+  dir=$REGISTRY/$port
+  owner=$dir/owner
+  if [ ! -f "$owner" ]; then
+    rmdir "$dir" 2>/dev/null || true
+    return 0
+  fi
+  id=$(field "$owner" instance_id || true)
+  pid=$(field "$owner" supervisor_pid || true)
+  [ "$id" = "$want_id" ] && [ "$pid" = "$want_pid" ] || return 0
+  rm -f "$owner"
+  if [ ! -f "$owner" ]; then
+    rm -rf "$dir"
+  fi
+}
+
+# Remove a recorded instance's claim when its supervisor is not still this
+# script. Used by stop and by a restart of the same name. A live supervisor
+# is left in place, including during its grace period.
+release_instance_claim() {
+  local port=$1 want_id=$2 dir owner id sup name
+  claim_dir_ok "$port" || return 0
+  [ -n "$want_id" ] || return 0
+  dir=$REGISTRY/$port
+  [ -d "$dir" ] || return 0
+  owner=$dir/owner
+  [ -f "$owner" ] || return 0
+  id=$(field "$owner" instance_id || true)
+  [ "$id" = "$want_id" ] || return 0
+  sup=$(field "$owner" supervisor_pid || true)
+  name=$(field "$owner" name || true)
+  if [ -n "$sup" ] && kill -0 "$sup" 2>/dev/null && owns_supervisor "$sup" "$name"; then
+    return 0
+  fi
+  rm -f "$owner"
+  if [ ! -f "$dir/owner" ]; then
+    rm -rf "$dir"
+  fi
+}
+
+# Take over an abandoned claim. The recover directory is itself created with
+# mkdir so two agents cannot delete the same claim. A live claim, or one that
+# changes while we look, is put back if we moved it.
+reclaim_port() {
+  local port=$1
+  local dir recover token now age holder still moved
+  dir=$REGISTRY/$port
+  recover=$REGISTRY/.recover-$port
+  [ -d "$dir" ] || return 0
+  token=$(field "$dir/owner" instance_id || true)
+  if ! mkdir "$recover" 2>/dev/null; then
+    holder=$(cat "$recover/pid" 2>/dev/null || true)
+    now=$(date +%s)
+    age=$((now - $(dir_mtime "$recover")))
+    if [ -n "$holder" ] && kill -0 "$holder" 2>/dev/null; then
+      return 1
+    fi
+    if [ "$age" -lt "$CLAIM_GRACE" ]; then
+      return 1
+    fi
+    rm -rf "$recover"
+    mkdir "$recover" 2>/dev/null || return 1
+  fi
+  echo $$ > "$recover/pid"
+  if [ ! -d "$dir" ]; then
+    rm -rf "$recover"
+    return 0
+  fi
+  still=$(field "$dir/owner" instance_id || true)
+  if [ "$still" != "$token" ]; then
+    rm -rf "$recover"
+    return 1
+  fi
+  if claim_is_live "$dir"; then
+    rm -rf "$recover"
+    return 1
+  fi
+  if ! mv "$dir" "$recover/port" 2>/dev/null; then
+    rm -rf "$recover"
+    return 1
+  fi
+  moved=$(field "$recover/port/owner" instance_id || true)
+  if [ "$moved" != "$token" ]; then
+    mv "$recover/port" "$dir" 2>/dev/null || true
+    rm -f "$recover/pid"
+    rmdir "$recover" 2>/dev/null || true
+    echo "dev-server: port $port claim changed during recovery; left it in place" >&2
+    return 1
+  fi
+  rm -rf "$recover"
+  return 0
+}
+
+try_claim() {
+  local port=$1 dir
+  case "$port" in
+    ''|*[!0-9]*) return 1 ;;
+  esac
   if [ "$port" -lt "$PORT_MIN" ] || [ "$port" -gt "$PORT_MAX" ]; then
     return 1
   fi
@@ -262,10 +543,42 @@ port_available() {
   if port_reserved "$port"; then
     return 1
   fi
-  if port_listening "$port"; then
+  dir=$REGISTRY/$port
+  if mkdir "$dir" 2>/dev/null; then
+    if ! write_owner "$dir" "$port"; then
+      rm -rf "$dir"
+      return 1
+    fi
+    CLAIM_PORT=$port
+    if port_listening "$port"; then
+      echo "dev-server: port $port is in use by another process; released this claim" >&2
+      release_matching_claim "$port" "$INSTANCE_ID" "$$"
+      CLAIM_PORT=""
+      return 1
+    fi
+    return 0
+  fi
+  if claim_is_live "$dir"; then
     return 1
   fi
-  return 0
+  if ! reclaim_port "$port"; then
+    return 1
+  fi
+  if mkdir "$dir" 2>/dev/null; then
+    if ! write_owner "$dir" "$port"; then
+      rm -rf "$dir"
+      return 1
+    fi
+    CLAIM_PORT=$port
+    if port_listening "$port"; then
+      echo "dev-server: port $port is in use by another process; released this claim" >&2
+      release_matching_claim "$port" "$INSTANCE_ID" "$$"
+      CLAIM_PORT=""
+      return 1
+    fi
+    return 0
+  fi
+  return 1
 }
 
 # Writable agent paths must stay out of data/, which is the personal server.
@@ -279,25 +592,33 @@ refuse_personal_data() {
   esac
 }
 
-pick_port() {
-  local preferred="" port
+choose_port() {
+  local preferred="" port pass
+  CLAIM_PORT=""
+  APP_PORT=""
   if [ -f "$INSTANCE_DIR/port" ]; then
     preferred=$(tr -d '[:space:]' < "$INSTANCE_DIR/port" || true)
   fi
   case "$preferred" in
     ''|*[!0-9]*) preferred="" ;;
   esac
-  if [ -n "$preferred" ] && port_available "$preferred"; then
-    printf '%s\n' "$preferred"
-    return 0
-  fi
-  port=$PORT_MIN
-  while [ "$port" -le "$PORT_MAX" ]; do
-    if port_available "$port"; then
-      printf '%s\n' "$port"
+  for pass in 1 2; do
+    if [ -n "$preferred" ] && try_claim "$preferred"; then
+      APP_PORT=$preferred
       return 0
     fi
-    port=$((port + 1))
+    port=$PORT_MIN
+    while [ "$port" -le "$PORT_MAX" ]; do
+      if [ -n "$preferred" ] && [ "$port" = "$preferred" ]; then
+        port=$((port + 1))
+        continue
+      fi
+      if try_claim "$port"; then
+        APP_PORT=$port
+        return 0
+      fi
+      port=$((port + 1))
+    done
   done
   return 1
 }
@@ -419,15 +740,18 @@ cleanup() {
   release_lock
   kill_if_child "${TAIL_PID:-}"
   # A second start of a name that is already running exits through this
-  # trap and must not delete the live instance.
-  [ "$OWN_INSTANCE" = 1 ] || return 0
-  stop_recorded "${CHILD_PID:-}" "${SERVER_PID:-}" "${INSTANCE_CONFIG:-}" "${INSTANCE_BINARY:-}" || true
-  if [ -n "${INSTANCE_FILE:-}" ]; then
-    rm -f "$INSTANCE_FILE" || true
+  # trap and must not delete the live instance. Release the port only after
+  # this process has stopped listening, and only when the claim is ours.
+  if [ "$OWN_INSTANCE" = 1 ]; then
+    stop_recorded "${CHILD_PID:-}" "${SERVER_PID:-}" "${INSTANCE_CONFIG:-}" "${INSTANCE_BINARY:-}" || true
+    if [ -n "${INSTANCE_FILE:-}" ]; then
+      rm -f "$INSTANCE_FILE" || true
+    fi
+    if [ -n "${INSTANCE_DIR:-}" ]; then
+      rm -rf "$INSTANCE_DIR/air" || true
+    fi
   fi
-  if [ -n "${INSTANCE_DIR:-}" ]; then
-    rm -rf "$INSTANCE_DIR/air" || true
-  fi
+  release_matching_claim "${CLAIM_PORT:-}" "${INSTANCE_ID:-}" "$$" || true
 }
 
 render_air_config() {
@@ -515,7 +839,7 @@ first_owned_listener() {
 }
 
 recover_stale() {
-  local inst=$1 go_pid server_pid config binary sup
+  local inst=$1 go_pid server_pid config binary sup port instance_id
   sup=$(field "$inst" supervisor_pid || true)
   if [ -n "$sup" ] && kill -0 "$sup" 2>/dev/null && owns_supervisor "$sup" "$NAME"; then
     URL=$(field "$inst" url)
@@ -523,11 +847,16 @@ recover_stale() {
     echo "dev-agent: $NAME is already running at $URL"
     return 1
   fi
+  port=$(field "$inst" port || true)
+  instance_id=$(field "$inst" instance_id || true)
   go_pid=$(field "$inst" go_pid || true)
   server_pid=$(field "$inst" server_pid || true)
   config=$(field "$inst" config || true)
   binary=$(field "$inst" binary || true)
   stop_recorded "$go_pid" "$server_pid" "$config" "$binary"
+  # The same name is restarting and its supervisor is gone. Drop that claim
+  # now, including during the grace period. Another worktree still waits.
+  release_instance_claim "$port" "$instance_id"
   rm -f "$inst"
   return 0
 }
@@ -554,6 +883,7 @@ wait_until_ready() {
       listener=$(first_owned_listener "$APP_PORT" "$CHILD_PID" || true)
       if [ -n "$listener" ]; then
         SERVER_PID=$listener
+        mark_claim_status running || true
         publish_instance running
         return 0
       fi
@@ -589,8 +919,13 @@ cmd_start() {
     fi
   fi
 
-  APP_PORT=$(pick_port || true)
-  if [ -z "$APP_PORT" ]; then
+  INSTANCE_ID=$(new_instance_id)
+  if [ -z "$INSTANCE_ID" ]; then
+    echo "dev-server: could not create an instance id" >&2
+    release_lock
+    exit 1
+  fi
+  if ! choose_port; then
     echo "dev-server: no free port in $PORT_MIN-$PORT_MAX" >&2
     release_lock
     exit 1
@@ -650,7 +985,7 @@ cmd_start() {
 }
 
 stop_one() {
-  local name=$1 dir inst sup go_pid server_pid config binary i
+  local name=$1 dir inst sup go_pid server_pid config binary i port instance_id
   validate_name "$name"
   prepare_state
   dir=$STATE_DIR/$name
@@ -664,6 +999,8 @@ stop_one() {
   server_pid=$(field "$inst" server_pid || true)
   config=$(field "$inst" config || true)
   binary=$(field "$inst" binary || true)
+  port=$(field "$inst" port || true)
+  instance_id=$(field "$inst" instance_id || true)
 
   if [ -n "$sup" ] && kill -0 "$sup" 2>/dev/null; then
     if owns_supervisor "$sup" "$name"; then
@@ -688,6 +1025,7 @@ stop_one() {
   fi
 
   stop_recorded "$go_pid" "$server_pid" "$config" "$binary"
+  release_instance_claim "$port" "$instance_id"
   rm -f "$inst"
   rm -rf "$dir/air"
   return 0
@@ -698,7 +1036,7 @@ cmd_stop() {
 }
 
 cmd_list() {
-  local dir inst name port url sup status found=0
+  local dir inst name port url sup status found=0 owner wt
   prepare_state
   for dir in "$STATE_DIR"/*; do
     [ -d "$dir" ] || continue
@@ -716,6 +1054,26 @@ cmd_list() {
       status=stale
     fi
     printf '%s %s %s %s\n' "$name" "$port" "$url" "$status"
+  done
+  # Claims from other worktrees are visible here and are not local servers.
+  # stop and stop-all do not signal them.
+  for dir in "$REGISTRY"/*; do
+    [ -d "$dir" ] || continue
+    owner=$dir/owner
+    [ -f "$owner" ] || continue
+    wt=$(field "$owner" worktree || true)
+    [ "$wt" = "$ROOT" ] && continue
+    found=1
+    name=$(field "$owner" name || true)
+    port=$(basename "$dir")
+    url=$(field "$owner" url || true)
+    [ -n "$url" ] || url="http://localhost:$port"
+    if claim_is_live "$dir"; then
+      status=external
+    else
+      status=external-stale
+    fi
+    printf '%s %s %s %s %s\n' "$name" "$port" "$url" "$status" "$wt"
   done
   if [ "$found" = 0 ]; then
     echo "no agent dev servers"
