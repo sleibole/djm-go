@@ -75,6 +75,8 @@ dokku config:set --no-restart djm BASE_URL=https://next.djmagic.io TRUSTED_IP_HE
   SMTP_PORT=587 'MAIL_FROM=DJMagic <noreply@djmagic.io>'
 ```
 
+Do not set `ALLOW_INDEXING` here. The app indexes nothing unless `ENV=prod` and `ALLOW_INDEXING=true`, and canonical URLs are built from `BASE_URL`. `next.djmagic.io` stays out of search results while that flag is unset. Set `ALLOW_INDEXING=true` only when `BASE_URL` is the public origin that should be indexed.
+
 And in this repo: `git remote add dokku dokku@box:djm`.
 
 ## 3. Box setup that needs sudo

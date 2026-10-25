@@ -1,15 +1,24 @@
-{{define "open_graph"}}
-  <meta name="description" content="Song requests, not chaos. Scan a QR code and request instantly. No app needed.">
-  <meta property="og:title" content="DJMagic.io">
-  <meta property="og:description" content="Song requests, not chaos. Scan a QR code and request instantly. No app needed.">
+{{define "seo_tags"}}
+  <meta name="description" content="{{block "description" .}}DJMagic.io runs a song request queue for karaoke hosts and DJs.{{end}}">
+  {{if .Meta.Robots}}<meta name="robots" content="{{.Meta.Robots}}">{{end}}
+  <link rel="canonical" href="{{.Meta.Canonical}}">
+  <meta property="og:title" content="{{template "title" .}}">
+  <meta property="og:description" content="{{template "description" .}}">
   <meta property="og:type" content="website">
-  <meta property="og:url" content="{{.BaseURL}}/">
+  <meta property="og:site_name" content="DJMagic.io">
+  <meta property="og:url" content="{{.Meta.Canonical}}">
   <meta property="og:image" content="{{.BaseURL}}{{asset "images/brand/open_graph_1200_630.png"}}">
+  <meta property="og:image:alt" content="DJMagic.io: Beta is Live. Song requests, not chaos.">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
   <meta property="og:image:type" content="image/png">
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="DJMagic.io">
-  <meta name="twitter:description" content="Song requests, not chaos. Scan a QR code and request instantly. No app needed.">
+  <meta name="twitter:title" content="{{template "title" .}}">
+  <meta name="twitter:description" content="{{template "description" .}}">
   <meta name="twitter:image" content="{{.BaseURL}}{{asset "images/brand/open_graph_1200_630.png"}}">
+  <meta name="twitter:image:alt" content="DJMagic.io: Beta is Live. Song requests, not chaos.">
 {{end}}
+
+{{define "open_graph"}}{{template "seo_tags" .}}{{end}}
+
+{{define "page_meta"}}<template id="page-meta" data-title="{{template "title" .}}">{{template "seo_tags" .}}</template>{{end}}

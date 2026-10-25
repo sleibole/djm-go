@@ -1,4 +1,5 @@
 {{define "title"}}{{.Data.Show.DisplayName}} · {{.Data.DJ.PublicName}} · DJMagic.io{{end}}
+{{define "description"}}{{with .Data}}Request a song at {{.Show.DisplayName}}, a {{if .Show.Karaoke}}karaoke{{else}}DJ{{end}} show with {{.DJ.PublicName}} on DJMagic.io.{{end}}{{end}}
 {{define "content"}}
 {{with .Data}}{{$s := .Show}}
 <div class="narrow">
@@ -28,7 +29,7 @@
 {{else if $s.Catalog}}
   {{if $s.Catalog.ActiveVersion}}
   <section id="step-search">
-    <h3>Step 1: Find your song</h3>
+    <h2>Step 1: Find your song</h2>
     <form role="search" method="get" action="{{.Path}}"
           hx-get="{{.Path}}/search"
           hx-trigger="input changed delay:300ms from:input[name=q], search from:input[name=q], submit"
@@ -51,7 +52,7 @@
   {{end}}
 {{else}}
 <section>
-  <h3>Request a Song</h3>
+  <h2>Request a Song</h2>
   {{template "audience_manual" .}}
 </section>
 {{end}}
@@ -90,7 +91,7 @@
 
 {{define "audience_step2"}}{{$p := .}}{{with .Picked}}
 <section id="step-submit">
-  <h3>Step 2: Enter your name</h3>
+  <h2>Step 2: Enter your name</h2>
   <article class="selected-song">
     <p><strong>{{.Song.Title}}</strong> — {{or .Song.Artist "—"}}{{with .Variant}}<br><small>{{.}}</small>{{end}}</p>
     <a href="{{$p.Path}}">Change song</a>

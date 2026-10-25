@@ -1,4 +1,5 @@
 {{define "title"}}{{.Data.DJ.PublicName}} · DJMagic.io{{end}}
+{{define "description"}}{{with .Data}}{{if .Active}}{{.DJ.PublicName}} has a live show on DJMagic.io.{{else if .Scheduled}}{{.DJ.PublicName}} has an upcoming show on DJMagic.io.{{else}}{{.DJ.PublicName}} on DJMagic.io.{{end}}{{end}}{{end}}
 {{define "content"}}
 {{with .Data}}{{$dj := .DJ}}
 <div class="narrow">

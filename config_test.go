@@ -69,6 +69,26 @@ func TestLoadConfigAddrWinsOverPort(t *testing.T) {
 	}
 }
 
+func TestLoadConfigIndexingIsOptIn(t *testing.T) {
+	t.Setenv("ALLOW_INDEXING", "")
+	if loadConfig().AllowIndexing {
+		t.Fatal("indexing defaults on")
+	}
+	t.Setenv("ALLOW_INDEXING", "true")
+	cfg := loadConfig()
+	if !cfg.AllowIndexing {
+		t.Fatal("ALLOW_INDEXING=true was ignored")
+	}
+	cfg.Env = "dev"
+	if cfg.indexingEnabled() {
+		t.Fatal("development honored ALLOW_INDEXING")
+	}
+	cfg.Env = "prod"
+	if !cfg.indexingEnabled() {
+		t.Fatal("production with ALLOW_INDEXING should index")
+	}
+}
+
 func TestLoadConfigTurnstileTestKeysInDevOnly(t *testing.T) {
 	t.Setenv("TURNSTILE_SITE_KEY", "")
 	t.Setenv("TURNSTILE_SECRET_KEY", "")

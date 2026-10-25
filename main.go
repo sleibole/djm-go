@@ -238,9 +238,11 @@ func (a *app) routes() http.Handler {
 	mux.HandleFunc("POST /admin/feedback/{id}", a.requireAdmin(a.handleAdminFeedbackUpdate))
 
 	mux.HandleFunc("GET /docs/csv-format", a.handleCSVFormatDoc)
+	mux.HandleFunc("GET /robots.txt", a.handleRobots)
+	mux.HandleFunc("GET /sitemap.xml", a.handleSitemap)
 
 	mux.HandleFunc("/", a.notFound)
 
 	csrf := http.NewCrossOriginProtection()
-	return a.recoverPanic(a.logRequests(securityHeaders(csrf.Handler(a.loadUser(mux)))))
+	return a.recoverPanic(a.logRequests(securityHeaders(a.loadUser(a.robotsHeader(csrf.Handler(trailingSlash(mux)))))))
 }

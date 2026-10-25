@@ -63,6 +63,7 @@ type view struct {
 	User             *User
 	TurnstileSiteKey string
 	Impersonating    bool // an admin is using "log in as"
+	Meta             seoMeta
 	Data             any
 }
 
@@ -98,7 +99,7 @@ func (a *app) renderBlock(w http.ResponseWriter, r *http.Request, status int, pa
 	// Render to a buffer first so a template error doesn't send a half-written page.
 	var buf bytes.Buffer
 	v := view{BaseURL: a.cfg.BaseURL, User: currentUser(r), TurnstileSiteKey: a.cfg.TurnstileSiteKey,
-		Impersonating: impersonatorID(r) != 0, Data: data}
+		Impersonating: impersonatorID(r) != 0, Meta: a.seoMeta(r, status, block), Data: data}
 	if err := t.ExecuteTemplate(&buf, block, v); err != nil {
 		a.serverError(w, r, err)
 		return
@@ -110,16 +111,25 @@ func (a *app) renderBlock(w http.ResponseWriter, r *http.Request, status int, pa
 	if w.Header().Get("Cache-Control") == "" && noStoreHTML(r) {
 		w.Header().Set("Cache-Control", "no-store")
 	}
+	// The same URL can be a full document or a fragment, and the shell
+	// changes when a session or guest cookie is present.
+	w.Header().Add("Vary", htmlVary)
+	if !a.responseIndexable(r, status, block) {
+		w.Header().Set("X-Robots-Tag", robotsNoindex)
+	}
 	w.WriteHeader(status)
 	buf.WriteTo(w)
 }
 
 // noStoreHTML is true for pages that are personalized or that carry a secret
-// in the URL. Public pages and static files are left alone.
+// in the URL. Anonymous public pages and static files are left alone.
 //
 // Audience catalog search sets its own policy: private caching when the
 // results have no hearts, and no header when they do. That choice stays
 // with the handler.
+//
+// A guest cookie personalizes show and profile pages (queue banner, name
+// prefill) and the saved-song pages. Those responses must not be stored.
 func noStoreHTML(r *http.Request) bool {
 	p := r.URL.Path
 	if strings.Contains(p, "/dj/") && strings.HasSuffix(p, "/search") {
@@ -128,7 +138,13 @@ func noStoreHTML(r *http.Request) bool {
 	if currentUser(r) != nil {
 		return true
 	}
-	return strings.HasPrefix(p, "/auth/") || strings.HasSuffix(p, "/queue")
+	if strings.HasPrefix(p, "/auth/") || strings.HasSuffix(p, "/queue") {
+		return true
+	}
+	if requestHasGuestCookie(r) && (strings.HasPrefix(p, "/dj/") || strings.HasPrefix(p, "/me/")) {
+		return true
+	}
+	return false
 }
 
 // localTime writes a <time> element that app.js rewrites in the viewer's time

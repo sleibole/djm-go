@@ -1,4 +1,5 @@
 {{define "title"}}Queue · {{.Data.Show.DisplayName}} · DJMagic.io{{end}}
+{{define "description"}}{{with .Data}}Queue for {{.Show.DisplayName}} with {{.DJ.PublicName}} on DJMagic.io.{{end}}{{end}}
 {{define "content"}}
 {{with .Data}}
 <div class="narrow">

@@ -1,4 +1,5 @@
 {{define "title"}}{{if .Data.Signup}}Sign up{{else}}Sign in{{end}} · DJMagic.io{{end}}
+{{define "description"}}{{if .Data.Signup}}Create a DJMagic.io account as a DJ, KJ, or audience member.{{else}}Sign in to DJMagic.io with an email link or a password.{{end}}{{end}}
 {{define "scripts"}}{{template "turnstile-script" .}}{{end}}
 {{define "content"}}
 {{with .Data}}

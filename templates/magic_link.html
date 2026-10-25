@@ -1,4 +1,5 @@
 {{define "title"}}Sign in · DJMagic.io{{end}}
+{{define "description"}}{{if .Data.Valid}}Confirm sign-in to DJMagic.io.{{else}}This DJMagic.io sign-in link has expired.{{end}}{{end}}
 {{define "content"}}
 {{with .Data}}
 <article class="auth-card" hx-history="false">

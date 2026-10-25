@@ -46,7 +46,8 @@ When `ADDR` and `PORT` are both unset, the binary listens on `:8080`. That is wh
 | `ADDR` | `:8080` | Listen address. If `ADDR` is unset, `PORT` is used as `:$PORT`. `make dev` and `make run` set `ADDR` and `PORT` to 8200, which wins over `.env`. |
 | `DB_PATH` | `data/djm.db` | SQLite file. |
 | `ENV` | `dev` | `dev` or `prod`. `dev` turns off the `Secure` cookie flag so `http://localhost` works. |
-| `BASE_URL` | `http://localhost:8080` | Public origin used in emailed links, QR codes, and Open Graph URLs. Required in production, and it must be `https`. `make dev` and `make run` set `http://localhost:8200`. |
+| `BASE_URL` | `http://localhost:8080` | Public origin used in emailed links, QR codes, canonical URLs, and Open Graph URLs. Required in production, and it must be `https`. `make dev` and `make run` set `http://localhost:8200`. |
+| `ALLOW_INDEXING` | unset | Set to `true` to let search engines index the public home page and the CSV format guide. Ignored unless `ENV=prod`. Leave it unset on staging and any other host. Canonical URLs use `BASE_URL`. |
 | `BLOB_DIR` | `data/blobs` | Local blob store for uploaded CSVs and built catalogs. |
 | `CATALOG_CACHE_DIR` | `data/catalogs` | Local cache of built catalogs. Safe to delete; a search refills it. |
 | `CATALOG_CACHE_MAX_BYTES` | `10737418240` | Cache budget in bytes (10 GiB). Least recently used catalogs are removed past this. |

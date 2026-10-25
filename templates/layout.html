@@ -10,6 +10,49 @@
   <meta name="apple-mobile-web-app-title" content="DJMagic.io">
   {{template "open_graph" .}}
   <link rel="manifest" href="{{asset "manifest.webmanifest"}}">
+  <script>
+    // Catch the install prompt while the document is still parsing. install.js
+    // turns it into the footer dialog. A display page opts out and leaves the
+    // browser's own install UI alone.
+    (function () {
+      var modes = ["standalone", "fullscreen", "minimal-ui", "window-controls-overlay", "tabbed"];
+      var installed = false;
+      try {
+        if (navigator.standalone === true) installed = true;
+        for (var i = 0; i < modes.length; i++) {
+          if (window.matchMedia("(display-mode: " + modes[i] + ")").matches) installed = true;
+        }
+      } catch (e) {}
+      if (installed) document.documentElement.classList.add("djm-install-hide");
+
+      var queue = [];
+      var handler = null;
+      window.djmInstallEarly = {
+        setHandler: function (fn) { handler = fn; },
+        take: function () {
+          var items = queue.slice();
+          queue.length = 0;
+          return items;
+        }
+      };
+      function push(detail) {
+        if (handler) handler(detail);
+        else queue.push(detail);
+      }
+      function skipped() {
+        return document.documentElement.getAttribute("data-install-ui") === "off";
+      }
+      window.addEventListener("beforeinstallprompt", function (event) {
+        if (skipped()) return;
+        event.preventDefault();
+        push({ type: "beforeinstallprompt", event: event });
+      });
+      window.addEventListener("appinstalled", function () {
+        if (skipped()) return;
+        push({ type: "appinstalled" });
+      });
+    })();
+  </script>
   <link rel="icon" href="{{asset "favicon.ico"}}" sizes="16x16">
   <link rel="icon" href="{{asset "icon.png"}}" type="image/png" sizes="32x32">
   <link rel="apple-touch-icon" href="{{asset "apple-touch-icon.png"}}" sizes="180x180">
@@ -48,11 +91,13 @@
   <meta name="htmx-config" content='{"historyRestoreAsHxRequest":false,"responseHandling":[{"code":"204","swap":false},{"code":"[234]..","swap":true},{"code":"...","swap":false,"error":true}]}'>
   <script src="{{asset "htmx.min.js"}}" defer></script>
   <script src="{{asset "app.js"}}" defer></script>
+  <script src="{{asset "install.js"}}" defer></script>
   <script src="{{asset "reorder.js"}}" defer></script>
   {{block "scripts" .}}{{end}}
 </head>
 <body id="body" hx-boost="true" hx-target="body" hx-swap="innerHTML">
   {{block "body" .}}
+  {{template "page_meta" .}}
   {{if .Impersonating}}{{with .User}}
   <div class="impersonation-banner" role="status">
     <div class="container">
@@ -111,10 +156,11 @@
     <small>
       DJMagic.io ·
       <a href="/feedback">{{icon "message"}} Feedback</a> ·
-      <a href="https://www.reddit.com/r/djmagicio/" target="_blank" rel="noopener noreferrer">{{icon "brand-reddit"}} r/djmagicio</a>
+      <a href="https://www.reddit.com/r/djmagicio/" target="_blank" rel="noopener noreferrer">{{icon "brand-reddit"}} r/djmagicio</a><span class="install-app-entry"> · <button type="button" class="install-app" data-open-dialog="install-app-dialog">Install app</button></span>
     </small>
     {{template "theme_switch" .}}
   </footer>
+  {{template "install_dialog" .}}
   {{end}}
 </body>
 </html>

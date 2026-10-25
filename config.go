@@ -15,7 +15,8 @@ type config struct {
 	Addr               string
 	DBPath             string
 	Env                string // "dev" or "prod"
-	BaseURL            string // public origin for emailed links, QR codes, and Open Graph URLs
+	BaseURL            string // public origin for emailed links, QR codes, and canonical URLs
+	AllowIndexing      bool   // prod only, and only when ALLOW_INDEXING=true
 	SMTPHost           string // empty = do not send; the message body is never logged
 	SMTPPort           string
 	SMTPUser           string
@@ -44,6 +45,7 @@ func loadConfig() config {
 		Env:                getenv("ENV", "dev"),
 		BaseURL:            base,
 		baseURLSet:         rawBase != "",
+		AllowIndexing:      os.Getenv("ALLOW_INDEXING") == "true",
 		SMTPHost:           os.Getenv("SMTP_HOST"),
 		SMTPPort:           getenv("SMTP_PORT", "587"),
 		SMTPUser:           os.Getenv("SMTP_USER"),

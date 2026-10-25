@@ -1,0 +1,51 @@
+{{define "install_dialog"}}
+<dialog id="install-app-dialog" class="install-dialog" aria-labelledby="install-app-heading" aria-describedby="install-app-summary">
+  <article>
+    <header>
+      <button type="button" aria-label="Close" rel="prev" data-close-dialog></button>
+      <h2 id="install-app-heading" class="install-heading">
+        <img class="install-app-icon" src="{{asset "images/brand/dark_192.png"}}" alt="" width="48" height="48">
+        <span>Install DJMagic.io</span>
+      </h2>
+    </header>
+    <p id="install-app-summary">Add DJMagic.io to your Home Screen or install it for convenient access. It opens in its own window.</p>
+    <div data-install-native hidden>
+      <button type="button" data-install-prompt>Install app</button>
+    </div>
+    <p id="install-app-status" class="install-status" role="status" aria-live="polite" aria-atomic="true"></p>
+    <div data-install-direct>
+      <div data-install-manual>
+        <p data-install-inapp hidden>If this page is open inside another app, that app’s menu may have a way to open it in your browser.</p>
+        <div data-install-panel="ios" hidden>
+          <ol>
+            <li>Open the browser’s Share menu <svg class="icon install-share-icon" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4"/><path d="m8 8 4-4 4 4"/><path d="M6 12v7a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-7"/></svg>. In Safari, Share may be inside the Page menu.</li>
+            <li>Choose “Add to Home Screen”. You may need to scroll through the actions.</li>
+            <li>If “Open as Web App” appears, leave it enabled.</li>
+            <li>Tap “Add”.</li>
+          </ol>
+          <p>Having trouble? Open this page in Safari and follow these steps.</p>
+          <p><button type="button" class="outline secondary" data-install-copy>Copy link</button></p>
+        </div>
+        <div data-install-panel="android" hidden>
+          <p>Open the browser menu. It may offer “Install app” or “Add to Home screen”. The label varies, and some browsers don’t offer installation.</p>
+        </div>
+        <div data-install-panel="desktop" hidden>
+          <p>A supported browser may show an install icon in the address bar, or an installation option in its menu. Labels vary, and not every browser can install this site.</p>
+        </div>
+        <div data-install-panel="unknown">
+          <p>Check the browser menu for “Install app” or “Add to Home Screen”. Not every browser can install this site.</p>
+        </div>
+        <div class="install-platforms" role="group" aria-label="Show instructions for">
+          <button type="button" class="outline secondary" data-install-platform="ios" aria-pressed="false">iPhone &amp; iPad</button>
+          <button type="button" class="outline secondary" data-install-platform="android" aria-pressed="false">Android</button>
+          <button type="button" class="outline secondary" data-install-platform="desktop" aria-pressed="false">Computer</button>
+        </div>
+      </div>
+    </div>
+    <details data-install-other hidden>
+      <summary>Other ways to install</summary>
+      <div data-install-manual-mount></div>
+    </details>
+  </article>
+</dialog>
+{{end}}

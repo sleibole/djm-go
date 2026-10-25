@@ -242,8 +242,23 @@ function ensureTurnstile(root) {
   document.head.appendChild(script);
 }
 
+// Boost keeps the current head and only copies the title. The body carries
+// the new page's tags so a swap or a history restore can put them back.
+function applyPageMeta() {
+  const tpl = document.getElementById("page-meta");
+  if (!tpl || !tpl.content) return;
+  const title = tpl.getAttribute("data-title");
+  if (title) document.title = title;
+  const selector = 'meta[name="description"], meta[name="robots"], link[rel="canonical"], meta[property^="og:"], meta[name^="twitter:"]';
+  const incoming = tpl.content.querySelectorAll(selector);
+  if (!incoming.length) return;
+  document.head.querySelectorAll(selector).forEach((el) => el.remove());
+  incoming.forEach((el) => document.head.appendChild(el.cloneNode(true)));
+}
+
 function settlePage(root) {
   const scope = root && root.querySelectorAll ? root : document;
+  applyPageMeta();
   ensureTurnstile(scope);
   localizeTimes(document);
   syncPasswordToggles(scope);
