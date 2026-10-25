@@ -82,3 +82,4 @@ Point the `djmagic.io` records back at the Rails apps on Fly. With the lowered T
 - [ ] Revoke the Rails SES SMTP credentials if the Go app uses new ones.
 - [ ] Optional: set `djmagic-app` as the default SES configuration set on the `djmagic.io` identity, so bounce and complaint events are still recorded (the Go mailer doesn't send the configuration-set header Rails did).
 - [ ] Raise the DNS TTL back up.
+- [ ] Turn search indexing on only after `BASE_URL` is `https://djmagic.io`. The steps are in [SEO.md](SEO.md). Leave `ALLOW_INDEXING` unset on `next.djmagic.io`.
