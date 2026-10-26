@@ -312,18 +312,6 @@ a.brand:is(:hover, :focus-visible) {
   border-radius: 8px;
 }
 
-/* The purple tile is #7E29D8. On the dark page that edge is under 3:1,
-   so a muted ring keeps the existing artwork readable. */
-@media only screen and (prefers-color-scheme: dark) {
-  :root:not([data-theme]) .brand-icon {
-    box-shadow: 0 0 0 1px var(--djm-muted);
-  }
-}
-
-[data-theme=dark] .brand-icon {
-  box-shadow: 0 0 0 1px var(--djm-muted);
-}
-
 .narrow {
   max-width: 42rem;
 }
