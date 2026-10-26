@@ -1588,6 +1588,14 @@ html.djm-install-hide .install-app-entry {
   vertical-align: -0.2em;
 }
 
+.install-dialog [data-install-copy-fallback] {
+  margin-bottom: 0;
+}
+
+.install-dialog [data-install-copy-fallback] input {
+  margin-bottom: 0;
+}
+
 .install-platforms {
   display: flex;
   flex-wrap: wrap;

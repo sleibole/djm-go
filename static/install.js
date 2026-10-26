@@ -41,6 +41,17 @@
     return "unknown";
   }
 
+  // Safari is the only iOS browser that can add a Home Screen web app.
+  // Brave, Chrome, Firefox, and Edge need the link pasted into Safari.
+  // An iOS browser we do not recognize keeps the generic Safari steps.
+  function detectIOSInstall(nav) {
+    if (detectPlatform(nav) !== "ios") return "";
+    const ua = String((nav && nav.userAgent) || "");
+    if (/Brave\/|CriOS\/|FxiOS\/|EdgiOS\//i.test(ua)) return "handoff";
+    if (/Version\/[\d.]+/i.test(ua) && /Safari\//i.test(ua)) return "safari";
+    return "generic";
+  }
+
   function inAppBrowser(nav) {
     const ua = String((nav && nav.userAgent) || "");
     return /Instagram|FBAN|FBAV|FB_IAB|FB4A|Musical_ly|\bTikTok\b|BytedanceWebview|Twitter for|LinkedInApp|\bSnapchat\b|Pinterest\/|Line\/|MicroMessenger|GSA\/|; wv\)/i.test(ua);
@@ -175,6 +186,11 @@
       });
       const inapp = node.querySelector("[data-install-inapp]");
       if (inapp) inapp.hidden = !inAppBrowser(win.navigator);
+      const iosInstall = detectIOSInstall(win.navigator);
+      node.querySelectorAll("[data-install-ios]").forEach((block) => {
+        const mode = block.getAttribute("data-install-ios");
+        block.hidden = mode === "handoff" ? iosInstall !== "handoff" : iosInstall === "handoff";
+      });
       const status = doc.getElementById("install-app-status");
       if (status && status.textContent !== statusText) status.textContent = statusText;
     }
@@ -247,6 +263,39 @@
       return ok;
     }
 
+    function hideCopyFallback() {
+      const node = dialog();
+      if (!node || !node.querySelector) return;
+      const box = node.querySelector("[data-install-copy-fallback]");
+      if (box) box.hidden = true;
+    }
+
+    function showCopyFallback(url) {
+      const node = dialog();
+      if (!node || !node.querySelector) return;
+      const field = node.querySelector("[data-install-url]");
+      const box = node.querySelector("[data-install-copy-fallback]");
+      if (field) {
+        field.value = url;
+        if (field.setAttribute) field.setAttribute("value", url);
+        if (field.focus) focusEl(field);
+        if (field.select) {
+          try { field.select(); } catch (e) {}
+        }
+      }
+      if (box) box.hidden = false;
+    }
+
+    function finishCopy(url, ok) {
+      if (ok) {
+        hideCopyFallback();
+        setStatus("Link copied.");
+        return;
+      }
+      showCopyFallback(url);
+      setStatus("Couldn’t copy the link.");
+    }
+
     function copyLink() {
       const url = safePageURL(currentHref());
       if (!url) {
@@ -257,24 +306,23 @@
       // reject after the browser has forgotten the click.
       const legacy = copyWithSelection(url);
       const clipboard = win.navigator && win.navigator.clipboard;
-      const failed = "Couldn’t copy the link.";
       if (clipboard && typeof clipboard.writeText === "function") {
         let pending;
         try {
           pending = clipboard.writeText(url);
         } catch (e) {
-          setStatus(legacy ? "Link copied." : failed);
+          finishCopy(url, legacy);
           return Promise.resolve();
         }
         return Promise.resolve(pending)
           .then(() => {
-            setStatus("Link copied.");
+            finishCopy(url, true);
           })
           .catch(() => {
-            setStatus(legacy || copyWithSelection(url) ? "Link copied." : failed);
+            finishCopy(url, legacy || copyWithSelection(url));
           });
       }
-      setStatus(legacy ? "Link copied." : failed);
+      finishCopy(url, legacy);
       return Promise.resolve();
     }
 
@@ -341,6 +389,7 @@
       if (!trigger) return;
       opener = trigger;
       savedScroll = win.scrollY || 0;
+      hideCopyFallback();
       const root = doc.documentElement;
       const width = win.innerWidth || 0;
       const client = (root && root.clientWidth) || width;
@@ -488,6 +537,7 @@
     installedDisplayModes: installedDisplayModes,
     isInstalledDisplay: isInstalledDisplay,
     detectPlatform: detectPlatform,
+    detectIOSInstall: detectIOSInstall,
     inAppBrowser: inAppBrowser,
     safePageURL: safePageURL,
     createInstall: createInstall,

@@ -458,3 +458,92 @@ test("copy link uses the clipboard and does not copy a token URL", async () => {
   assert.equal(selected, "https://djmagic.io/");
   assert.equal(page.api.status(), "Link copied.");
 });
+
+test("iOS install instructions follow the browser", () => {
+  assert.equal(install.detectIOSInstall({ userAgent: iphoneSafari, platform: "iPhone" }), "safari");
+  assert.equal(install.detectIOSInstall({ userAgent: ipadSafari, platform: "iPad" }), "safari");
+  assert.equal(install.detectIOSInstall({ userAgent: ipadDesktop, platform: "MacIntel", maxTouchPoints: 5 }), "safari");
+  assert.equal(install.detectIOSInstall({ userAgent: iphoneChrome, platform: "iPhone", maxTouchPoints: 5 }), "handoff");
+  assert.equal(install.detectIOSInstall({ userAgent: iphoneChrome + " Brave/1.67.0", platform: "iPhone", maxTouchPoints: 5 }), "handoff");
+  assert.equal(install.detectIOSInstall({
+    userAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) FxiOS/126.0 Mobile/15E148 Safari/605.1.15",
+    platform: "iPhone",
+  }), "handoff");
+  assert.equal(install.detectIOSInstall({
+    userAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) EdgiOS/126.0 Mobile/15E148 Safari/605.1.15",
+    platform: "iPhone",
+  }), "handoff");
+  assert.equal(install.detectIOSInstall({
+    userAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko)",
+    platform: "iPhone",
+  }), "generic");
+  assert.equal(install.detectIOSInstall({ userAgent: androidChrome, userAgentData: { platform: "Android" } }), "");
+  assert.equal(install.detectIOSInstall({ userAgent: desktopChrome, maxTouchPoints: 0 }), "");
+});
+
+test("iPhone Brave shows the Safari handoff and other phones keep the Safari steps", () => {
+  const page = mountPage();
+  const safari = el({ "data-install-ios": "safari" });
+  const handoff = el({ "data-install-ios": "handoff", hidden: true });
+  page.panels.ios.appendChild(safari);
+  page.panels.ios.appendChild(handoff);
+
+  page.win.navigator = { userAgent: iphoneChrome + " Brave/1.67.0", platform: "iPhone", maxTouchPoints: 5 };
+  page.api.sync();
+  assert.equal(page.panels.ios.hidden, false);
+  assert.equal(safari.hidden, true);
+  assert.equal(handoff.hidden, false);
+
+  page.win.navigator = { userAgent: iphoneSafari, platform: "iPhone", maxTouchPoints: 5 };
+  page.api.sync();
+  assert.equal(safari.hidden, false);
+  assert.equal(handoff.hidden, true);
+
+  page.win.navigator = {
+    userAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko)",
+    platform: "iPhone",
+    maxTouchPoints: 5,
+  };
+  page.api.sync();
+  assert.equal(safari.hidden, false);
+  assert.equal(handoff.hidden, true);
+
+  page.win.navigator = { userAgent: desktopChrome, platform: "MacIntel", maxTouchPoints: 0 };
+  page.api.choosePlatform("ios");
+  assert.equal(page.panels.ios.hidden, false);
+  assert.equal(page.panels.android.hidden, true);
+  assert.equal(safari.hidden, false);
+  assert.equal(handoff.hidden, true);
+});
+
+test("a failed copy reveals the safe URL", async () => {
+  const page = mountPage();
+  const box = el({ "data-install-copy-fallback": "", hidden: true });
+  const field = el({ "data-install-url": "" });
+  box.appendChild(field);
+  page.dialog.appendChild(box);
+  page.win.location.href = "https://djmagic.io/shows/friday?token=abc";
+  page.win.navigator.clipboard = {
+    writeText() {
+      return Promise.reject(new Error("denied"));
+    },
+  };
+  page.doc.execCommand = () => false;
+  page.doc.createElement = () => ({
+    style: {},
+    setAttribute() {},
+    focus() {},
+    select() {},
+    remove() {},
+    set value(_) {},
+  });
+  await page.api.copyLink();
+  assert.equal(page.api.status(), "Couldn’t copy the link.");
+  assert.equal(box.hidden, false);
+  assert.equal(field.attrs.value, "https://djmagic.io/");
+
+  page.win.navigator.clipboard.writeText = () => Promise.resolve();
+  await page.api.copyLink();
+  assert.equal(page.api.status(), "Link copied.");
+  assert.equal(box.hidden, true);
+});
