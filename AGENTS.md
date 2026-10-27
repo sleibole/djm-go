@@ -65,7 +65,9 @@ Without explicit authorization, do not do any of the following:
 
 Report conflicts and other destructive choices. Leave them unresolved rather than discarding either side.
 
-Existing tests stay as they are. Do not modify a test because it fails, weaken an assertion, skip a test, delete a test, or rewrite what it expects. Investigate the failure, report it, and separate a failure that already existed from a regression when that is visible. Add tests for new behavior. If a requirement change means an existing test has to change, explain the change and wait for permission before editing the test.
+Existing tests stay as they are. Do not modify a test because it fails, weaken an assertion, skip a test, delete a test, or rewrite what it expects. Investigate the failure, report it, and separate a failure that already existed from a regression when that is visible. Add tests for new behavior. If a requirement change means an existing test has to change, explain which test, what it asserts today, and the smallest edit, then wait for permission before editing the test.
+
+Permission to change an existing test has to name that test, or those tests, and the edit. Approving an implementation plan, a design, or the feature itself is not that permission, even when the plan says the test will change. Do not treat plan approval, "go ahead," or starting implementation as a yes. Ask, and wait for an explicit yes, before editing the test.
 
 Use `make dev-agent` for a server. Leave port 8200 and `data/` for the personal server. Stop only the name you started, and only from this worktree. Leave other agents' processes, port claims, and runtime files alone, including servers in other worktrees. `make dev-stop-all` stops named servers in this worktree and does not stop the personal server or another worktree.
 
