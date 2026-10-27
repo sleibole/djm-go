@@ -37,6 +37,9 @@ func (a *app) cleanupOnce() {
 	if err := a.db.Where("expires_at <= ?", now).Delete(&Session{}).Error; err != nil {
 		a.logger.Error("cleanup sessions", "err", err)
 	}
+	if err := a.db.Where("expires_at <= ?", now).Delete(&CSRFSession{}).Error; err != nil {
+		a.logger.Error("cleanup csrf sessions", "err", err)
+	}
 	if err := a.db.Where("consumed_at IS NOT NULL OR expires_at <= ?", now).Delete(&MagicToken{}).Error; err != nil {
 		a.logger.Error("cleanup magic tokens", "err", err)
 	}

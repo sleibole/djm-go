@@ -103,6 +103,7 @@ const (
 	userKey ctxKey = iota
 	sessionKey
 	impersonatorKey
+	csrfKey
 )
 
 // impersonatorID is the admin behind a "log in as" session, or 0.
@@ -179,16 +180,21 @@ func (a *app) startSessionAs(w http.ResponseWriter, r *http.Request, userID uint
 	if err != nil {
 		return err
 	}
+	csrfToken, err := newToken()
+	if err != nil {
+		return err
+	}
 	expires := a.now().Add(sessionLifetime)
 	if impersonator != nil {
 		expires = a.now().Add(impersonationLifetime)
 	}
-	s := Session{ID: hashToken(raw), UserID: userID, ImpersonatorID: impersonator, ExpiresAt: expires}
+	s := Session{ID: hashToken(raw), UserID: userID, ImpersonatorID: impersonator, CSRFToken: csrfToken, ExpiresAt: expires}
 	if err := a.db.Create(&s).Error; err != nil {
 		return err
 	}
 	a.setSessionCookie(w, raw, expires)
-	return nil
+	// The pre-login anonymous token must not survive into this session.
+	return a.clearAnonymousCSRF(w, r)
 }
 
 // loadUser puts the logged-in user, if any, into the request context. Sessions renew
@@ -227,6 +233,10 @@ func (a *app) loadUser(next http.Handler) http.Handler {
 			a.serverError(w, r, err)
 			return
 		}
+		if err := a.ensureSessionCSRF(&s); err != nil {
+			a.serverError(w, r, err)
+			return
+		}
 
 		if s.ImpersonatorID == nil && s.ExpiresAt.Sub(now) < sessionLifetime/2 {
 			s.ExpiresAt = now.Add(sessionLifetime)
@@ -239,6 +249,7 @@ func (a *app) loadUser(next http.Handler) http.Handler {
 
 		ctx := context.WithValue(r.Context(), userKey, &u)
 		ctx = context.WithValue(ctx, sessionKey, s.ID)
+		ctx = context.WithValue(ctx, csrfKey, s.CSRFToken)
 		if s.ImpersonatorID != nil {
 			ctx = context.WithValue(ctx, impersonatorKey, *s.ImpersonatorID)
 		}
@@ -360,6 +371,8 @@ func (a *app) handleLinkRequest(w http.ResponseWriter, r *http.Request) {
 
 // showMagicLink is the explicit local-dev opt-in for putting a sign-in URL on
 // the check-your-email page. Production never qualifies, even if the flag is set.
+// Console mail does not print the link. The page shows it only when SMTP_HOST
+// is empty, which is also the development setup that does not select SMTP.
 func (a *app) showMagicLink() bool {
 	return a.cfg.Env == "dev" && a.cfg.SMTPHost == "" && a.cfg.DevShowMagicLink
 }
@@ -603,5 +616,9 @@ func (a *app) handleLogout(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	a.clearSessionCookie(w)
+	if err := a.clearAnonymousCSRF(w, r); err != nil {
+		a.serverError(w, r, err)
+		return
+	}
 	http.Redirect(w, r, "/", http.StatusSeeOther)
 }

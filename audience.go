@@ -417,8 +417,10 @@ func (a *app) handleAudienceShow(w http.ResponseWriter, r *http.Request) {
 	a.render(w, r, http.StatusOK, "audience_show.html", page)
 }
 
-// handleAudienceSearch is the search-as-you-type fragment. Its URL names the
-// catalog version, so a matching response can be cached.
+// handleAudienceSearch is the search-as-you-type fragment. The URL names the
+// catalog version. Signed-out results with no save buttons carry no CSRF
+// token, so they keep a short private cache. A heart button includes the
+// token, and render then marks that response private and unstored.
 func (a *app) handleAudienceSearch(w http.ResponseWriter, r *http.Request) {
 	dj, s, ok := a.publicShow(w, r)
 	if !ok {
@@ -438,7 +440,8 @@ func (a *app) handleAudienceSearch(w http.ResponseWriter, r *http.Request) {
 		if query := q.Get("q"); strings.TrimSpace(query) != "" {
 			offset, _ := strconv.Atoi(q.Get("offset"))
 			page.Search = a.searchPage(r, *s.Catalog, query, max(offset, 0), audiencePageSize)
-			// Hearts change as songs are saved, so only signed-out results are cached.
+			// Hearts change as songs are saved, and those buttons carry a CSRF
+			// token. Only signed-out results for the current version are cached.
 			if !page.Hearts && q.Get("v") == strconv.Itoa(page.Search.Version) && page.Search.Error == "" {
 				w.Header().Set("Cache-Control", "private, max-age=300")
 			}

@@ -146,13 +146,18 @@ if (!window.queueReorder) {
   function saveMove(list, previous, id, after) {
     saving = true;
     const body = new URLSearchParams({ after });
-    fetch(`/requests/${encodeURIComponent(id)}/move`, {
+    const url = `/requests/${encodeURIComponent(id)}/move`;
+    fetch(url, {
       method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      credentials: "same-origin",
+      headers: window.djmCSRF.headers(url, { "Content-Type": "application/x-www-form-urlencoded" }),
       body,
     })
       .then((res) => {
-        if (!res.ok) restoreItems(list, previous);
+        if (!res.ok) {
+          restoreItems(list, previous);
+          if (res.status === 403) res.text().then((text) => window.djmCSRF.show(text));
+        }
       })
       .catch(() => restoreItems(list, previous))
       .finally(() => {

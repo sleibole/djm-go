@@ -2,6 +2,24 @@
 
 Product and implementation notes are in `PLAN.md`.
 
+## CSRF
+
+State-changing browser requests use the shared CSRF protection in `docs/development/CSRF.md`. HTML that includes the token is sent with `Cache-Control: private, no-store`. The anonymous `csrf` cookie is not a guest identity.
+
+- Use `{{csrfField}}` in every HTML form that changes state. Do not hand-write the hidden input.
+- HTMX picks up the token from the shared `htmx:configRequest` handler. Do not add per-control CSRF attributes.
+- Same-origin `fetch` calls use `djmCSRF.headers`. Do not send the token to another origin.
+- Do not disable or skip the check to make an endpoint work, and do not add a second token scheme.
+- A route exemption has to be narrow, explicit, and documented in `docs/development/CSRF.md`. There are none today.
+
+## Mail
+
+Development uses the console mail backend unless `DEV_ALLOW_SMTP` is the exact string `true` and SMTP settings are present. `SMTP_HOST` alone does not send. Startup fails if development is pointed at SMTP without that flag. `MAIL_BACKEND=console` stays on the console even when SMTP settings and the flag are present.
+
+`make dev-agent` sets `MAIL_BACKEND=console`, `DEV_ALLOW_SMTP=false`, and empty `SMTP_HOST`, `SMTP_USER`, and `SMTP_PASS` in the server process. A `.env` file or inherited shell variables cannot override that. Do not point an agent server at a real relay. Console lines from that process stay in its own `air.log`.
+
+Console mail logs the recipient and subject only. The check-your-email page shows a sign-in link only when `ENV=dev`, `SMTP_HOST` is empty, and `DEV_SHOW_MAGIC_LINK=true`. Production keeps its SMTP configuration and does not log message bodies.
+
 ## Development servers
 
 `make dev` is the personal server on port 8200. Do not start it, stop it, restart it, or kill whatever is listening there.

@@ -4,6 +4,7 @@
 <div class="narrow">
   <h1>New Catalog</h1>
   <form method="post" action="/catalogs">
+  {{csrfField}}
     {{if .Error}}<p role="alert" class="error">{{.Error}}</p>{{end}}
     <label>
       {{icon "folder-open"}} Name

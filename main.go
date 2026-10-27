@@ -243,6 +243,9 @@ func (a *app) routes() http.Handler {
 
 	mux.HandleFunc("/", a.notFound)
 
-	csrf := http.NewCrossOriginProtection()
-	return a.recoverPanic(a.logRequests(securityHeaders(a.loadUser(a.robotsHeader(csrf.Handler(trailingSlash(mux)))))))
+	// CrossOriginProtection rejects unsafe requests whose Fetch Metadata or
+	// Origin says they came from another site. The synchronizer token in
+	// csrfProtect covers clients that omit both headers. See docs/development/CSRF.md.
+	origin := http.NewCrossOriginProtection()
+	return a.recoverPanic(a.logRequests(securityHeaders(a.loadUser(a.robotsHeader(origin.Handler(trailingSlash(a.csrfProtect(mux))))))))
 }

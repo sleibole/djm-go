@@ -17,6 +17,7 @@
 </article>
 
 <form method="post" action="/admin/feedback/{{$f.ID}}">
+  {{csrfField}}
   <label>
     Status
     <select name="status">

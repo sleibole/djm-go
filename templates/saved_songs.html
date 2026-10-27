@@ -26,6 +26,7 @@
       {{template "memory_request" (memoryRequestView $p .ID (print "/me/saved/" .ID "/request") .SongTitle)}}
       {{end}}
       <form method="post" action="/me/saved/{{.ID}}/delete" class="inline" hx-post="/me/saved/{{.ID}}/delete" hx-target="#content" hx-swap="innerHTML show:none" hx-confirm="Remove {{.SongTitle}} from your saved songs?">
+  {{csrfField}}
         {{with $p.Show}}<input type="hidden" name="show" value="{{.Show.ID}}">{{end}}
         <button type="submit" class="outline danger" aria-label="Remove {{.SongTitle}}" title="Remove">{{icon "trash"}}</button>
       </form>

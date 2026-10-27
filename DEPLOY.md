@@ -131,7 +131,7 @@ ssh dokku@box config:set --no-restart djm \
 
 Production refuses to start without the Turnstile keys and without `SMTP_HOST`. `SMTP_USER` and `SMTP_PASS` may be empty. Set the mail and Turnstile values before deploying the image that enforces them. No `S3_BUCKET` (see "Backups").
 
-Do not set `DEV_SHOW_MAGIC_LINK` here. Production rejects that variable even when SMTP is configured, and `ENV=dev` must not be used on a host that anyone else can reach.
+Do not set `DEV_SHOW_MAGIC_LINK` or `DEV_ALLOW_SMTP` here. Production rejects both even when SMTP is configured. Leave `MAIL_BACKEND` unset so production uses SMTP. `ENV=dev` must not be used on a host that anyone else can reach.
 
 - Turnstile: add `next.djmagic.io` to the djmagic.io widget's hostnames in Cloudflare (or create a new widget).
 - SES: `djmagic.io` is already verified, so `noreply@djmagic.io` sends as-is. Use the SES SMTP region the Rails app uses.

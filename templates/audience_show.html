@@ -76,6 +76,7 @@
 
 {{define "audience_manual"}}
 <form method="post" action="{{.Path}}/requests">
+  {{csrfField}}
   <label>
     {{icon "music"}} Song title
     <input type="text" name="song_title" value="{{.Title}}" placeholder="Song title" required maxlength="200">
@@ -97,6 +98,7 @@
     <a href="{{$p.Path}}">Change song</a>
   </article>
   <form method="post" action="{{$p.Path}}/requests">
+  {{csrfField}}
     <input type="hidden" name="song" value="{{.Pick}}">
     {{with .Variant}}<input type="hidden" name="variant-{{$p.Picked.Song.ID}}" value="{{.}}">{{end}}
     {{template "audience_name_field" $p}}

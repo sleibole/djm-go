@@ -56,7 +56,8 @@ fi
 # .env is gitignored and may hold SMTP or cloud credentials. This repo has
 # no separate development-only secrets file. A missing .env is the normal
 # local configuration: the app uses its defaults, and make dev-agent sets
-# the listen address and storage paths itself.
+# the listen address, storage paths, and console mail backend itself.
+# SMTP values in .env are not used for delivery by an agent server.
 if [ -f "$ROOT/.env" ]; then
   env_line=".env already present; left it unchanged"
 else

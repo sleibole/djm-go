@@ -326,3 +326,76 @@ syncPasswordToggles(document);
     if (e.matches) setOpen(false);
   });
 })();
+
+// CSRF for HTMX and fetch. The token lives in a meta tag inside <body>, so a
+// boosted navigation that swaps the body picks up a rotated token. The listener
+// stays on document and is not registered per control.
+(function () {
+  const SAFE = { GET: 1, HEAD: 1, OPTIONS: 1, TRACE: 1 };
+
+  function token() {
+    const tags = document.querySelectorAll('meta[name="csrf-token"]');
+    const meta = tags[tags.length - 1];
+    return meta ? meta.getAttribute("content") || "" : "";
+  }
+
+  function sameOrigin(url) {
+    try {
+      return new URL(url, window.location.href).origin === window.location.origin;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  function show(message) {
+    const text = String(message || "").replace(/\s+/g, " ").trim().slice(0, 300)
+      || "Reload the page and try again.";
+    let banner = document.getElementById("csrf-error");
+    if (!banner) {
+      banner = document.createElement("p");
+      banner.id = "csrf-error";
+      banner.setAttribute("role", "alert");
+      banner.className = "error";
+      const main = document.getElementById("content") || document.body;
+      main.prepend(banner);
+    }
+    banner.textContent = text;
+  }
+
+  window.djmCSRF = {
+    token: token,
+    sameOrigin: sameOrigin,
+    // headers for a same-origin state-changing fetch. Cross-origin URLs are left alone.
+    headers: function (url, headers) {
+      const next = Object.assign({}, headers);
+      if (sameOrigin(url)) {
+        const value = token();
+        if (value) next["X-CSRF-Token"] = value;
+      }
+      return next;
+    },
+    show: show,
+  };
+
+  document.addEventListener("htmx:configRequest", (event) => {
+    const detail = event.detail || {};
+    const verb = String(detail.verb || "GET").toUpperCase();
+    if (SAFE[verb] || !sameOrigin(detail.path || "")) return;
+    const value = token();
+    if (!value) return;
+    detail.headers["X-CSRF-Token"] = value;
+  });
+
+  document.addEventListener("htmx:beforeSwap", (event) => {
+    const xhr = event.detail && event.detail.xhr;
+    if (!xhr || xhr.getResponseHeader("X-CSRF-Rejected") !== "1") return;
+    event.detail.shouldSwap = false;
+    show("Invalid or missing CSRF token. Reload the page and try again.");
+  });
+
+  document.addEventListener("htmx:responseError", (event) => {
+    const xhr = event.detail && event.detail.xhr;
+    if (!xhr || xhr.status !== 403 || xhr.getResponseHeader("X-CSRF-Rejected") === "1") return;
+    show(xhr.responseText);
+  });
+})();

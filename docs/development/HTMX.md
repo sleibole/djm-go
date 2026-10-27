@@ -225,7 +225,7 @@ GET reads. The query string is the resource. Boosted and unboosted GET forms nav
 
 POST changes state. After a successful POST that moves the user to another resource, respond with `303` and a `Location`. Refresh then repeats a GET. After a successful POST that stays on the screen — a toggle, an inline edit, a row action — respond with the updated fragment and do not redirect.
 
-htmx 2 encodes `GET` and `DELETE` parameters in the URL, not the body (`methodsThatUseUrlParams`). A `DELETE` from a button sends its fields on the query string. Prefer a small POST form for destructive actions if you want a body, a CSRF field, and a confirmation button that works without JavaScript. `DELETE` is fine when the action is idempotent and the URL already names the resource.
+htmx 2 encodes `GET` and `DELETE` parameters in the URL, not the body (`methodsThatUseUrlParams`). A `DELETE` from a button sends its fields on the query string. The CSRF check does not accept `csrf_token` from the query string. Prefer a small POST form for destructive actions so the hidden field is in the body and the button works without JavaScript. An htmx `DELETE` still sends `X-CSRF-Token` when the shared listener is loaded. `DELETE` is fine when the action is idempotent and the URL already names the resource.
 
 Disabled fields are not submitted. `hx-disabled-elt` disables after htmx has already collected the values, so the click still includes the submit button's name and value.
 
@@ -275,9 +275,7 @@ A file input does not switch the encoding by itself. Set `enctype="multipart/for
 
 ### CSRF
 
-Same-origin htmx requests send cookies. That is why a session works, and why a state-changing request still needs a CSRF check. Prefer a token in the form body, in a hidden input the template renders for every POST. The token then travels with boosted submits, fragment submits, and no-JS submits, and it updates when the form is re-rendered.
-
-`hx-headers` on `<body>` or `<html>` is inherited by requests, but a body swap does not update `<body>` or `<html>`. A token stored only there goes stale if it rotates, and it is easy to omit on a no-JS submit. Use it for a token that is stable for the life of the document, and still check it on the server. Do not skip the check because the caller sent `HX-Request`.
+Unsafe htmx requests get `X-CSRF-Token` from the document listener in `static/app.js`. The token is the `<meta name="csrf-token">` inside `<body>`, so a body swap picks up a new value after login or logout. POST forms also include `{{csrfField}}`, which is what a no-JS submit sends. Do not put the token in `hx-headers` on `<body>`: that element is not replaced when its inner HTML is swapped. Details and the rules for new endpoints are in `docs/development/CSRF.md`.
 
 ### Fragment or navigation
 

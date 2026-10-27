@@ -25,14 +25,19 @@ type mailer interface {
 	Send(to, subject, body string) error
 }
 
-// consoleMailer logs emails instead of sending them, for development.
+// consoleMailer records the recipient and subject and does not send.
+// The body can contain a sign-in link. It is never logged, in development
+// or in production. The check-your-email page is the only place that link
+// is shown, and only for the DEV_SHOW_MAGIC_LINK opt-in.
 type consoleMailer struct {
 	logger *slog.Logger
 }
 
 func (m consoleMailer) Send(to, subject, _ string) error {
 	// The body can contain a magic-link token. Never log it.
-	m.logger.Info("email not sent (no SMTP_HOST configured)", "to", to, "subject", subject)
+	if m.logger != nil {
+		m.logger.Info("email not sent (console mail backend)", "to", to, "subject", subject)
+	}
 	return nil
 }
 
@@ -52,6 +57,16 @@ type smtpMailer struct {
 
 // errSMTPCleartext is returned when production mail would otherwise go out unencrypted.
 var errSMTPCleartext = errors.New("smtp: refusing to send without TLS")
+
+// smtpNetDial and smtpTLSDial open the SMTP connection. Tests replace both
+// so a test process cannot reach a real relay.
+var smtpNetDial = func(deadline time.Time, network, addr string) (net.Conn, error) {
+	return (&net.Dialer{Deadline: deadline}).Dial(network, addr)
+}
+
+var smtpTLSDial = func(deadline time.Time, network, addr string, config *tls.Config) (net.Conn, error) {
+	return tls.DialWithDialer(&net.Dialer{Deadline: deadline}, network, addr, config)
+}
 
 func (m smtpMailer) Send(to, subject, body string) error {
 	host, _, err := net.SplitHostPort(m.addr)
@@ -86,13 +101,12 @@ func (m smtpMailer) Send(to, subject, body string) error {
 // every later read and write on that connection.
 func (m smtpMailer) sendOnce(host, to string, msg []byte) error {
 	deadline := time.Now().Add(m.timeout)
-	dialer := &net.Dialer{Deadline: deadline}
 	var conn net.Conn
 	var err error
 	if m.implicitTLS {
-		conn, err = tls.DialWithDialer(dialer, "tcp", m.addr, &tls.Config{ServerName: host})
+		conn, err = smtpTLSDial(deadline, "tcp", m.addr, &tls.Config{ServerName: host})
 	} else {
-		conn, err = dialer.Dial("tcp", m.addr)
+		conn, err = smtpNetDial(deadline, "tcp", m.addr)
 	}
 	if err != nil {
 		return err
@@ -171,21 +185,46 @@ func transientSMTPError(err error) bool {
 }
 
 func newMailer(cfg config, logger *slog.Logger) (mailer, error) {
-	if cfg.SMTPHost == "" {
-		return consoleMailer{logger: logger}, nil
-	}
-	from, err := mail.ParseAddress(cfg.MailFrom)
+	backend, err := cfg.resolveMailBackend()
 	if err != nil {
-		return nil, fmt.Errorf("MAIL_FROM: %w", err)
+		return nil, err
 	}
-	return smtpMailer{
-		addr:        net.JoinHostPort(cfg.SMTPHost, cfg.SMTPPort),
-		username:    cfg.SMTPUser,
-		password:    cfg.SMTPPass,
-		from:        from,
-		timeout:     smtpSendTimeout,
-		retryAfter:  smtpRetryAfter,
-		requireTLS:  cfg.Env == "prod",
-		implicitTLS: cfg.SMTPPort == "465",
-	}, nil
+	logMailBackend(logger, backend, cfg.SMTPHost != "")
+	switch backend {
+	case mailBackendConsole:
+		return consoleMailer{logger: logger}, nil
+	case mailBackendSMTP:
+		if cfg.SMTPHost == "" {
+			return nil, errors.New("SMTP mail requires SMTP_HOST")
+		}
+		from, err := mail.ParseAddress(cfg.MailFrom)
+		if err != nil {
+			return nil, fmt.Errorf("MAIL_FROM: %w", err)
+		}
+		return smtpMailer{
+			addr:        net.JoinHostPort(cfg.SMTPHost, cfg.SMTPPort),
+			username:    cfg.SMTPUser,
+			password:    cfg.SMTPPass,
+			from:        from,
+			timeout:     smtpSendTimeout,
+			retryAfter:  smtpRetryAfter,
+			requireTLS:  cfg.Env == "prod",
+			implicitTLS: cfg.SMTPPort == "465",
+		}, nil
+	default:
+		return nil, fmt.Errorf("mail backend %q is not available", backend)
+	}
+}
+
+// logMailBackend names the backend that will handle mail. It does not record
+// hosts, usernames, passwords, or message contents.
+func logMailBackend(logger *slog.Logger, backend string, smtpConfigured bool) {
+	if logger == nil {
+		return
+	}
+	if backend == mailBackendConsole && smtpConfigured {
+		logger.Info("mail backend", "backend", backend, "smtp_settings", "ignored")
+		return
+	}
+	logger.Info("mail backend", "backend", backend)
 }

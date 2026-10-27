@@ -121,6 +121,7 @@
 {{define "audience_cancel"}}
 <form method="post" action="{{.Path}}/requests/{{.Row.ID}}/cancel" hx-post="{{.Path}}/requests/{{.Row.ID}}/cancel"
       hx-target="#content" hx-swap="innerHTML show:none" hx-confirm="Cancel your request for {{.Row.SongTitle}}?">
+  {{csrfField}}
   <button type="submit" class="outline danger" title="Cancel request" aria-label="Cancel your request for {{.Row.SongTitle}}">{{icon "x"}}</button>
 </form>
 {{end}}

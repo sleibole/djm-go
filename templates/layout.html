@@ -96,6 +96,7 @@
   {{block "scripts" .}}{{end}}
 </head>
 <body id="body" hx-boost="true" hx-target="body" hx-swap="innerHTML">
+  {{if .CSRFToken}}<meta name="csrf-token" content="{{.CSRFToken}}">{{end}}
   {{block "body" .}}
   {{template "page_meta" .}}
   {{if .Impersonating}}{{with .User}}
@@ -103,6 +104,7 @@
     <div class="container">
       <span>{{icon "shield"}} Logged in as <strong>{{.Email}}</strong></span>
       <form method="post" action="/admin/return" class="inline">
+  {{csrfField}}
         <button type="submit" class="contrast">Return to admin</button>
       </form>
     </div>
@@ -139,6 +141,7 @@
         <li><a href="/account" aria-label="Account" title="Account">{{icon "user"}}<span class="nav-text">Account</span></a></li>
         <li>
           <form method="post" action="/logout" class="inline">
+  {{csrfField}}
             <button type="submit" class="outline secondary" aria-label="Log out" title="Log out">{{icon "logout"}}<span class="nav-text">Log out</span></button>
           </form>
         </li>

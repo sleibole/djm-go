@@ -28,6 +28,7 @@
   <summary>{{icon "file-upload"}} Upload CSV</summary>
   <p>Upload a CSV file to replace this catalog's songs. The file must include <code>title</code> and <code>artist</code> columns. See the <a href="/docs/csv-format">CSV format guide</a> for details.</p>
   <form method="post" action="/catalogs/{{$c.ID}}/upload" enctype="multipart/form-data" hx-encoding="multipart/form-data" data-busy="Uploading…">
+  {{csrfField}}
     <label>
       CSV File
       <input type="file" name="file" accept=".csv" required>
@@ -39,6 +40,7 @@
 <details class="section-panel"{{if not $c.ActiveVersion}} open{{end}}>
   <summary>{{icon "settings"}} Settings</summary>
   <form method="post" action="/catalogs/{{$c.ID}}">
+  {{csrfField}}
     <label>
       Show selector for song variants
       <select name="variant_display" aria-describedby="variant-display-help">
@@ -63,6 +65,7 @@
       </header>
       <p>This will permanently delete the catalog and <strong>all associated shows and request history</strong>. This action cannot be undone.</p>
       <form method="post" action="/catalogs/{{$c.ID}}/delete">
+  {{csrfField}}
         <button type="submit" class="contrast">Delete catalog</button>
       </form>
     </article>

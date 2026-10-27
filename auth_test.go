@@ -12,11 +12,15 @@ import (
 
 // browser keeps cookies across requests to one app, like a single browser would.
 type browser struct {
-	t       *testing.T
-	h       http.Handler
-	cookies map[string]*http.Cookie
-	ip      string
+	t        *testing.T
+	h        http.Handler
+	cookies  map[string]*http.Cookie
+	ip       string
+	csrf     string
+	skipCSRF bool // set by tests that want a missing token
 }
+
+var csrfMetaPattern = regexp.MustCompile(`<meta name="csrf-token" content="([^"]+)">`)
 
 func newBrowser(t *testing.T, a *app) *browser {
 	return &browser{t: t, h: a.routes(), cookies: map[string]*http.Cookie{}, ip: "192.0.2.1"}
@@ -24,6 +28,44 @@ func newBrowser(t *testing.T, a *app) *browser {
 
 func (b *browser) do(req *http.Request) *httptest.ResponseRecorder {
 	b.t.Helper()
+	if b.needsCSRF(req) {
+		if b.csrf == "" {
+			b.primeCSRF()
+		}
+		req.Header.Set(csrfHeader, b.csrf)
+	}
+	return b.roundTrip(req)
+}
+
+// needsCSRF reports whether this request should carry the token a real page would send.
+func (b *browser) needsCSRF(req *http.Request) bool {
+	if b.skipCSRF || safeMethod(req.Method) || req.Header.Get(csrfHeader) != "" {
+		return false
+	}
+	return true
+}
+
+// primeCSRF loads a page so the jar has the cookie and b.csrf has the matching token.
+func (b *browser) primeCSRF() {
+	b.t.Helper()
+	rec := b.roundTrip(httptest.NewRequest(http.MethodGet, "/", nil))
+	if b.csrf == "" {
+		b.t.Fatalf("csrf token missing from home page\n%s", rec.Body.String())
+	}
+}
+
+func sessionCookieValue(cookies map[string]*http.Cookie) string {
+	for _, name := range []string{sessionCookie, "__Host-" + sessionCookie} {
+		if c := cookies[name]; c != nil {
+			return name + "=" + c.Value
+		}
+	}
+	return ""
+}
+
+func (b *browser) roundTrip(req *http.Request) *httptest.ResponseRecorder {
+	b.t.Helper()
+	before := sessionCookieValue(b.cookies)
 	req.RemoteAddr = b.ip + ":1234"
 	for _, c := range b.cookies {
 		req.AddCookie(c)
@@ -36,6 +78,11 @@ func (b *browser) do(req *http.Request) *httptest.ResponseRecorder {
 		} else {
 			b.cookies[c.Name] = c
 		}
+	}
+	if m := csrfMetaPattern.FindStringSubmatch(rec.Body.String()); m != nil {
+		b.csrf = m[1]
+	} else if sessionCookieValue(b.cookies) != before {
+		b.csrf = ""
 	}
 	return rec
 }

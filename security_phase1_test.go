@@ -95,23 +95,23 @@ func TestPasswordRemovalSignsOutOtherSessions(t *testing.T) {
 func TestSensitivePagesAreNotStored(t *testing.T) {
 	a := newTestApp(t)
 	anon := newBrowser(t, a)
-	if cc := anon.get("/").Header().Get("Cache-Control"); cc != "" {
+	if cc := anon.get("/").Header().Get("Cache-Control"); cc != "private, no-store" {
 		t.Fatalf("public home: %q", cc)
 	}
 
 	signedIn := newBrowser(t, a)
 	signIn(t, a, signedIn, "dj@example.com", "dj")
-	if cc := signedIn.get("/").Header().Get("Cache-Control"); cc != "no-store" {
+	if cc := signedIn.get("/").Header().Get("Cache-Control"); cc != "private, no-store" {
 		t.Fatalf("signed-in home: %q", cc)
 	}
-	if cc := signedIn.get("/account").Header().Get("Cache-Control"); cc != "no-store" {
+	if cc := signedIn.get("/account").Header().Get("Cache-Control"); cc != "private, no-store" {
 		t.Fatalf("account: %q", cc)
 	}
 
 	if rec := anon.post("/signin/link", url.Values{"email": {"link@example.com"}}); rec.Code != http.StatusOK {
 		t.Fatalf("link request: %d", rec.Code)
 	}
-	if cc := anon.get(lastLink(t, a, "link@example.com")).Header().Get("Cache-Control"); cc != "no-store" {
+	if cc := anon.get(lastLink(t, a, "link@example.com")).Header().Get("Cache-Control"); cc != "private, no-store" {
 		t.Fatalf("magic-link page: %q", cc)
 	}
 
@@ -121,13 +121,13 @@ func TestSensitivePagesAreNotStored(t *testing.T) {
 		t.Fatalf("request: %d\n%s", rec.Code, rec.Body.String())
 	}
 	queue := g.get(path + "/queue")
-	if cc := queue.Header().Get("Cache-Control"); cc != "no-store" {
+	if cc := queue.Header().Get("Cache-Control"); cc != "private, no-store" {
 		t.Fatalf("queue: %q", cc)
 	}
-	if cc := anon.get("/docs/csv-format").Header().Get("Cache-Control"); cc != "" {
+	if cc := anon.get("/docs/csv-format").Header().Get("Cache-Control"); cc != "private, no-store" {
 		t.Fatalf("public docs: %q", cc)
 	}
-	if cc := anon.get("/feedback").Header().Get("Cache-Control"); cc != "" {
+	if cc := anon.get("/feedback").Header().Get("Cache-Control"); cc != "private, no-store" {
 		t.Fatalf("public feedback: %q", cc)
 	}
 }
@@ -199,7 +199,7 @@ func TestProductionCookiesUseHostPrefix(t *testing.T) {
 		t.Fatal("queue did not recognize the guest")
 	}
 	again := alice.get(path + "/queue")
-	if again.Header().Get("Cache-Control") != "no-store" || !strings.Contains(again.Body.String(), `class="queue-you"`) {
+	if again.Header().Get("Cache-Control") != "private, no-store" || !strings.Contains(again.Body.String(), `class="queue-you"`) {
 		t.Fatalf("refreshed queue: cache=%q", again.Header().Get("Cache-Control"))
 	}
 

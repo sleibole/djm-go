@@ -34,6 +34,8 @@ func loadViews(fsys fs.FS, static assets) (*views, error) {
 		"localTime":  localTime,
 		"qrSVG":      qrSVG,
 		"showPath":   showPath,
+		// Replaced for each request in renderBlock. Parsing needs the name present.
+		"csrfField": func() template.HTML { return "" },
 
 		"cancelView":        cancelView,
 		"memoryRequestView": memoryRequestView,
@@ -63,6 +65,7 @@ type view struct {
 	User             *User
 	TurnstileSiteKey string
 	Impersonating    bool // an admin is using "log in as"
+	CSRFToken        string
 	Meta             seoMeta
 	Data             any
 }
@@ -96,20 +99,39 @@ func (a *app) renderBlock(w http.ResponseWriter, r *http.Request, status int, pa
 		return
 	}
 
+	token, err := a.ensureCSRFToken(w, r)
+	if err != nil {
+		a.serverError(w, r, err)
+		return
+	}
+	// Each response gets its own function so the token is not shared across requests.
+	cloned, err := t.Clone()
+	if err != nil {
+		a.serverError(w, r, err)
+		return
+	}
+	cloned.Funcs(template.FuncMap{
+		"csrfField": func() template.HTML { return csrfFieldHTML(token) },
+	})
+
 	// Render to a buffer first so a template error doesn't send a half-written page.
 	var buf bytes.Buffer
 	v := view{BaseURL: a.cfg.BaseURL, User: currentUser(r), TurnstileSiteKey: a.cfg.TurnstileSiteKey,
-		Impersonating: impersonatorID(r) != 0, Meta: a.seoMeta(r, status, block), Data: data}
-	if err := t.ExecuteTemplate(&buf, block, v); err != nil {
+		Impersonating: impersonatorID(r) != 0, CSRFToken: token, Meta: a.seoMeta(r, status, block), Data: data}
+	if err := cloned.ExecuteTemplate(&buf, block, v); err != nil {
 		a.serverError(w, r, err)
 		return
 	}
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	// A handler may have set a more specific policy first, such as the
-	// signed-out catalog search cache. Don't replace that.
-	if w.Header().Get("Cache-Control") == "" && noStoreHTML(r) {
-		w.Header().Set("Cache-Control", "no-store")
+	// A body that contains this browser's token must not sit in a shared
+	// cache, and the browser must not replay it after the token rotates.
+	// A fragment with no token keeps the handler's policy, such as the
+	// signed-out catalog search cache.
+	if bytes.Contains(buf.Bytes(), []byte("csrf-token")) || bytes.Contains(buf.Bytes(), []byte(`name="csrf_token"`)) {
+		w.Header().Set("Cache-Control", "private, no-store")
+	} else if w.Header().Get("Cache-Control") == "" && noStoreHTML(r) {
+		w.Header().Set("Cache-Control", "private, no-store")
 	}
 	// The same URL can be a full document or a fragment, and the shell
 	// changes when a session or guest cookie is present.
@@ -122,14 +144,8 @@ func (a *app) renderBlock(w http.ResponseWriter, r *http.Request, status int, pa
 }
 
 // noStoreHTML is true for pages that are personalized or that carry a secret
-// in the URL. Anonymous public pages and static files are left alone.
-//
-// Audience catalog search sets its own policy: private caching when the
-// results have no hearts, and no header when they do. That choice stays
-// with the handler.
-//
-// A guest cookie personalizes show and profile pages (queue banner, name
-// prefill) and the saved-song pages. Those responses must not be stored.
+// in the URL. Search sets its own policy and is left alone when the fragment
+// itself has no CSRF token. Static files never reach render.
 func noStoreHTML(r *http.Request) bool {
 	p := r.URL.Path
 	if strings.Contains(p, "/dj/") && strings.HasSuffix(p, "/search") {

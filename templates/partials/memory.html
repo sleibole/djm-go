@@ -2,6 +2,7 @@
 {{define "heart"}}
 <form method="post" class="heart-toggle inline" action="{{if .SavedID}}/me/saved/{{.SavedID}}/delete{{else}}/me/saved{{end}}"
       hx-post="{{if .SavedID}}/me/saved/{{.SavedID}}/delete{{else}}/me/saved{{end}}" hx-include="closest tr" hx-target="this" hx-swap="outerHTML">
+  {{csrfField}}
   <input type="hidden" name="next" value="{{.Next}}">
   {{with .ShowID}}<input type="hidden" name="show" value="{{.}}">{{end}}
   {{with .Pick}}<input type="hidden" name="song" value="{{.}}">{{end}}
@@ -38,6 +39,7 @@
   <summary role="button" class="outline">Request</summary>
   {{with .Error}}<p role="alert" class="error">{{.}}</p>{{end}}
   <form method="post" action="{{.Action}}">
+  {{csrfField}}
     <input type="hidden" name="show" value="{{.ShowID}}">
     <label>
       {{icon "user"}} Your name

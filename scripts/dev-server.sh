@@ -8,6 +8,12 @@
 # command line still matches this instance. A reused pid or an unrelated
 # listener is left alone. Ports 8080, 8100-8199, and 8200 are never used.
 #
+# Mail stays on the console backend. The start command sets MAIL_BACKEND,
+# DEV_ALLOW_SMTP, and the SMTP credential variables in this process before
+# Air starts. loadDotEnv leaves existing variables alone, so a .env file or
+# inherited shell values cannot switch the server to a real relay. Console
+# lines from that process stay in the instance's own air.log.
+#
 # The port registry is shared by every worktree of this repository. It lives
 # under the Git common directory unless DEV_SERVER_PORT_REGISTRY is set.
 # A port is claimed with mkdir, which is atomic. A claim whose owner is still
@@ -964,6 +970,16 @@ cmd_start() {
   refuse_personal_data BLOB_DIR "$BLOB_DIR"
   refuse_personal_data CATALOG_CACHE_DIR "$CATALOG_CACHE_DIR"
   mkdir -p "$INSTANCE_DIR/data" "$INSTANCE_DIR/blobs" "$INSTANCE_DIR/catalogs"
+
+  # Browser checks use this server. Force the console backend after every
+  # other assignment so .env and the inherited environment cannot send mail.
+  # Empty SMTP variables still count as set, which stops loadDotEnv from
+  # filling them in from a file.
+  export MAIL_BACKEND=console
+  export DEV_ALLOW_SMTP=false
+  export SMTP_HOST=
+  export SMTP_USER=
+  export SMTP_PASS=
 
   # The config path is on the command line so stop can recognize the process.
   if [ -n "${DEV_SERVER_COMMAND:-}" ]; then

@@ -58,7 +58,7 @@ A new head tag that has to follow the page belongs in that template and in the s
 
 HTML varies on `HX-Request`, `HX-Boosted`, `HX-History-Restore-Request`, `HX-Target`, and `Cookie`, so a fragment is not stored as the document and a signed-in response is not stored as the anonymous page.
 
-Signed-in HTML is `no-store`. A guest cookie on `/dj/` or `/me/` is `no-store` too, because those pages include that guest's queue banner or saved songs. Magic-link URLs are `no-store`. Anonymous public pages are left cacheable.
+HTML responses are `Cache-Control: private, no-store` because they carry a CSRF token. Hashed static files stay publicly cacheable. Magic-link URLs are included in the HTML policy. Indexing is unchanged: a crawler can still fetch a public page, and `X-Robots-Tag` decides whether it may index it.
 
 ## Turning indexing on
 

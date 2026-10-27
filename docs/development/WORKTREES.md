@@ -24,7 +24,7 @@ It prints a worktree id, `wt-` plus the first 12 hex characters of the SHA-256 o
 
 `.env` is not copied from the primary checkout. That file is gitignored and may contain SMTP or cloud credentials, and this repository has no separate development-only secrets file. A missing `.env` is the normal local configuration. The app uses its defaults. `make dev` and `make dev-agent` set the listen address themselves, and an agent server also sets its database and storage paths, which win over anything in `.env`.
 
-To send mail through MailHog, copy `.env.example` to `.env` in that worktree, or copy a `.env` you already know is for local development. Do not copy production credentials. Do not commit `.env`.
+To send mail through MailHog from the personal server, copy `.env.example` to `.env` in that worktree and set `SMTP_HOST=localhost`, `SMTP_PORT=1025`, and `DEV_ALLOW_SMTP=true`. Do not copy production credentials. Do not commit `.env`. Named agent servers do not use that file's mail settings.
 
 The Go module cache is shared by every checkout. That cache is safe to share. Mutable directories are not: each worktree has its own `tmp/`, `data/`, and `tmp/dev-agents/`.
 
@@ -39,7 +39,7 @@ make dev-agent NAME=<unique-name>
 
 `NAME` is letters, digits, hyphens, and underscores, up to 32 characters. The command stays in the foreground. When the server accepts requests it prints `dev-agent: ready` with the URL. The port comes from 8300 through 8399. Open that URL in a browser. The personal server remains http://localhost:8200.
 
-The process listens on that port and stores its SQLite database, blobs, and catalog cache under `tmp/dev-agents/<name>/` in this worktree. The hourly cleanup inside the process deletes rows and files in that database and blob directory only. Nothing in development consumes a shared queue. With `SMTP_HOST` unset, the app logs magic links and does not send mail. MailHog, if you point SMTP at it, is one local inbox shared by every server on the machine.
+The process listens on that port and stores its SQLite database, blobs, and catalog cache under `tmp/dev-agents/<name>/` in this worktree. The hourly cleanup inside the process deletes rows and files in that database and blob directory only. Nothing in development consumes a shared queue. `make dev-agent` sets `MAIL_BACKEND=console` and `DEV_ALLOW_SMTP=false`, and clears `SMTP_HOST`, `SMTP_USER`, and `SMTP_PASS` in the process environment. A `.env` file or inherited shell variables cannot switch that server to a real relay. Console output for that process stays in `tmp/dev-agents/<name>/air.log`. MailHog is only for the personal server, and only with `DEV_ALLOW_SMTP=true`.
 
 `make dev-list` prints each server started from this worktree as:
 

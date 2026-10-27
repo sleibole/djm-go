@@ -6,6 +6,7 @@
   {{if .Valid}}
   <h1>Signing you in…</h1>
   <form method="post" class="auth-form" data-autosubmit>
+  {{csrfField}}
     <input type="hidden" name="next" value="{{.Next}}">
     <button type="submit">Continue as {{.Email}}</button>
   </form>

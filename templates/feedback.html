@@ -9,6 +9,7 @@
   </hgroup>
   {{with .Error}}<p role="alert" class="error">{{.}}</p>{{end}}
   <form method="post" action="/feedback">
+  {{csrfField}}
     <input type="hidden" name="page_url" value="{{.PageURL}}">
     <label>
       Category

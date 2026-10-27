@@ -110,7 +110,7 @@ These are changes beyond a straight port. Each one is a suggestion to accept or 
 | Legacy encodings | `golang.org/x/text/encoding/charmap` (Windows-1252, ISO-8859-1) | |
 | Object storage | Tigris via an S3 client (`aws-sdk-go-v2/service/s3` or `minio-go`) behind a small `blobStore` interface | Local-directory implementation (`dirBlobStore`) for dev and tests, done in phase 2. The Tigris implementation comes with deployment in phase 6 |
 | Backups | Litestream, replicating the app DB to Tigris | Catalog DBs are not backed up; they are already in Tigris |
-| Email | `net/smtp` to Amazon SES SMTP | Console logger in dev; MailHog optional |
+| Email | `net/smtp` to Amazon SES SMTP | Console backend in dev. SMTP in dev requires `DEV_ALLOW_SMTP=true`. MailHog is that opt-in, on the personal server only. |
 | Bot protection | Cloudflare Turnstile | Same as both existing apps |
 | Passwords | `golang.org/x/crypto/bcrypt` | |
 | QR codes | `rsc.io/qr` | Rendered as inline SVG in the host's share dialog and on the display page |
@@ -136,7 +136,7 @@ djm/
 ├── turnstile.go
 ├── mail.go
 ├── ratelimit.go
-├── middleware.go        # logging, recovery, security headers, CSRF (http.CrossOriginProtection)
+├── middleware.go        # logging, recovery, security headers
 ├── render.go
 ├── blobstore.go         # interface + local-dir implementation (Tigris in phase 6)
 ├── csv_read.go          # CSV reader matching Ruby's liberal_parsing
@@ -507,7 +507,7 @@ Image fixes to make while porting:
 
 ### Security
 
-Same rules as track-anything: hashed session and magic tokens, `HttpOnly; Secure; SameSite=Lax` cookies, `http.CrossOriginProtection` on non-GET requests, `safeNext` redirects, security headers, trusted client IP header only when set explicitly. Never show an email on an audience-facing page. The guest cookie holds a random token; the database stores its hash.
+Same rules as track-anything: hashed session and magic tokens, `HttpOnly; Secure; SameSite=Lax` cookies, `http.CrossOriginProtection` plus a session-bound CSRF token on unsafe requests (see `docs/development/CSRF.md`), `safeNext` redirects, security headers, trusted client IP header only when set explicitly. Never show an email on an audience-facing page. The guest cookie holds a random token; the database stores its hash.
 
 ### Configuration
 
@@ -521,7 +521,7 @@ Same rules as track-anything: hashed session and magic tokens, `HttpOnly; Secure
 | `BLOB_DIR` | Directory for the local blob store (default `data/blobs`) |
 | `BLOB_BACKEND` | `local` (dev/tests) or `s3` (phase 6) |
 | `S3_ENDPOINT`, `S3_BUCKET`, `S3_REGION`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` | Tigris (phase 6) |
-| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM` | Email (SES SMTP credentials in production) |
+| `MAIL_BACKEND`, `DEV_ALLOW_SMTP`, `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM` | Email. Production uses SES SMTP. Development uses the console unless `DEV_ALLOW_SMTP=true`. |
 | `TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET_KEY` | Bot protection |
 | `TRUSTED_IP_HEADER` | `Fly-Client-IP` in production; empty in dev. `CF-Connecting-IP` and `X-Forwarded-For` accepted for later setups |
 
@@ -692,7 +692,7 @@ How it works (`audience.go`, `qr.go`, `templates/dj_profile.html`, `audience_sho
 - **Identity.** A guest gets a random token in an `HttpOnly` cookie (`guest`, 400 days) the first time they request a song, not when they only look; the database stores its sha256 in `audience_profiles`. A signed-in account uses a profile keyed by its user instead, with no cookie (phase 5 extended this from audience accounts to every role). An unknown cookie is cleared. `last_seen_at` is touched at most hourly.
 - **DJ profile** (`/dj/{handle}`): Live Now with "Browse Songs & Request" (catalog) or "Make a Request", Upcoming, or an empty message. Unknown handle: "DJ Not Found". Unknown show: "Show Not Found" with a link back to the DJ.
 - **Request page.** With a catalog: Step 1 searches as you type (HTMX, 25 results with Load more), Select picks a song (and version or ID when the catalog shows them), Step 2 asks for the name. Without JavaScript, the search box and Select buttons are plain GET forms, so the same steps work. Freeform: "Can't find your song?" under the search when the show allows it, or "Request a Song" when the show has no catalog. The name field fills in the name from this show, else the last name used at any show. At the song limit the form is replaced by Rails' message.
-- **Search fragment** URLs carry the catalog version (`?v=`); a response for the current version is `Cache-Control: private, max-age=300`.
+- **Search fragment** URLs carry the catalog version (`?v=`). The response is `Cache-Control: private, no-store` because the HTML includes the CSRF token.
 - **Requesting** checks, in order: the show is live (Rails' scheduled and ended messages), a catalog pick or a title, the name (Rails' messages), then the rate limit (10 per IP per show per 10 minutes: "You're sending requests too quickly. Please wait a few minutes and try again."). In one transaction it finds or creates this profile's participant (renaming it if the name changed), checks the song limit, and creates the request (`pending` with approval, else queued at the bottom). It redirects to the queue page with Rails' notice.
 - **Queue page** polls every 5 seconds while the show is live. It shows a callout ("You're up!", "You're up next!", or "You're in the queue!" with "You are number N of M." / "Your spots: #2, #5 of 9." and the wait estimate), Now Playing with "(That's you!)", the queue with the visitor's rows highlighted, Your Pending Requests, and Rejected Requests with the reason. Signed-out visitors get the "Create a free account" tip.
 - **Cancel:** an X on the visitor's own pending or queued rows, with a confirmation. Anyone else's request is a 404; one that has moved on gives "This request can no longer be canceled."; an ended show gives "This show has ended."

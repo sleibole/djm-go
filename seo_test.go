@@ -226,7 +226,7 @@ func TestMagicLinkMetadataOmitsTheAddress(t *testing.T) {
 	if rec.Code != http.StatusOK {
 		t.Fatalf("confirm page %d", rec.Code)
 	}
-	if rec.Header().Get("X-Robots-Tag") != "noindex, nofollow" || rec.Header().Get("Cache-Control") != "no-store" {
+	if rec.Header().Get("X-Robots-Tag") != "noindex, nofollow" || rec.Header().Get("Cache-Control") != "private, no-store" {
 		t.Fatalf("magic link cache %q robots %q", rec.Header().Get("Cache-Control"), rec.Header().Get("X-Robots-Tag"))
 	}
 	desc := metaContent(rec.Body.String(), "description")
@@ -313,7 +313,7 @@ func TestGuestShowPageIsNotStored(t *testing.T) {
 	a := newTestApp(t)
 	_, _, path := audienceShow(t, a, url.Values{"name": {"Friday"}})
 	anon := newBrowser(t, a)
-	if cc := anon.get(path).Header().Get("Cache-Control"); cc != "" {
+	if cc := anon.get(path).Header().Get("Cache-Control"); cc != "private, no-store" {
 		t.Fatalf("anonymous show cache %q", cc)
 	}
 	if vary := anon.get(path).Header().Get("Vary"); !strings.Contains(vary, "Cookie") {
@@ -324,10 +324,10 @@ func TestGuestShowPageIsNotStored(t *testing.T) {
 	if rec := request(g, path, "Alice", "Hello"); rec.Code != http.StatusSeeOther {
 		t.Fatalf("request %d", rec.Code)
 	}
-	if cc := g.get(path).Header().Get("Cache-Control"); cc != "no-store" {
+	if cc := g.get(path).Header().Get("Cache-Control"); cc != "private, no-store" {
 		t.Fatalf("guest show cache %q", cc)
 	}
-	if cc := g.get(path + "/queue").Header().Get("Cache-Control"); cc != "no-store" {
+	if cc := g.get(path + "/queue").Header().Get("Cache-Control"); cc != "private, no-store" {
 		t.Fatalf("queue cache %q", cc)
 	}
 }

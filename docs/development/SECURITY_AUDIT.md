@@ -7,12 +7,12 @@ Date: 2026-10-23. Updated the same day after the Phase 1 fixes below. Scope: thi
 Implemented in this repository:
 
 - Go is pinned to 1.27.3 in `go.mod` and `Dockerfile`. `go test ./...` passes. `govulncheck ./...` on Go 1.27.3 reports no reachable vulnerabilities. `golang.org/x/crypto/openpgp` (`GO-2026-5932`) is still an unused indirect requirement and is not called.
-- `consoleMailer` logs the recipient and subject only. Production `validate` fails when `SMTP_HOST` is empty, and also when `DEV_SHOW_MAGIC_LINK` is set. SMTP user and password stay optional. The check-your-email page includes the URL only when `ENV` is `dev`, `SMTP_HOST` is empty, and `DEV_SHOW_MAGIC_LINK` is the exact string `true`. The handler also refuses when `ENV` is not `dev`.
+- `consoleMailer` logs the recipient and subject only. Production `validate` fails when `SMTP_HOST` is empty, and also when `DEV_SHOW_MAGIC_LINK` or `DEV_ALLOW_SMTP` is set. SMTP user and password stay optional. Development does not send SMTP mail unless `DEV_ALLOW_SMTP` is the exact string `true`. `MAIL_BACKEND=console` keeps the console backend even when SMTP settings are present. Named agent servers set that and clear SMTP credentials in the process environment. The check-your-email page includes the URL only when `ENV` is `dev`, `SMTP_HOST` is empty, and `DEV_SHOW_MAGIC_LINK` is the exact string `true`. The handler also refuses when `ENV` is not `dev`.
 - Removing a password deletes every other session for that user and keeps the current one.
-- Personalized HTML and `/auth/` and audience `/queue` responses get `Cache-Control: no-store` when the handler has not already set a cache policy. Signed-out audience search still sets `private, max-age=300`. Signed-in audience search with hearts still sends no `Cache-Control` header, which is what `TestSavedSongsAndSingAgain` locks in. Public pages without a session stay cacheable.
+- HTML rendered for a browser sends `Cache-Control: private, no-store`. That includes public pages, search fragments, and signed-in pages, because each response carries a CSRF token. Hashed static files stay `public, max-age=31536000, immutable`.
 - When `ENV` is not `dev`, the cookies are `__Host-session` and `__Host-guest` (Secure, Path=/, no Domain). Development keeps `session` and `guest`. Production does not read the unprefixed names. The first production deploy signs everyone out and detaches in-progress guest browsers.
 
-Not implemented, on purpose: CSP enforcement, CSRF tokens, HSTS, nginx log redaction, and any change to `Fly-Client-IP` trust. Those are written up below. `Fly-Client-IP` stays a separate infrastructure hardening pass.
+Not implemented, on purpose: CSP enforcement, HSTS, nginx log redaction, and any change to `Fly-Client-IP` trust. Those are written up below. `Fly-Client-IP` stays a separate infrastructure hardening pass. CSRF tokens are now implemented; see `docs/development/CSRF.md`.
 
 ### Browser check
 
@@ -49,11 +49,9 @@ Referrer-Policy: same-origin
 
 Also missing from the app: `Strict-Transport-Security`, `Permissions-Policy`, and `X-Frame-Options` (the last is only a fallback for clients that ignore CSP).
 
-**Forms do not use CSRF tokens.** No hidden field, cookie, or `csrf` middleware token is rendered. State-changing routes are `POST`, and `routes()` wraps the mux with Go's `http.CrossOriginProtection` (`main.go`). That middleware rejects unsafe methods when `Sec-Fetch-Site` is anything other than `same-origin` or `none`. If that header is absent, it compares the `Origin` host to the `Host` header. `TestCrossOriginPostRejected` covers a cross-site `Sec-Fetch-Site`.
+**Forms use a session-bound CSRF token.** `{{csrfField}}` renders the hidden input, and `csrfProtect` checks it on every unsafe method. `http.CrossOriginProtection` still wraps the mux and rejects `Sec-Fetch-Site` values other than `same-origin` or `none`. The token covers the case where both `Sec-Fetch-Site` and `Origin` are missing, which is where Go's origin check fails open. See `docs/development/CSRF.md`.
 
-That is real CSRF defense for browsers since 2023, and it is stricter than `SameSite` alone: a sibling subdomain (`Sec-Fetch-Site: same-site`) is rejected because the origin host does not match. It is not a synchronizer token. Go's own implementation fails open when both `Sec-Fetch-Site` and `Origin` are missing (old browsers and non-browser clients), and when `Origin`'s host matches `Host` it does not check the scheme. The standard library comment says sites should pair that with HSTS. This app does not set HSTS.
-
-Session and guest cookies are `SameSite=Lax`, `HttpOnly`, and `Secure` when `ENV` is not `dev`. Outside development the names are `__Host-session` and `__Host-guest`. Current browsers do not send `Lax` cookies on cross-site `POST`, so a classic forged form does not carry the session even if the origin check were skipped. Destructive actions (delete account, delete catalog, change role, impersonate) rely on that pair of controls. Typing the account email to confirm deletion stops accidents; it is not a CSRF secret.
+Session, guest, and anonymous CSRF cookies are `SameSite=Lax`, `HttpOnly`, and `Secure` when `ENV` is not `dev`. Outside development the names are `__Host-session`, `__Host-guest`, and `__Host-csrf`. `SameSite=Lax` is defense in depth, not the only control. Typing the account email to confirm deletion stops accidents; it is not a CSRF secret.
 
 No handler changes state on `GET`, `HEAD`, or `OPTIONS`, aside from sliding session expiry and `last_seen_at`. Post-login redirects go through `safeNext`, which allows only a single-slash local path.
 
@@ -68,7 +66,7 @@ No handler changes state on `GET`, `HEAD`, or `OPTIONS`, aside from sliding sess
 | Medium | `middleware.go` `securityHeaders` | CSP does not constrain script execution. Pages include inline scripts and load Turnstile from Cloudflare. htmx 2.0.11 (`static/htmx.min.js`) ships with `allowScriptTags` and `allowEval` enabled and swaps HTML with `innerHTML`. Templates go through `html/template`, so user text is escaped today. A template bug or a raw `template.HTML` mistake would run as script, and this header would not stop it. After the Go upgrade, add a nonce-based `script-src` (self plus `https://challenges.cloudflare.com`), `object-src 'none'`, `base-uri 'self'`, and `form-action 'self'`. |
 | Low | `auth.go` `handlePasswordLogin` | Ten failures set `locked_at`. The locked response is different from "email or password is incorrect", so a locked address can be distinguished. The same ten tries are an account-lock denial of service until the owner uses a magic link. The IP limiter is 10 attempts per minute, which is enough to lock one account. |
 | Low | `audience.go` `placeAudienceRequest` | Song requests are unauthenticated and have no Turnstile check. The cap is 10 requests per 10 minutes per client address per show. A pool of addresses can fill a queue. Login and magic links are the only Turnstile gates. |
-| Fixed | `render.go` `renderBlock` | Signed-in HTML, `/auth/` pages, and audience queue pages now send `Cache-Control: no-store` unless the handler already set a policy. Signed-out search is unchanged. |
+| Fixed | `render.go` `renderBlock` | HTML responses send `Cache-Control: private, no-store`, including pages that used to be publicly cacheable and audience search that used `private, max-age=300`. Hashed static files are unchanged. |
 | Fixed | `auth.go`, `audience.go` | Production cookies are `__Host-session` and `__Host-guest`. The unprefixed names are not accepted. Development on HTTP keeps `session` and `guest`. |
 | Low | `auth.go` `sendMagicLink`, `middleware.go` `logPath` | The sign-in secret is the URL path `/auth/{token}`. `GET` deliberately does not consume it, so a mail scanner cannot burn it, and neither does an access log. Nginx and Fly logs of that `GET` hold a still-valid token until it expires or is posted. The app's own request log hides the path. `Referrer-Policy: same-origin` keeps the token out of the Reddit link's `Referer`. Redact `/auth/` in the proxy logs. |
 | Info | `shows.go` `newShowSlug`, `audience.go` `handleAudienceQueue`, `handleDisplay` | A show's public URL is `/dj/{handle}/shows/{slug}`. The slug is derived from the name. Queue and TV display are world-readable and include singer names and song titles. Pending and rejected rows are limited to the visitor's own participant. That matches a room display. It is not an access check. |
@@ -139,7 +137,7 @@ Set `allowEval` and `allowScriptTags` to false in the existing `htmx-config` met
 
 ## CSRF
 
-Do not add form tokens. `http.CrossOriginProtection` plus `SameSite=Lax` is the control. Every state change is `POST`. `GET` only slides session expiry and `last_seen_at`. Fly nginx forwards `Host` (`proxy_set_header Host $host`). Go allows the request when both `Sec-Fetch-Site` and `Origin` are missing. `SameSite=Lax` still withholds the cookies on a cross-site `POST`.
+Synchronizer tokens are required on unsafe methods, in addition to `http.CrossOriginProtection` and `SameSite=Lax`. The implementation, the form helper, and the rules for new endpoints are in `docs/development/CSRF.md`. Do not add a second token scheme, and do not remove the check because the origin middleware is also present. `GET` still only slides session expiry and `last_seen_at`.
 
 ## Left as designed
 

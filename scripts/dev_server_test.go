@@ -1291,3 +1291,44 @@ func TestLiveClaimIsNotStolen(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestAgentForcesConsoleMail(t *testing.T) {
+	dir := t.TempDir()
+	state := filepath.Join(dir, "state")
+	mailOut := filepath.Join(dir, "mail-env.txt")
+	py := httpServer(t, dir)
+	// Record whether each variable is set. An empty value still blocks .env.
+	cmd := shellCommand(t, dir, fmt.Sprintf(`python3 -c 'import os
+keys=["MAIL_BACKEND","DEV_ALLOW_SMTP","SMTP_HOST","SMTP_USER","SMTP_PASS"]
+open(os.environ["MAIL_ENV_OUT"],"w").writelines(k+"="+("unset" if k not in os.environ else "set:"+os.environ[k])+"\n" for k in keys)
+'
+exec %q
+`, py))
+	extra := baseExtra(t, state, 39400, 39409, cmd)
+	extra["MAIL_ENV_OUT"] = mailOut
+	extra["MAIL_BACKEND"] = "smtp"
+	extra["DEV_ALLOW_SMTP"] = "true"
+	extra["SMTP_HOST"] = "smtp.example.com"
+	extra["SMTP_USER"] = "inherited-smtp-user"
+	extra["SMTP_PASS"] = "inherited-smtp-pass"
+	env := testEnv(t, extra)
+
+	agent := startAgent(t, env, "alpha", false)
+	agent.ready(t)
+	body, err := os.ReadFile(mailOut)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := "MAIL_BACKEND=set:console\nDEV_ALLOW_SMTP=set:false\nSMTP_HOST=set:\nSMTP_USER=set:\nSMTP_PASS=set:\n"
+	if string(body) != want {
+		t.Fatalf("mail env = %q", body)
+	}
+	logBody, err := os.ReadFile(filepath.Join(state, "alpha", "air.log"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	combined := agent.out.String() + string(logBody)
+	if strings.Contains(combined, "inherited-smtp-pass") || strings.Contains(combined, "inherited-smtp-user") {
+		t.Fatal("agent output included inherited SMTP credentials")
+	}
+}

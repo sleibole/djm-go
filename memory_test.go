@@ -100,8 +100,8 @@ func TestSavedSongsAndSingAgain(t *testing.T) {
 	show := fmt.Sprint(s.ID)
 
 	rec := fan.get(path + "/search?q=bohemian&v=1")
-	if rec.Header().Get("Cache-Control") != "" {
-		t.Error("search results with hearts must not be cached")
+	if rec.Header().Get("Cache-Control") != "private, no-store" {
+		t.Errorf("search results with hearts must not be cached: %q", rec.Header().Get("Cache-Control"))
 	}
 	mustContain(t, "search", rec.Body.String(), `action="/me/saved"`, `aria-label="Save Bohemian Rhapsody"`, `hx-include="closest tr"`)
 	mustContain(t, "show page", fan.get(path).Body.String(), "/me/saved?show="+show, "/me/performances?show="+show)

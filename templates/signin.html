@@ -13,6 +13,7 @@
   {{end}}
   {{if .Error}}<p role="alert" class="error">{{.Error}}</p>{{end}}
   <form method="post" action="{{if .ShowPassword}}/signin{{else}}/signin/link{{end}}" class="auth-form">
+  {{csrfField}}
     <input type="hidden" name="next" value="{{.Next}}">
     <label>
       {{icon "mail"}} Email

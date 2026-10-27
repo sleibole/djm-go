@@ -33,7 +33,7 @@ That starts [Air](https://github.com/air-verse/air), which rebuilds the server w
 
 Port 8200 is the personal server. Named agent servers use `make dev-agent NAME=<unique-name>` and take a port from 8300 through 8399, with their own database, blobs, and catalog cache under `tmp/dev-agents/<name>/`. `make dev-list` shows them. `make dev-stop NAME=<name>` stops one. Those commands do not start or stop the personal server. track-anything keeps port 8080 and ports 8100–8199. Concurrent agents use separate Git worktrees so they do not edit one checkout at the same time. [Worktrees](docs/development/WORKTREES.md) describes setup and how ports are coordinated.
 
-With `SMTP_HOST` unset, login and verification links are written to the server log. To send mail locally, copy `.env.example` to `.env` and run [MailHog](https://github.com/mailhog/MailHog) (SMTP on port 1025, inbox at http://localhost:8025). A missing `.env` is fine. MailHog is shared by every local server.
+Development uses the console mail backend. It logs the recipient and subject and does not send mail or log the message. A sign-in link appears on the check-your-email page only when `DEV_SHOW_MAGIC_LINK=true` and `SMTP_HOST` is empty. `SMTP_HOST` without `DEV_ALLOW_SMTP=true` refuses to start, so inherited SMTP credentials cannot send real mail. To use [MailHog](https://github.com/mailhog/MailHog), set `SMTP_HOST=localhost`, `SMTP_PORT=1025`, and `DEV_ALLOW_SMTP=true` (inbox at http://localhost:8025). Named agent servers force the console backend and ignore those values. A missing `.env` is fine.
 
 The personal SQLite file is created at `data/djm.db`. Uploaded CSVs go in `data/blobs`, and built catalogs are cached in `data/catalogs`. An agent server does not use those directories.
 
@@ -51,7 +51,9 @@ When `ADDR` and `PORT` are both unset, the binary listens on `:8080`. That is wh
 | `BLOB_DIR` | `data/blobs` | Local blob store for uploaded CSVs and built catalogs. |
 | `CATALOG_CACHE_DIR` | `data/catalogs` | Local cache of built catalogs. Safe to delete; a search refills it. |
 | `CATALOG_CACHE_MAX_BYTES` | `10737418240` | Cache budget in bytes (10 GiB). Least recently used catalogs are removed past this. |
-| `SMTP_HOST` | empty | Empty logs links to the console. Set it to send mail. |
+| `MAIL_BACKEND` | `console` in development, `smtp` in production | `console` or `smtp`. Development uses the console when this is unset and `SMTP_HOST` is empty. `console` keeps that backend even if SMTP settings are present. Production accepts `smtp` or unset, and rejects `console`. |
+| `DEV_ALLOW_SMTP` | unset | Set to the exact string `true` to let development send through SMTP. Required in addition to SMTP settings. `1` and `TRUE` do not count. Production rejects it. |
+| `SMTP_HOST` | empty | SMTP relay. In development this does not send unless `DEV_ALLOW_SMTP=true`. Production refuses to start when it is empty. |
 | `SMTP_PORT` | `587` | Implicit TLS on `465`; STARTTLS otherwise. |
 | `SMTP_USER` | empty | SMTP username. |
 | `SMTP_PASS` | empty | SMTP password. |

@@ -56,8 +56,25 @@ func TestAudienceRequestFlow(t *testing.T) {
 	alice := guest(t, a, "192.0.2.10")
 	mustContain(t, "DJ profile", alice.get(dj).Body.String(), "Live Now", "Friday", "Make a Request", `href="`+path+`"`)
 	mustContain(t, "show page", alice.get(path).Body.String(), "Request a Song", `name="song_title"`, "e.g. Mike S.")
-	if len(alice.cookies) != 0 {
+	if alice.cookies[guestCookie] != nil {
 		t.Fatal("looking at a show should not create a guest identity")
+	}
+	if alice.cookies[csrfCookieName] == nil {
+		t.Fatal("looking at a show should set the anonymous csrf cookie")
+	}
+	var requests int64
+	if err := a.db.Model(&SongRequest{}).Count(&requests).Error; err != nil {
+		t.Fatal(err)
+	}
+	if requests != 0 {
+		t.Fatalf("looking at a show created %d song requests", requests)
+	}
+	var guests int64
+	if err := a.db.Model(&AudienceProfile{}).Where("user_id IS NULL").Count(&guests).Error; err != nil {
+		t.Fatal(err)
+	}
+	if guests != 0 {
+		t.Fatalf("looking at a show created %d guest profiles", guests)
 	}
 
 	rec := alice.post(path+"/requests", url.Values{"song_title": {"Hello"}})

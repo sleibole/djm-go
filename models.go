@@ -59,10 +59,22 @@ func (u User) PublicName() string {
 type Session struct {
 	ID             string // sha256 hex of the cookie value; the raw token is only in the cookie
 	UserID         uint
-	ImpersonatorID *uint // the admin using "log in as"
+	ImpersonatorID *uint  // the admin using "log in as"
+	CSRFToken      string `gorm:"column:csrf_token"` // stable secret for this login; not a one-time nonce
 	ExpiresAt      time.Time
 	CreatedAt      time.Time
 }
+
+// CSRFSession is the anonymous browser context for visitors who are not logged in.
+// The cookie holds a random id. Token is what forms send. It is not tied to an email.
+type CSRFSession struct {
+	ID        string `gorm:"primaryKey"`
+	Token     string
+	ExpiresAt time.Time
+	CreatedAt time.Time
+}
+
+func (CSRFSession) TableName() string { return "csrf_sessions" }
 
 // MagicToken is a one-time sign-in link. Only the hash is stored,
 // so a database leak can't be used to sign in.

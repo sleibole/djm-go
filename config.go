@@ -17,7 +17,9 @@ type config struct {
 	Env                string // "dev" or "prod"
 	BaseURL            string // public origin for emailed links, QR codes, and canonical URLs
 	AllowIndexing      bool   // prod only, and only when ALLOW_INDEXING=true
-	SMTPHost           string // empty = do not send; the message body is never logged
+	MailBackend        string // "console", "smtp", or empty. Development defaults to console.
+	DevAllowSMTP       bool   // dev only: DEV_ALLOW_SMTP=true is required before SMTP settings send mail
+	SMTPHost           string // production relay. Development uses it only together with DevAllowSMTP.
 	SMTPPort           string
 	SMTPUser           string
 	SMTPPass           string
@@ -46,6 +48,8 @@ func loadConfig() config {
 		BaseURL:            base,
 		baseURLSet:         rawBase != "",
 		AllowIndexing:      os.Getenv("ALLOW_INDEXING") == "true",
+		MailBackend:        strings.TrimSpace(os.Getenv("MAIL_BACKEND")),
+		DevAllowSMTP:       os.Getenv("DEV_ALLOW_SMTP") == "true",
 		SMTPHost:           os.Getenv("SMTP_HOST"),
 		SMTPPort:           getenv("SMTP_PORT", "587"),
 		SMTPUser:           os.Getenv("SMTP_USER"),
@@ -102,6 +106,9 @@ func (c config) validate() error {
 	if (c.TurnstileSiteKey == "") != (c.TurnstileSecretKey == "") {
 		return errors.New("TURNSTILE_SITE_KEY and TURNSTILE_SECRET_KEY must both be set or both be empty")
 	}
+	if _, err := c.resolveMailBackend(); err != nil {
+		return err
+	}
 	if c.Env != "prod" {
 		return nil
 	}
@@ -122,6 +129,58 @@ func (c config) validate() error {
 		return errors.New("production rejects DEV_SHOW_MAGIC_LINK")
 	}
 	return nil
+}
+
+const (
+	mailBackendConsole = "console"
+	mailBackendSMTP    = "smtp"
+)
+
+// resolveMailBackend chooses where mail goes.
+// Development uses the console unless SMTP is selected and DEV_ALLOW_SMTP=true.
+// SMTP settings with no opt-in are a startup failure, not a delivery path.
+// MAIL_BACKEND=console stays on the console even when those settings are present.
+// An empty backend with no SMTP host is the console. It never becomes SMTP.
+// Production uses SMTP. The console backend and DEV_ALLOW_SMTP are rejected.
+func (c config) resolveMailBackend() (string, error) {
+	backend := strings.ToLower(strings.TrimSpace(c.MailBackend))
+	switch c.Env {
+	case "prod":
+		if c.DevAllowSMTP {
+			return "", errors.New("production rejects DEV_ALLOW_SMTP")
+		}
+		switch backend {
+		case "", mailBackendSMTP:
+			return mailBackendSMTP, nil
+		default:
+			return "", fmt.Errorf("production mail backend must be smtp, got %q", c.MailBackend)
+		}
+	case "dev":
+		switch backend {
+		case mailBackendConsole:
+			return mailBackendConsole, nil
+		case mailBackendSMTP:
+			if !c.DevAllowSMTP {
+				return "", errors.New("development MAIL_BACKEND=smtp requires DEV_ALLOW_SMTP=true in addition to SMTP settings")
+			}
+			if c.SMTPHost == "" {
+				return "", errors.New("development MAIL_BACKEND=smtp requires SMTP_HOST; missing mail configuration will not use a relay")
+			}
+			return mailBackendSMTP, nil
+		case "":
+			if c.SMTPHost != "" && !c.DevAllowSMTP {
+				return "", errors.New("development SMTP requires DEV_ALLOW_SMTP=true before it will send mail. Set DEV_ALLOW_SMTP=true to allow SMTP, or set MAIL_BACKEND=console to keep the console backend")
+			}
+			if c.SMTPHost != "" && c.DevAllowSMTP {
+				return mailBackendSMTP, nil
+			}
+			return mailBackendConsole, nil
+		default:
+			return "", fmt.Errorf("MAIL_BACKEND must be console or smtp, got %q", c.MailBackend)
+		}
+	default:
+		return "", fmt.Errorf("ENV must be dev or prod, got %q", c.Env)
+	}
 }
 
 func getenv(key, fallback string) string {

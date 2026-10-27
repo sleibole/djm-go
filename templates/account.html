@@ -15,6 +15,7 @@
   {{if .ProfileError}}<p role="alert" class="error">{{.ProfileError}}</p>{{end}}
   <p>Your public page: <strong>{{$.BaseURL}}/dj/{{$.User.Handle}}</strong></p>
   <form method="post" action="/account/profile">
+  {{csrfField}}
     <label>
       {{icon "user"}} Display name
       <input type="text" name="display_name" value="{{.DisplayName}}" maxlength="50" placeholder="e.g. DJ Mike" aria-describedby="display-name-help">
@@ -36,6 +37,7 @@
   {{if .DefaultsError}}<p role="alert" class="error">{{.DefaultsError}}</p>{{end}}
   <p>New shows start with these settings. You can change them on each show.</p>
   <form method="post" action="/account/defaults">
+  {{csrfField}}
     <label>
       Show type
       <select name="show_type">
@@ -62,6 +64,7 @@
   <h2>Host shows</h2>
   <p>Run karaoke or DJ shows, upload your song catalog, and take requests from your audience.</p>
   <form method="post" action="/account/host">
+  {{csrfField}}
     <button type="submit">Start hosting</button>
   </form>
 </article>
@@ -80,6 +83,7 @@
   {{if .PasswordError}}<p role="alert" class="error">{{.PasswordError}}</p>{{end}}
   <p>{{if $.User.HasPassword}}You have a password. Change it, or remove it and use email links only. Other devices will be signed out when you change it.{{else}}You sign in with email links. Set a password if you'd like to use one too.{{end}}</p>
   <form method="post" action="/account/password">
+  {{csrfField}}
     <label>
       {{icon "lock"}} New password
       <input type="password" name="password" required minlength="8" maxlength="72" autocomplete="new-password">
@@ -92,6 +96,7 @@
   </form>
   {{if $.User.HasPassword}}
   <form method="post" action="/account/password/delete">
+  {{csrfField}}
     <button type="submit" class="outline danger">Remove password</button>
   </form>
   {{end}}
@@ -103,6 +108,7 @@
     {{if .DeleteError}}<p role="alert" class="error">{{.DeleteError}}</p>{{end}}
     <p>Permanently delete your account and everything in it, including catalogs, shows, and request history. <strong>This cannot be undone.</strong></p>
     <form method="post" action="/account/delete">
+  {{csrfField}}
       <label>
         Type <strong>{{$.User.Email}}</strong> to confirm
         <input type="text" name="confirm" required autocomplete="off" autocapitalize="none" spellcheck="false">

@@ -278,12 +278,20 @@ func (a *app) handleCatalogUpload(w http.ResponseWriter, r *http.Request) {
 }
 
 // receiveUpload streams the "file" part of a multipart body to a temp file,
-// hashing it on the way.
+// hashing it on the way. CSRF middleware may already have read a leading
+// csrf_token part; the rest of that body is resumed here.
 func (a *app) receiveUpload(r *http.Request) (path string, size int64, sum string, err error) {
+	if mr := resumedMultipart(r); mr != nil {
+		return a.receiveUploadFrom(mr)
+	}
 	mr, err := r.MultipartReader()
 	if err != nil {
 		return "", 0, "", errNoFile
 	}
+	return a.receiveUploadFrom(mr)
+}
+
+func (a *app) receiveUploadFrom(mr *multipart.Reader) (path string, size int64, sum string, err error) {
 	for {
 		part, err := mr.NextPart()
 		if errors.Is(err, io.EOF) {

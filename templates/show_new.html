@@ -8,6 +8,7 @@
 {{else if .ActiveShow}}{{with .ActiveShow}}<p role="status" class="warning">{{.DisplayName}} is live now. You can schedule another show, but end that one before starting a new one. <a href="/shows/{{.ID}}">Go to {{.DisplayName}}</a></p>{{end}}{{end}}
 
 <form method="post" action="/shows" class="show-form">
+  {{csrfField}}
   <label>
     {{icon "microphone"}} Show Name <small>(optional)</small>
     <input type="text" name="name" value="{{$f.Name}}" placeholder="e.g. Friday Night Karaoke" maxlength="100">

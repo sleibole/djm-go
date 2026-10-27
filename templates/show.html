@@ -21,6 +21,7 @@
 <section>
   <p>This show is scheduled but not yet live. Start it when you're ready.</p>
   <form method="post" action="/shows/{{$s.ID}}/start">
+  {{csrfField}}
     <button type="submit">Start Show</button>
   </form>
 </section>
@@ -59,6 +60,7 @@
   <h2>Add to Queue</h2>
   {{with .Add.Error}}<p role="alert" class="error">{{.}}</p>{{end}}
   <form method="post" action="/shows/{{$s.ID}}/requests" id="add-form">
+  {{csrfField}}
     {{/* Enter in a field must not pick a search result; a disabled default button stops implicit submission. */}}
     <button type="submit" disabled hidden aria-hidden="true" tabindex="-1"></button>
     <label>
@@ -106,6 +108,7 @@
   <summary>{{icon "settings"}} Show Settings</summary>
   {{with .SettingsError}}<p role="alert" class="error">{{.}}</p>{{end}}
   <form method="post" action="/shows/{{$s.ID}}" class="show-form">
+  {{csrfField}}
     <label>
       Show Name
       <input type="text" name="name" value="{{$f.Name}}" placeholder="e.g. Friday Night Karaoke" maxlength="100">
@@ -163,6 +166,7 @@
     </header>
     <p>The queue will be closed. The song on stage counts as performed, and anyone still waiting is taken off the queue. An ended show can't be started again.</p>
     <form method="post" action="/shows/{{$s.ID}}/end">
+  {{csrfField}}
       <div role="group">
         <button type="submit" class="danger">End Show</button>
         <button type="button" class="secondary" data-close-dialog>Cancel</button>
@@ -210,6 +214,7 @@
             <td>
               <div class="row-actions">
                 <form method="post" action="/requests/{{.ID}}/approve" hx-post="/requests/{{.ID}}/approve">
+  {{csrfField}}
                   <button type="submit" class="approve" title="Approve" aria-label="Approve {{.Participant}}">{{icon "check"}}</button>
                 </form>
                 <button type="button" class="outline danger" title="Reject" aria-label="Reject {{.Participant}}" data-open-dialog="reject-{{.ID}}">{{icon "x"}}</button>
@@ -222,6 +227,7 @@
                   </header>
                   <p><strong>{{.SongTitle}}</strong> — {{or .SongArtist "—"}}</p>
                   <form method="post" action="/requests/{{.ID}}/reject" hx-post="/requests/{{.ID}}/reject">
+  {{csrfField}}
                     <textarea name="rejection_reason" placeholder="Reason (optional)" rows="2" maxlength="500"></textarea>
                     <div role="group">
                       <button type="submit" class="danger">Reject</button>
@@ -245,8 +251,14 @@
     <article class="now-playing">
       <p><strong>{{.Participant}}</strong> — {{.SongTitle}}{{with .SongArtist}} by {{.}}{{end}}{{with .Version}} ({{.}}){{end}}{{with .ExternalID}} · ID: {{.}}{{end}}</p>
       <div role="group">
-        <form method="post" action="/requests/{{.ID}}/done" hx-post="/requests/{{.ID}}/done"><button type="submit">Done</button></form>
-        <form method="post" action="/requests/{{.ID}}/skip" hx-post="/requests/{{.ID}}/skip"><button type="submit" class="secondary">Skip</button></form>
+        <form method="post" action="/requests/{{.ID}}/done" hx-post="/requests/{{.ID}}/done">
+          {{csrfField}}
+          <button type="submit">Done</button>
+        </form>
+        <form method="post" action="/requests/{{.ID}}/skip" hx-post="/requests/{{.ID}}/skip">
+          {{csrfField}}
+          <button type="submit" class="secondary">Skip</button>
+        </form>
       </div>
     </article>
     {{else}}
@@ -270,9 +282,11 @@
             <td>
               <div class="row-actions">
                 <form method="post" action="/requests/{{$r.ID}}/start" hx-post="/requests/{{$r.ID}}/start">
+  {{csrfField}}
                   <button type="submit" class="outline" title="Start" aria-label="Start {{$r.Participant}}">{{icon "player-play"}}</button>
                 </form>
                 <form method="post" action="/requests/{{$r.ID}}/delete" hx-post="/requests/{{$r.ID}}/delete" hx-confirm="Remove {{$r.Participant}} from the queue?">
+  {{csrfField}}
                   <button type="submit" class="outline danger" title="Remove" aria-label="Remove {{$r.Participant}}">{{icon "x"}}</button>
                 </form>
               </div>
